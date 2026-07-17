@@ -1,0 +1,458 @@
+import Image from "next/image";
+import {
+  formatEgp,
+  getPublicContent,
+  publicVehicles,
+  type PublicLocale,
+} from "../lib/public-content";
+import { AvailabilitySearch } from "./availability-search";
+
+type PublicHomeProps = {
+  locale: PublicLocale;
+};
+
+type IconName =
+  | "arrow"
+  | "calendar"
+  | "car"
+  | "check"
+  | "clock"
+  | "document"
+  | "menu"
+  | "phone"
+  | "pin"
+  | "shield"
+  | "users"
+  | "whatsapp";
+
+function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+  const paths: Record<IconName, React.ReactNode> = {
+    arrow: <path d="m9 18 6-6-6-6" />,
+    calendar: (
+      <>
+        <path d="M8 2v4M16 2v4M3 10h18" />
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+      </>
+    ),
+    car: (
+      <>
+        <path d="m5 17-1 3M19 17l1 3M3 13l2-6h14l2 6v5H3v-5Z" />
+        <path d="M7 14h.01M17 14h.01M5 10h14" />
+      </>
+    ),
+    check: <path d="m5 12 4 4L19 6" />,
+    clock: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </>
+    ),
+    document: (
+      <>
+        <path d="M6 2h8l4 4v16H6zM14 2v5h5M9 12h6M9 16h6" />
+      </>
+    ),
+    menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+    phone: (
+      <path d="M6.6 3.5 9 8 6.8 9.4a15 15 0 0 0 7.8 7.8L16 15l4.5 2.4-.8 3.1c-.2.8-.9 1.3-1.7 1.3C9.3 21.8 2.2 14.7 2.2 6c0-.8.5-1.5 1.3-1.7z" />
+    ),
+    pin: (
+      <>
+        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+        <circle cx="12" cy="10" r="2.5" />
+      </>
+    ),
+    shield: <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Zm-3-11 2 2 4-4" />,
+    users: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3 20c0-4 2.5-7 6-7s6 3 6 7M16 5.5a3 3 0 0 1 0 5.8M17 14c2.4.7 4 2.8 4 6" />
+      </>
+    ),
+    whatsapp: (
+      <>
+        <path d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.7a8.5 8.5 0 1 1 16.3-3.8Z" />
+        <path d="M8 7.5c.5 4 3 6.5 7 7l1.2-1.7-2.4-1.2-1 1c-1.7-.8-2.8-2-3.5-3.5l1-1L9.2 6Z" />
+      </>
+    ),
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="icon"
+      fill="none"
+      height={size}
+      viewBox="0 0 24 24"
+      width={size}
+    >
+      <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7">
+        {paths[name]}
+      </g>
+    </svg>
+  );
+}
+
+export function RahalLogo({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className={`rahal-logo${compact ? " rahal-logo--compact" : ""}`} aria-hidden="true">
+      <svg className="rahal-logo__mark" viewBox="0 0 64 76">
+        <path className="rahal-logo__crown" d="M13 18 8 8l13 7L32 3l11 12 13-7-5 10" />
+        <path className="rahal-logo__shield" d="M8 20h48v26c0 15-13 23-24 27C21 69 8 61 8 46V20Z" />
+        <path className="rahal-logo__inner" d="M15 27h34v18c0 10-8 16-17 20-9-4-17-10-17-20V27Z" />
+        <path
+          className="rahal-logo__letter"
+          d="M23 55V34h11c6 0 10 3 10 8 0 4-2 6-6 7l7 7h-8l-6-7v-5h3c2 0 3-1 3-3 0-1-1-2-3-2h-4v16Z"
+        />
+      </svg>
+      <span className="rahal-logo__word">RAHAL</span>
+    </span>
+  );
+}
+
+function Header({ locale }: PublicHomeProps) {
+  const content = getPublicContent(locale);
+
+  return (
+    <header className="site-header">
+      <div className="container header-inner">
+        <a
+          className="brand-link"
+          href="#top"
+          aria-label={locale === "ar" ? "رحال الرئيسية" : "Rahal home"}
+        >
+          <RahalLogo />
+          <span className="brand-tagline">{content.brandTagline}</span>
+        </a>
+
+        <nav className="desktop-navigation" aria-label={content.navigationLabel}>
+          {content.nav.map(([label, href]) => (
+            <a href={href} key={href}>
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="header-actions">
+          <a
+            className="language-switch"
+            href={content.languageHref}
+            hrefLang={locale === "ar" ? "en" : "ar"}
+          >
+            <span className="language-switch__globe" aria-hidden="true">
+              ◎
+            </span>
+            {content.languageLabel}
+          </a>
+          <a className="button button--dark header-sign-in" href="#contact">
+            {content.signIn}
+          </a>
+          <details className="mobile-menu">
+            <summary aria-label={content.menuLabel}>
+              <Icon name="menu" />
+            </summary>
+            <nav aria-label={content.navigationLabel}>
+              {content.nav.map(([label, href]) => (
+                <a href={href} key={href}>
+                  {label}
+                </a>
+              ))}
+              <a href={content.languageHref}>{content.languageLabel}</a>
+              <a href="#contact">{content.signIn}</a>
+            </nav>
+          </details>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function VehicleCard({
+  locale,
+  vehicle,
+}: {
+  locale: PublicLocale;
+  vehicle: (typeof publicVehicles)[number];
+}) {
+  const content = getPublicContent(locale);
+  const isAvailable = vehicle.status === "available";
+
+  return (
+    <article className="vehicle-card">
+      <div className="vehicle-card__media">
+        <Image
+          alt={vehicle.imageAlt[locale]}
+          fill
+          sizes="(max-width: 760px) 100vw, (max-width: 1100px) 50vw, 33vw"
+          src={vehicle.image}
+        />
+        <span className={`status-badge status-badge--${vehicle.status}`}>
+          <span aria-hidden="true" />
+          {isAvailable ? content.available : content.review}
+        </span>
+      </div>
+      <div className="vehicle-card__body">
+        <div className="vehicle-card__heading">
+          <div>
+            <span className="vehicle-card__category">{vehicle.category[locale]}</span>
+            <h3>{vehicle.name[locale]}</h3>
+          </div>
+          <div className="vehicle-card__price">
+            <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
+            <small>{content.perDay}</small>
+          </div>
+        </div>
+        <div className="vehicle-card__specs">
+          <span>
+            <Icon name="clock" size={17} />
+            {vehicle.transmission[locale]}
+          </span>
+          <span>
+            <Icon name="users" size={17} />
+            {vehicle.seats} {content.seats}
+          </span>
+        </div>
+        <a className="button button--outline" href="#availability-title">
+          {content.viewDetails}
+          <Icon name="arrow" size={17} />
+        </a>
+      </div>
+    </article>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  copy,
+}: {
+  eyebrow: string;
+  title: string;
+  copy?: string;
+}) {
+  return (
+    <div className="section-heading">
+      <div>
+        <span className="eyebrow">{eyebrow}</span>
+        <h2>{title}</h2>
+      </div>
+      {copy ? <p>{copy}</p> : null}
+    </div>
+  );
+}
+
+function Footer({ locale }: PublicHomeProps) {
+  const content = getPublicContent(locale);
+
+  return (
+    <footer className="site-footer" id="contact">
+      <div className="container footer-grid">
+        <div className="footer-brand">
+          <RahalLogo compact />
+          <p>{content.footerCopy}</p>
+        </div>
+        <div>
+          <h2>{content.quickLinks}</h2>
+          <div className="footer-links">
+            {content.nav.map(([label, href]) => (
+              <a href={href} key={href}>
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h2>{content.contact}</h2>
+          <div className="footer-links footer-links--contact">
+            <a href="tel:01011105159">
+              <Icon name="phone" size={17} />
+              010 111 05159
+            </a>
+            <a href="https://wa.me/201011105159">
+              <Icon name="whatsapp" size={17} />
+              {content.whatsapp}
+            </a>
+          </div>
+        </div>
+      </div>
+      <div className="container footer-bottom">
+        <span>© {new Date().getFullYear()} RAHAL</span>
+        <span>{content.legal}</span>
+      </div>
+    </footer>
+  );
+}
+
+export function PublicHome({ locale }: PublicHomeProps) {
+  const content = getPublicContent(locale);
+
+  return (
+    <div className="public-site" dir={content.dir} lang={content.htmlLang}>
+      <a className="skip-link" href="#main-content">
+        {content.skip}
+      </a>
+      <Header locale={locale} />
+
+      <main id="main-content">
+        <section className="hero" id="top">
+          <Image
+            alt=""
+            className="hero__image"
+            fill
+            priority
+            sizes="100vw"
+            src="/images/rahal-hero.jpg"
+          />
+          <div className="hero__overlay" />
+          <div className="container hero__content">
+            <span className="eyebrow eyebrow--light">{content.heroEyebrow}</span>
+            <h1>{content.heroTitle}</h1>
+            <p>{content.heroCopy}</p>
+            <div className="hero__actions">
+              <a className="button button--gold" href="#fleet">
+                {content.heroPrimary}
+                <Icon name="arrow" size={18} />
+              </a>
+              <a className="button button--glass" href="#process">
+                {content.heroSecondary}
+              </a>
+            </div>
+            <div className="hero__badge">
+              <Icon name="shield" size={18} />
+              {content.heroBadge}
+            </div>
+          </div>
+        </section>
+
+        <div className="container">
+          <AvailabilitySearch locale={locale} />
+        </div>
+
+        <section className="section fleet-section" id="fleet">
+          <div className="container">
+            <div className="heading-row">
+              <SectionHeading
+                eyebrow={content.fleetEyebrow}
+                title={content.fleetTitle}
+                copy={content.fleetCopy}
+              />
+              <a className="text-link" href="#fleet">
+                {content.viewAll}
+                <Icon name="arrow" size={17} />
+              </a>
+            </div>
+            <div className="vehicle-grid">
+              {publicVehicles.map((vehicle) => (
+                <VehicleCard key={vehicle.id} locale={locale} vehicle={vehicle} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section categories-section" id="categories">
+          <div className="container">
+            <SectionHeading eyebrow={content.categoryEyebrow} title={content.categoryTitle} />
+            <div className="category-grid">
+              {content.categories.map(([title, description, number], index) => (
+                <article className="category-card" key={title}>
+                  <span className="category-card__number">{number}</span>
+                  <span className="category-card__icon">
+                    <Icon name={(["car", "clock", "users", "shield"] as IconName[])[index]} />
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                  <a href="#fleet" aria-label={`${content.viewAll}: ${title}`}>
+                    <Icon name="arrow" />
+                  </a>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section process-section" id="process">
+          <div className="container process-layout">
+            <div className="process-intro">
+              <SectionHeading
+                eyebrow={content.processEyebrow}
+                title={content.processTitle}
+                copy={content.processCopy}
+              />
+              <div className="process-seal">
+                <RahalLogo compact />
+              </div>
+            </div>
+            <ol className="process-list">
+              {content.steps.map(([title, description], index) => (
+                <li key={title}>
+                  <span className="process-list__number">{String(index + 1).padStart(2, "0")}</span>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{description}</p>
+                  </div>
+                  <span className="process-list__check">
+                    <Icon name="check" size={18} />
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="section trust-section">
+          <div className="container">
+            <SectionHeading eyebrow={content.trustEyebrow} title={content.trustTitle} />
+            <div className="trust-grid">
+              {content.trustItems.map(([title, description], index) => (
+                <article key={title}>
+                  <span className="trust-icon">
+                    <Icon name={(["document", "users", "shield"] as IconName[])[index]} />
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section branch-section" id="branch">
+          <div className="container branch-card">
+            <div className="branch-card__map" aria-hidden="true">
+              <div className="map-grid" />
+              <span className="map-pin">
+                <Icon name="pin" size={28} />
+              </span>
+              <span className="map-label">RAHAL</span>
+            </div>
+            <div className="branch-card__content">
+              <span className="eyebrow">{content.branchEyebrow}</span>
+              <h2>{content.branchTitle}</h2>
+              <p>{content.branchCopy}</p>
+              <div className="branch-note">
+                <Icon name="pin" size={18} />
+                {content.branchNote}
+              </div>
+              <div className="branch-actions">
+                <a className="button button--dark" href="tel:01011105159">
+                  <Icon name="phone" size={18} />
+                  {content.call}
+                </a>
+                <a className="button button--whatsapp" href="https://wa.me/201011105159">
+                  <Icon name="whatsapp" size={19} />
+                  {content.whatsapp}
+                </a>
+              </div>
+              <span className="branch-directions">
+                <Icon name="pin" size={16} />
+                {content.directions}
+              </span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <Footer locale={locale} />
+    </div>
+  );
+}

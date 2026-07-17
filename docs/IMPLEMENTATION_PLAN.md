@@ -69,7 +69,33 @@ Goal: make the repo a dependable base for feature work before expanding product 
 - Static check or test fixture for forbidden content patterns in source files.
 - Typecheck and build in CI-compatible scripts.
 
-## Milestone 2: Schema baseline
+## Milestone 2: Design system, localization, and public home
+
+Goal: replace the temporary Milestone 1 shell with a production-quality bilingual public home page before database-backed feature work.
+
+### Scope
+
+- Establish reusable brand, typography, spacing, radius, shadow, container, breakpoint, focus, and interaction tokens.
+- Add shared public header, Rahal logo, navigation, language switcher, buttons, form fields, vehicle cards, headings, status badges, and footer.
+- Build one shared Arabic/English home-page component and one localized data structure.
+- Add responsive hero, availability form, featured vehicles, categories, process, trust, branch, contact, WhatsApp, and footer sections.
+- Use project-local original vehicle imagery and rebuild the Stitch direction without copying exported production code.
+
+### Acceptance criteria
+
+- Arabic uses RTL and English uses LTR while sharing the same component tree and vehicle data.
+- Currency is EGP only and pickup/return copy is branch-only.
+- Navigation, language switching, mobile menu, and required availability fields are present and keyboard accessible.
+- No CSS vehicle placeholder, single-letter logo placeholder, forbidden legacy content, mojibake, or fixed old demo date returns.
+- No horizontal overflow or content collision at 390px, 768px, 1440px, and 1920px.
+
+### Tests
+
+- Static and component-structure tests for shared localization, direction, navigation, language switching, required form fields, logo, and local media.
+- Existing forbidden-content, date, and encoding tests.
+- Browser runtime checks at the four target viewports.
+
+## Milestone 3: Schema baseline
 
 Goal: align Prisma with the required domain before implementing workflows.
 
@@ -77,7 +103,7 @@ Goal: align Prisma with the required domain before implementing workflows.
 
 - Expand the schema to cover missing entities listed in `docs/DATABASE_SCHEMA.md`.
 - Add migrations.
-- Add seed script with fictional demo data and relative dates generated at seed time.
+- Add seed script with 8 to 12 fictional vehicles and relative dates generated at seed time.
 - Add database service wiring in the API.
 - Add initial repository/services for branches and vehicles.
 
@@ -85,7 +111,7 @@ Goal: align Prisma with the required domain before implementing workflows.
 
 - `pnpm db:generate` and migration commands succeed.
 - Seed data creates 8 to 12 fictional vehicles with EGP pricing.
-- API vehicle endpoints read from the database.
+- API vehicle endpoints read from PostgreSQL.
 - No real identity documents or document numbers are seeded.
 
 ### Tests
@@ -93,32 +119,6 @@ Goal: align Prisma with the required domain before implementing workflows.
 - Prisma validation.
 - Seed smoke test against local PostgreSQL.
 - API integration tests for vehicles and branch settings.
-
-## Milestone 3: Public shell and fleet browsing
-
-Goal: replace the current static scaffold with data-driven, bilingual public browsing.
-
-### Scope
-
-- Shared UI tokens and components.
-- Public home, vehicle listing, vehicle detail, and branch/contact sections.
-- Basic filters backed by API query parameters.
-- Responsive desktop/mobile verification.
-- Accessibility pass for keyboard focus and semantic markup.
-
-### Acceptance criteria
-
-- Arabic and English content use the same vehicle data.
-- Currency displays EGP only.
-- Pickup/return copy says branch only.
-- No online payment claims.
-- Loading, empty, and error states exist.
-
-### Tests
-
-- Component tests for shared UI primitives.
-- API query tests for vehicle filters.
-- Playwright smoke tests for Arabic and English public browsing.
 
 ## Decisions not blocking Milestone 1
 
