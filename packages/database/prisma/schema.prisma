@@ -1,0 +1,482 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SystemRole {
+  CUSTOMER
+  SALES
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  BLOCKED
+  ARCHIVED
+}
+
+enum VerificationPurpose {
+  VERIFY_PHONE
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  PENDING_REQUEST
+  CONFIRMED_BOOKING
+  RENTED
+  MAINTENANCE
+  MANUALLY_BLOCKED
+  INACTIVE
+}
+
+enum DriverPolicy {
+  OPTIONAL
+  MANDATORY
+  UNAVAILABLE
+}
+
+enum DriverChargeType {
+  PER_DAY
+  PER_TRIP
+}
+
+enum ReservationStatus {
+  DRAFT
+  PENDING_REVIEW
+  UNDER_REVIEW
+  MORE_INFORMATION_REQUIRED
+  PRE_APPROVED
+  ALTERNATIVE_OFFERED
+  REJECTED
+  EXPIRED
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum DocumentType {
+  NATIONAL_ID_FRONT
+  NATIONAL_ID_BACK
+  DRIVING_LICENSE_FRONT
+  DRIVING_LICENSE_BACK
+  PASSPORT
+  SIGNED_CONTRACT
+  DEPOSIT_RECEIPT
+  OTHER
+}
+
+enum DocumentStatus {
+  UPLOADING
+  UPLOADED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+  DELETED
+}
+
+enum VehicleBlockType {
+  MAINTENANCE
+  MANUAL_BLOCK
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+  EMAIL
+  WHATSAPP
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+model User {
+  id                     String                   @id @default(cuid())
+  email                  String                   @unique
+  phone                  String                   @unique
+  passwordHash           String
+  fullNameAr             String?
+  fullNameEn             String
+  systemRole             SystemRole               @default(CUSTOMER)
+  status                 UserStatus               @default(PENDING_VERIFICATION)
+  emailVerifiedAt        DateTime?
+  phoneVerifiedAt        DateTime?
+  dateOfBirth            DateTime?
+  nationality            String?
+  address                String?
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  preferredLocale        String                   @default("ar")
+  staffRoleId            String?
+  staffRole              StaffRole?               @relation(fields: [staffRoleId], references: [id])
+  reservations           Reservation[]            @relation("CustomerReservations")
+  assignedReservations   Reservation[]            @relation("AssignedSales")
+  verificationCodes      VerificationCode[]
+  permissionOverrides    UserPermissionOverride[]
+  notificationPreference NotificationPreference?
+  pushSubscriptions      PushSubscription[]
+  notifications          Notification[]
+  auditEntries           AuditLog[]               @relation("AuditActor")
+  reviews                Review[]
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  @@index([systemRole, status])
+}
+
+model VerificationCode {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   VerificationPurpose
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int                 @default(0)
+  createdAt DateTime            @default(now())
+
+  @@index([userId, purpose, expiresAt])
+}
+
+model StaffRole {
+  id          String                @id @default(cuid())
+  name        String                @unique
+  description String?
+  isSystem    Boolean               @default(false)
+  users       User[]
+  permissions StaffRolePermission[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+}
+
+model Permission {
+  id          String                   @id @default(cuid())
+  key         String                   @unique
+  category    String
+  description String
+  isCritical  Boolean                  @default(false)
+  roles       StaffRolePermission[]
+  overrides   UserPermissionOverride[]
+}
+
+model StaffRolePermission {
+  staffRoleId  String
+  permissionId String
+  staffRole    StaffRole  @relation(fields: [staffRoleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([staffRoleId, permissionId])
+}
+
+model UserPermissionOverride {
+  userId       String
+  permissionId String
+  allowed      Boolean
+  reason       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+}
+
+model Branch {
+  id              String        @id @default(cuid())
+  nameAr          String
+  nameEn          String
+  addressAr       String
+  addressEn       String?
+  latitude        Decimal?      @db.Decimal(10, 7)
+  longitude       Decimal?      @db.Decimal(10, 7)
+  phones          Json
+  whatsappNumbers Json
+  workingHours    Json
+  active          Boolean       @default(true)
+  vehicles        Vehicle[]
+  reservations    Reservation[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Vehicle {
+  id                     String            @id @default(cuid())
+  branchId               String
+  branch                 Branch            @relation(fields: [branchId], references: [id])
+  slug                   String            @unique
+  nameAr                 String
+  nameEn                 String
+  descriptionAr          String?
+  descriptionEn          String?
+  make                   String
+  model                  String
+  year                   Int
+  registrationNumber     String            @unique
+  category               String
+  transmission           String
+  fuelType               String
+  seats                  Int
+  luggage                Int?
+  status                 VehicleStatus     @default(AVAILABLE)
+  dailyRate              Decimal           @db.Decimal(12, 2)
+  weeklyRate             Decimal?          @db.Decimal(12, 2)
+  minimumRentalDays      Int               @default(1)
+  driverPolicy           DriverPolicy      @default(OPTIONAL)
+  driverChargeType       DriverChargeType?
+  driverCharge           Decimal?          @db.Decimal(12, 2)
+  driverIncludedHours    Int?
+  driverExtraHourRate    Decimal?          @db.Decimal(12, 2)
+  mileageAllowancePerDay Int?
+  extraKilometreRate     Decimal?          @db.Decimal(12, 2)
+  depositAmount          Decimal?          @db.Decimal(12, 2)
+  insuranceInfoAr        String?
+  insuranceInfoEn        String?
+  fuelPolicyAr           String?
+  fuelPolicyEn           String?
+  active                 Boolean           @default(true)
+  images                 VehicleImage[]
+  reservations           Reservation[]
+  blocks                 VehicleBlock[]
+  reviews                Review[]
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  @@index([branchId, status, active])
+  @@index([category, dailyRate])
+}
+
+model VehicleImage {
+  id         String   @id @default(cuid())
+  vehicleId  String
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  storageKey String
+  url        String
+  altAr      String?
+  altEn      String?
+  isPrimary  Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([vehicleId, sortOrder])
+}
+
+model VehicleBlock {
+  id        String           @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type      VehicleBlockType
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String
+  createdBy String
+  createdAt DateTime         @default(now())
+
+  @@index([vehicleId, startsAt, endsAt])
+}
+
+model Reservation {
+  id                   String                @id @default(cuid())
+  reference            String                @unique
+  customerId           String
+  customer             User                  @relation("CustomerReservations", fields: [customerId], references: [id])
+  assignedSalesId      String?
+  assignedSales        User?                 @relation("AssignedSales", fields: [assignedSalesId], references: [id])
+  vehicleId            String
+  vehicle              Vehicle               @relation(fields: [vehicleId], references: [id])
+  branchId             String
+  branch               Branch                @relation(fields: [branchId], references: [id])
+  status               ReservationStatus     @default(DRAFT)
+  pickupAt             DateTime
+  returnAt             DateTime
+  driverRequested      Boolean               @default(false)
+  vehicleRateSnapshot  Decimal               @db.Decimal(12, 2)
+  driverRateSnapshot   Decimal?              @db.Decimal(12, 2)
+  estimatedTotal       Decimal               @db.Decimal(12, 2)
+  finalTotal           Decimal?              @db.Decimal(12, 2)
+  customerNotes        String?
+  internalNotes        String?
+  termsVersion         String?
+  termsAcceptedAt      DateTime?
+  privacyConsentAt     DateTime?
+  documentConsentAt    DateTime?
+  operationalConsentAt DateTime?
+  marketingConsentAt   DateTime?
+  preApprovalExpiresAt DateTime?
+  confirmedAt          DateTime?
+  deliveredAt          DateTime?
+  returnedAt           DateTime?
+  completedAt          DateTime?
+  rejectionReason      String?
+  cancellationReason   String?
+  documents            ReservationDocument[]
+  events               ReservationEvent[]
+  deposit              Deposit?
+  notifications        Notification[]
+  review               Review?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([vehicleId, pickupAt, returnAt, status])
+  @@index([customerId, createdAt])
+  @@index([assignedSalesId, status])
+}
+
+model ReservationDocument {
+  id              String         @id @default(cuid())
+  reservationId   String
+  reservation     Reservation    @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  type            DocumentType
+  status          DocumentStatus @default(UPLOADED)
+  storageKey      String
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  expiresAt       DateTime?
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  rejectionReason String?
+  deletedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([reservationId, type, status])
+}
+
+model ReservationEvent {
+  id            String             @id @default(cuid())
+  reservationId String
+  reservation   Reservation        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  fromStatus    ReservationStatus?
+  toStatus      ReservationStatus
+  actorId       String?
+  note          String?
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+
+  @@index([reservationId, createdAt])
+}
+
+model Deposit {
+  id            String      @id @default(cuid())
+  reservationId String      @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  amount        Decimal     @db.Decimal(12, 2)
+  receiptNumber String      @unique
+  recordedBy    String
+  recordedAt    DateTime    @default(now())
+  notes         String?
+}
+
+model NotificationPreference {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inAppEnabled     Boolean @default(true)
+  pushEnabled      Boolean @default(true)
+  emailEnabled     Boolean @default(true)
+  whatsappEnabled  Boolean @default(true)
+  marketingEnabled Boolean @default(false)
+  quietHoursStart  String?
+  quietHoursEnd    String?
+}
+
+model Notification {
+  id            String                 @id @default(cuid())
+  userId        String
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservationId String?
+  reservation   Reservation?           @relation(fields: [reservationId], references: [id])
+  eventKey      String
+  titleAr       String
+  titleEn       String
+  bodyAr        String
+  bodyEn        String
+  important     Boolean                @default(false)
+  readAt        DateTime?
+  archivedAt    DateTime?
+  deliveries    NotificationDelivery[]
+  createdAt     DateTime               @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+model NotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  notification   Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(QUEUED)
+  providerId     String?
+  attempts       Int                 @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([status, channel, createdAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  platform   String
+  userAgent  String?
+  active     Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId, active])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  actor        User?    @relation("AuditActor", fields: [actorId], references: [id])
+  action       String
+  entityType   String
+  entityId     String?
+  previousData Json?
+  newData      Json?
+  reason       String?
+  ipHash       String?
+  userAgent    String?
+  succeeded    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+}
+
+model Review {
+  id            String      @id @default(cuid())
+  reservationId String      @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      User        @relation(fields: [customerId], references: [id])
+  vehicleId     String
+  vehicle       Vehicle     @relation(fields: [vehicleId], references: [id])
+  rating        Int
+  comment       String?
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([vehicleId, approvedAt])
+}

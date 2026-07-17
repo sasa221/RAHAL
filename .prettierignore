@@ -1,0 +1,8 @@
+node_modules
+apps/web/.next
+apps/api/dist
+packages/*/dist
+packages/database/generated
+coverage
+pnpm-lock.yaml
+PROJECT_CONTEXT.md
