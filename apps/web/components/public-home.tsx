@@ -177,21 +177,33 @@ export function VehicleCard({
   locale,
   vehicle,
   detailsQuery,
+  featured = false,
+  compact = false,
 }: {
   locale: PublicLocale;
   vehicle: (typeof publicVehicles)[number];
   detailsQuery?: string;
+  featured?: boolean;
+  compact?: boolean;
 }) {
   const content = getPublicContent(locale);
   const isAvailable = vehicle.status === "available";
 
   return (
-    <article className="vehicle-card" data-reveal data-tilt>
+    <article
+      className={`vehicle-card${featured ? " vehicle-card--featured" : ""}${compact ? " vehicle-card--compact" : ""}`}
+      data-reveal
+      data-tilt
+    >
       <div className="vehicle-card__media">
         <Image
           alt={vehicle.imageAlt[locale]}
           fill
-          sizes="(max-width: 760px) 100vw, (max-width: 1100px) 50vw, 33vw"
+          sizes={
+            featured
+              ? "(max-width: 760px) 100vw, (max-width: 1100px) 60vw, 65vw"
+              : "(max-width: 760px) 100vw, (max-width: 1100px) 40vw, 35vw"
+          }
           src={vehicle.image}
         />
         <span className={`status-badge status-badge--${vehicle.status}`}>
@@ -297,6 +309,8 @@ export function Footer({ locale }: PublicHomeProps) {
 
 export function PublicHome({ locale }: PublicHomeProps) {
   const content = getPublicContent(locale);
+  const featuredVehicle = publicVehicles.find((vehicle) => vehicle.id === "graphite-suv")!;
+  const supportingVehicles = publicVehicles.filter((vehicle) => vehicle.id !== featuredVehicle.id);
 
   return (
     <div className="public-site" dir={content.dir} lang={content.htmlLang}>
@@ -359,10 +373,13 @@ export function PublicHome({ locale }: PublicHomeProps) {
                 <Icon name="arrow" size={17} />
               </a>
             </div>
-            <div className="vehicle-grid">
-              {publicVehicles.map((vehicle) => (
-                <VehicleCard key={vehicle.id} locale={locale} vehicle={vehicle} />
-              ))}
+            <div className="fleet-showcase">
+              <VehicleCard featured locale={locale} vehicle={featuredVehicle} />
+              <div className="fleet-showcase__supporting">
+                {supportingVehicles.map((vehicle) => (
+                  <VehicleCard compact key={vehicle.id} locale={locale} vehicle={vehicle} />
+                ))}
+              </div>
             </div>
           </div>
         </section>

@@ -1275,6 +1275,222 @@ select {
   }
 }
 
+/* Fleet showcase: one confident lead vehicle with two supporting choices. */
+.fleet-section {
+  padding-block: clamp(6.5rem, 10vw, 9rem);
+  background: #f4f3ef;
+}
+
+.fleet-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1.48fr) minmax(330px, 0.72fr);
+  gap: 16px;
+  min-height: 640px;
+}
+
+.fleet-showcase__supporting {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.fleet-showcase .vehicle-card {
+  position: relative;
+  border-color: rgb(29 28 25 / 13%);
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.vehicle-card--featured {
+  min-height: 640px;
+  color: #fff;
+  background: #111;
+}
+
+.vehicle-card--featured .vehicle-card__media {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+.vehicle-card--featured .vehicle-card__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgb(8 8 7 / 94%) 0%, rgb(8 8 7 / 34%) 44%, transparent 68%);
+}
+
+.vehicle-card--featured .vehicle-card__media img {
+  filter: saturate(0.78) contrast(1.04);
+}
+
+.vehicle-card--featured .vehicle-card__body {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 0;
+  inset-block-end: 0;
+  padding: clamp(25px, 4vw, 44px);
+}
+
+.vehicle-card--featured .vehicle-card__category,
+.vehicle-card--featured .vehicle-card__price small,
+.vehicle-card--featured .vehicle-card__specs {
+  color: rgb(255 255 255 / 68%);
+}
+
+.vehicle-card--featured h3 {
+  max-width: 540px;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1.08;
+}
+
+.vehicle-card--featured .vehicle-card__price strong {
+  color: #e1bd74;
+  font-size: clamp(1.15rem, 2vw, 1.65rem);
+}
+
+.vehicle-card--featured .vehicle-card__specs {
+  max-width: 540px;
+  border-color: rgb(255 255 255 / 16%);
+}
+
+.vehicle-card--featured .button--outline {
+  width: max-content;
+  min-width: 190px;
+  color: #fff;
+  border-color: rgb(255 255 255 / 48%);
+  border-radius: 2px;
+}
+
+.vehicle-card--featured .button--outline:hover {
+  color: #17130a;
+  background: #d3b16c;
+  border-color: #d3b16c;
+}
+
+.vehicle-card--compact {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.92fr) minmax(0, 1.08fr);
+  min-height: 0;
+}
+
+.vehicle-card--compact .vehicle-card__media {
+  aspect-ratio: auto;
+}
+
+.vehicle-card--compact .vehicle-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(18px, 2.2vw, 26px);
+}
+
+.vehicle-card--compact .vehicle-card__heading {
+  display: block;
+}
+
+.vehicle-card--compact h3 {
+  font-size: clamp(1rem, 1.45vw, 1.25rem);
+  line-height: 1.22;
+}
+
+.vehicle-card--compact .vehicle-card__price {
+  margin-top: 13px;
+  text-align: start;
+}
+
+.vehicle-card--compact .vehicle-card__price strong {
+  font-size: 1rem;
+}
+
+.vehicle-card--compact .vehicle-card__specs {
+  gap: 9px;
+  margin: 13px 0;
+  padding-block: 10px;
+}
+
+.vehicle-card--compact .button--outline {
+  min-height: 42px;
+  margin-top: auto;
+  padding: 8px 12px;
+  border-radius: 2px;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 1100px) {
+  .fleet-showcase {
+    grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+    min-height: 580px;
+  }
+
+  .vehicle-card--featured {
+    min-height: 580px;
+  }
+
+  .vehicle-card--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-card--compact .vehicle-card__media {
+    min-height: 135px;
+  }
+
+  .vehicle-card--compact .vehicle-card__specs {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .fleet-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-showcase__supporting {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+  }
+
+  .vehicle-card--compact {
+    display: block;
+  }
+
+  .vehicle-card--compact .vehicle-card__media {
+    min-height: 220px;
+  }
+
+  .vehicle-card--compact .vehicle-card__specs {
+    display: flex;
+  }
+}
+
+@media (max-width: 680px) {
+  .fleet-section {
+    padding-block: 5rem;
+  }
+
+  .fleet-showcase,
+  .fleet-showcase__supporting {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-card--featured {
+    min-height: 520px;
+  }
+
+  .vehicle-card--featured .vehicle-card__heading {
+    display: block;
+  }
+
+  .vehicle-card--featured .vehicle-card__price {
+    margin-top: 14px;
+    text-align: start;
+  }
+
+  .vehicle-card--featured .button--outline {
+    width: 100%;
+  }
+}
+
 @media (min-width: 1600px) {
   :root {
     --container: 1420px;

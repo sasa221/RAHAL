@@ -32,6 +32,14 @@ describe("Milestone 2 public home", () => {
     expect(formatEgp(4500, "ar")).not.toContain("$");
   });
 
+  it("presents one lead vehicle with supporting fleet choices", () => {
+    expect(component).toContain('vehicle.id === "graphite-suv"');
+    expect(component).toContain('className="fleet-showcase"');
+    expect(component).toContain('className="fleet-showcase__supporting"');
+    expect(component).toContain("<VehicleCard featured");
+    expect(component).toContain("<VehicleCard compact");
+  });
+
   it("includes desktop and mobile navigation with accessible labels", () => {
     expect(component).toContain('className="desktop-navigation"');
     expect(component).toContain('className="mobile-menu"');
