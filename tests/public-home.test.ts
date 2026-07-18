@@ -11,6 +11,7 @@ function read(relativePath: string) {
 describe("Milestone 2 public home", () => {
   const component = read("apps/web/components/public-home.tsx");
   const availability = read("apps/web/components/availability-search.tsx");
+  const motion = read("apps/web/components/experience-motion.tsx");
   const styles = read("apps/web/app/globals.css");
 
   it("shares navigation and valid language switching between locales", () => {
@@ -73,5 +74,16 @@ describe("Milestone 2 public home", () => {
     expect(styles).toContain("@media (max-width: 900px)");
     expect(styles).toContain("@media (max-width: 680px)");
     expect(styles).toContain("@media (min-width: 1600px)");
+  });
+
+  it("progressively enhances the home with accessible premium motion", () => {
+    expect(component).toContain("<ExperienceMotion />");
+    expect(component).toContain("data-tilt");
+    expect(component).toContain("hero__telemetry");
+    expect(motion).toContain("IntersectionObserver");
+    expect(motion).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
+    expect(motion).toContain('matchMedia("(pointer: fine)")');
+    expect(styles).toContain("@keyframes rahal-hero-enter");
+    expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
   });
 });

@@ -8,6 +8,7 @@ import {
   type PublicLocale,
 } from "../lib/public-content";
 import { AvailabilitySearch } from "./availability-search";
+import { ExperienceMotion } from "./experience-motion";
 
 type PublicHomeProps = {
   locale: PublicLocale;
@@ -185,7 +186,7 @@ export function VehicleCard({
   const isAvailable = vehicle.status === "available";
 
   return (
-    <article className="vehicle-card">
+    <article className="vehicle-card" data-reveal data-tilt>
       <div className="vehicle-card__media">
         <Image
           alt={vehicle.imageAlt[locale]}
@@ -299,6 +300,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
 
   return (
     <div className="public-site" dir={content.dir} lang={content.htmlLang}>
+      <ExperienceMotion />
       <a className="skip-link" href="#main-content">
         {content.skip}
       </a>
@@ -315,6 +317,9 @@ export function PublicHome({ locale }: PublicHomeProps) {
             src="/images/rahal-hero.jpg"
           />
           <div className="hero__overlay" />
+          <div className="hero__motion-grid" aria-hidden="true" />
+          <div className="hero__orb hero__orb--one" aria-hidden="true" />
+          <div className="hero__orb hero__orb--two" aria-hidden="true" />
           <div className="container hero__content">
             <span className="eyebrow eyebrow--light">{content.heroEyebrow}</span>
             <h1>{content.heroTitle}</h1>
@@ -332,6 +337,20 @@ export function PublicHome({ locale }: PublicHomeProps) {
               <Icon name="shield" size={18} />
               {content.heroBadge}
             </div>
+            <div
+              className="hero__telemetry"
+              aria-label={locale === "ar" ? "مميزات رحال" : "Rahal highlights"}
+            >
+              <span className="hero__telemetry-ring" aria-hidden="true">
+                <span>R</span>
+              </span>
+              <div>
+                <strong>{locale === "ar" ? "تجربة رحال" : "RAHAL EXPERIENCE"}</strong>
+                <span>
+                  {locale === "ar" ? "مصر • جنيه مصري • الفرع فقط" : "EGYPT • EGP • BRANCH ONLY"}
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -339,7 +358,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
           <AvailabilitySearch locale={locale} />
         </div>
 
-        <section className="section fleet-section" id="fleet">
+        <section className="section fleet-section" id="fleet" data-reveal>
           <div className="container">
             <div className="heading-row">
               <SectionHeading
@@ -360,12 +379,12 @@ export function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section categories-section" id="categories">
+        <section className="section categories-section" id="categories" data-reveal>
           <div className="container">
             <SectionHeading eyebrow={content.categoryEyebrow} title={content.categoryTitle} />
             <div className="category-grid">
               {content.categories.map(([title, description, number], index) => (
-                <article className="category-card" key={title}>
+                <article className="category-card" data-reveal data-tilt key={title}>
                   <span className="category-card__number">{number}</span>
                   <span className="category-card__icon">
                     <Icon name={(["car", "clock", "users", "shield"] as IconName[])[index]} />
@@ -384,7 +403,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section process-section" id="process">
+        <section className="section process-section" id="process" data-reveal>
           <div className="container process-layout">
             <div className="process-intro">
               <SectionHeading
@@ -398,7 +417,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
             </div>
             <ol className="process-list">
               {content.steps.map(([title, description], index) => (
-                <li key={title}>
+                <li data-reveal key={title}>
                   <span className="process-list__number">{String(index + 1).padStart(2, "0")}</span>
                   <div>
                     <h3>{title}</h3>
@@ -413,12 +432,12 @@ export function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section trust-section">
+        <section className="section trust-section" data-reveal>
           <div className="container">
             <SectionHeading eyebrow={content.trustEyebrow} title={content.trustTitle} />
             <div className="trust-grid">
               {content.trustItems.map(([title, description], index) => (
-                <article key={title}>
+                <article data-reveal data-tilt key={title}>
                   <span className="trust-icon">
                     <Icon name={(["document", "users", "shield"] as IconName[])[index]} />
                   </span>
@@ -430,7 +449,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section branch-section" id="branch">
+        <section className="section branch-section" id="branch" data-reveal>
           <div className="container branch-card">
             <div className="branch-card__map" aria-hidden="true">
               <div className="map-grid" />
