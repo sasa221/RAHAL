@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { dateInputValue, getPublicContent, type PublicLocale } from "../lib/public-content";
+import {
+  dateInputValue,
+  getPublicContent,
+  localizedPath,
+  type PublicLocale,
+} from "../lib/public-content";
 
 function CalendarIcon() {
   return (
@@ -44,7 +49,7 @@ export function AvailabilitySearch({ locale }: { locale: PublicLocale }) {
 
   return (
     <section className="availability-wrap" aria-labelledby="availability-title">
-      <form className="availability-form" action="#fleet">
+      <form className="availability-form" action={localizedPath(locale, "/cars")} method="get">
         <div className="availability-form__intro">
           <span className="icon-box">
             <CalendarIcon />

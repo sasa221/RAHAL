@@ -2,6 +2,8 @@ import Image from "next/image";
 import {
   formatEgp,
   getPublicContent,
+  getPublicNavigation,
+  localizedPath,
   publicVehicles,
   type PublicLocale,
 } from "../lib/public-content";
@@ -25,7 +27,7 @@ type IconName =
   | "users"
   | "whatsapp";
 
-function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
     arrow: <path d="m9 18 6-6-6-6" />,
     calendar: (
@@ -108,15 +110,16 @@ export function RahalLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function Header({ locale }: PublicHomeProps) {
+export function Header({ locale, languageHref }: PublicHomeProps & { languageHref?: string }) {
   const content = getPublicContent(locale);
+  const navigation = getPublicNavigation(locale);
 
   return (
     <header className="site-header">
       <div className="container header-inner">
         <a
           className="brand-link"
-          href="#top"
+          href={localizedPath(locale)}
           aria-label={locale === "ar" ? "رحال الرئيسية" : "Rahal home"}
         >
           <RahalLogo />
@@ -124,7 +127,7 @@ function Header({ locale }: PublicHomeProps) {
         </a>
 
         <nav className="desktop-navigation" aria-label={content.navigationLabel}>
-          {content.nav.map(([label, href]) => (
+          {navigation.map(([label, href]) => (
             <a href={href} key={href}>
               {label}
             </a>
@@ -134,7 +137,7 @@ function Header({ locale }: PublicHomeProps) {
         <div className="header-actions">
           <a
             className="language-switch"
-            href={content.languageHref}
+            href={languageHref ?? content.languageHref}
             hrefLang={locale === "ar" ? "en" : "ar"}
           >
             <span className="language-switch__globe" aria-hidden="true">
@@ -150,12 +153,12 @@ function Header({ locale }: PublicHomeProps) {
               <Icon name="menu" />
             </summary>
             <nav aria-label={content.navigationLabel}>
-              {content.nav.map(([label, href]) => (
+              {navigation.map(([label, href]) => (
                 <a href={href} key={href}>
                   {label}
                 </a>
               ))}
-              <a href={content.languageHref}>{content.languageLabel}</a>
+              <a href={languageHref ?? content.languageHref}>{content.languageLabel}</a>
               <a href="#contact">{content.signIn}</a>
             </nav>
           </details>
@@ -165,7 +168,7 @@ function Header({ locale }: PublicHomeProps) {
   );
 }
 
-function VehicleCard({
+export function VehicleCard({
   locale,
   vehicle,
 }: {
@@ -210,7 +213,10 @@ function VehicleCard({
             {vehicle.seats} {content.seats}
           </span>
         </div>
-        <a className="button button--outline" href="#availability-title">
+        <a
+          className="button button--outline"
+          href={`${localizedPath(locale, "/cars")}/${vehicle.id}`}
+        >
           {content.viewDetails}
           <Icon name="arrow" size={17} />
         </a>
@@ -239,8 +245,9 @@ function SectionHeading({
   );
 }
 
-function Footer({ locale }: PublicHomeProps) {
+export function Footer({ locale }: PublicHomeProps) {
   const content = getPublicContent(locale);
+  const navigation = getPublicNavigation(locale);
 
   return (
     <footer className="site-footer" id="contact">
@@ -252,7 +259,7 @@ function Footer({ locale }: PublicHomeProps) {
         <div>
           <h2>{content.quickLinks}</h2>
           <div className="footer-links">
-            {content.nav.map(([label, href]) => (
+            {navigation.map(([label, href]) => (
               <a href={href} key={href}>
                 {label}
               </a>
@@ -307,7 +314,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
             <h1>{content.heroTitle}</h1>
             <p>{content.heroCopy}</p>
             <div className="hero__actions">
-              <a className="button button--gold" href="#fleet">
+              <a className="button button--gold" href={localizedPath(locale, "/cars")}>
                 {content.heroPrimary}
                 <Icon name="arrow" size={18} />
               </a>
@@ -334,7 +341,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
                 title={content.fleetTitle}
                 copy={content.fleetCopy}
               />
-              <a className="text-link" href="#fleet">
+              <a className="text-link" href={localizedPath(locale, "/cars")}>
                 {content.viewAll}
                 <Icon name="arrow" size={17} />
               </a>

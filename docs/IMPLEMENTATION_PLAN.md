@@ -95,6 +95,36 @@ Goal: replace the temporary Milestone 1 shell with a production-quality bilingua
 - Existing forbidden-content, date, and encoding tests.
 - Browser runtime checks at the four target viewports.
 
+## Milestone 2.1: Public multi-page experience
+
+Goal: extend the approved bilingual home into real public routes before database-backed workflows begin.
+
+### Scope
+
+- Add localized fleet routes at `/cars` and `/en/cars`.
+- Add localized vehicle-detail routes at `/cars/[slug]` and `/en/cars/[slug]`.
+- Reuse the public header, footer, vehicle data, design tokens, and direction handling.
+- Add useful demo filters, EGP-only pricing, branch-only messaging, vehicle policies, and a relative availability calendar.
+- Treat the latest Stitch export as visual direction only and reject its Dubai, AED, airport, concierge, checkout, fixed-date, and Rahal Elite content.
+- Point home availability search and vehicle cards to the new routes.
+
+### Acceptance criteria
+
+- Arabic and English fleet/detail routes share one component tree and typed vehicle data.
+- Fleet filters work without duplicating pages or introducing backend persistence.
+- Every vehicle card links to a valid localized details route.
+- Details show EGP estimates, minimum rental duration, driver/fuel/mileage policies, and availability without exposing customer data.
+- Submission language states that a request is not a confirmed booking and that final confirmation happens at the branch.
+- No fixed old dates, online payment, airport pickup, UAE/AED, concierge, SMS, or Rahal Elite content appears in production source.
+- No horizontal overflow or content collision at the Milestone 2 target widths.
+
+### Tests
+
+- Route and shared-component structure tests for Arabic and English fleet/detail pages.
+- Filter behavior and empty-state component tests or browser checks.
+- Static content checks for forbidden Stitch carry-over.
+- Browser checks for fleet and details at mobile and desktop widths.
+
 ## Milestone 3: Schema baseline
 
 Goal: align Prisma with the required domain before implementing workflows.

@@ -6,46 +6,82 @@ export type PublicVehicle = {
   id: string;
   name: LocalizedText;
   category: LocalizedText;
+  categoryKey: "economy" | "sedan" | "suv";
   image: string;
   imageAlt: LocalizedText;
   dailyRateEgp: number;
+  weeklyRateEgp: number;
+  minimumDays: number;
   seats: number;
+  bags: number;
+  year: number;
   transmission: LocalizedText;
+  driverPolicy: LocalizedText;
+  driverPolicyKey: "optional" | "required" | "self-drive";
+  fuelPolicy: LocalizedText;
+  mileagePolicy: LocalizedText;
   status: "available" | "review";
 };
 
 export const publicVehicles: PublicVehicle[] = [
   {
     id: "silver-executive",
+    categoryKey: "sedan",
     name: { ar: "سيدان تنفيذية فضية", en: "Silver Executive Sedan" },
     category: { ar: "سيدان", en: "Sedan" },
     image: "/images/silver-sedan.jpg",
     imageAlt: { ar: "سيارة سيدان فضية حديثة", en: "Modern silver executive sedan" },
     dailyRateEgp: 4500,
+    weeklyRateEgp: 28000,
+    minimumDays: 2,
     seats: 5,
+    bags: 3,
+    year: 2026,
     transmission: { ar: "أوتوماتيك", en: "Automatic" },
+    driverPolicy: { ar: "السائق اختياري", en: "Optional driver" },
+    driverPolicyKey: "optional",
+    fuelPolicy: { ar: "تُعاد بنفس مستوى الوقود", en: "Return at the same fuel level" },
+    mileagePolicy: { ar: "250 كم يوميًا", en: "250 km per day" },
     status: "available",
   },
   {
     id: "graphite-suv",
+    categoryKey: "suv",
     name: { ar: "دفع رباعي جرافيت", en: "Graphite Family SUV" },
     category: { ar: "دفع رباعي", en: "SUV" },
     image: "/images/black-suv.jpg",
     imageAlt: { ar: "سيارة دفع رباعي سوداء حديثة", en: "Modern graphite-black SUV" },
     dailyRateEgp: 5800,
+    weeklyRateEgp: 36000,
+    minimumDays: 3,
     seats: 7,
+    bags: 5,
+    year: 2026,
     transmission: { ar: "أوتوماتيك", en: "Automatic" },
+    driverPolicy: { ar: "السائق اختياري", en: "Optional driver" },
+    driverPolicyKey: "optional",
+    fuelPolicy: { ar: "تُعاد بنفس مستوى الوقود", en: "Return at the same fuel level" },
+    mileagePolicy: { ar: "300 كم يوميًا", en: "300 km per day" },
     status: "available",
   },
   {
     id: "white-compact",
+    categoryKey: "economy",
     name: { ar: "سيدان اقتصادية بيضاء", en: "White Compact Sedan" },
     category: { ar: "اقتصادية", en: "Economy" },
     image: "/images/white-sedan.jpg",
     imageAlt: { ar: "سيارة سيدان بيضاء اقتصادية", en: "Modern white compact sedan" },
     dailyRateEgp: 1900,
+    weeklyRateEgp: 11800,
+    minimumDays: 2,
     seats: 5,
+    bags: 2,
+    year: 2025,
     transmission: { ar: "أوتوماتيك", en: "Automatic" },
+    driverPolicy: { ar: "بدون سائق", en: "Self-drive only" },
+    driverPolicyKey: "self-drive",
+    fuelPolicy: { ar: "تُعاد بنفس مستوى الوقود", en: "Return at the same fuel level" },
+    mileagePolicy: { ar: "200 كم يوميًا", en: "200 km per day" },
     status: "review",
   },
 ];
@@ -217,6 +253,20 @@ const shared = {
 
 export function getPublicContent(locale: PublicLocale) {
   return shared[locale];
+}
+
+export function localizedPath(locale: PublicLocale, path = "/") {
+  if (locale === "ar") return path;
+  return path === "/" ? "/en" : `/en${path}`;
+}
+
+export function getPublicNavigation(locale: PublicLocale) {
+  return [
+    [locale === "ar" ? "السيارات" : "Fleet", localizedPath(locale, "/cars")],
+    [locale === "ar" ? "الفئات" : "Categories", `${localizedPath(locale)}#categories`],
+    [locale === "ar" ? "طريقة الحجز" : "How it works", `${localizedPath(locale)}#process`],
+    [locale === "ar" ? "الفرع" : "Branch", `${localizedPath(locale)}#branch`],
+  ] as const;
 }
 
 export function formatEgp(value: number, locale: PublicLocale) {
