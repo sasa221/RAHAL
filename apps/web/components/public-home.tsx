@@ -317,9 +317,11 @@ export function PublicHome({ locale }: PublicHomeProps) {
             src="/images/rahal-hero-gem.png"
           />
           <div className="hero__overlay" />
-          <div className="hero__motion-grid" aria-hidden="true" />
-          <div className="hero__orb hero__orb--one" aria-hidden="true" />
-          <div className="hero__orb hero__orb--two" aria-hidden="true" />
+          <div className="hero__grain" aria-hidden="true" />
+          <div className="hero__edition" aria-hidden="true">
+            <span>01</span>
+            <span>{locale === "ar" ? "رحال · مصر" : "RAHAL · EGYPT"}</span>
+          </div>
           <div className="container hero__content">
             <span className="eyebrow eyebrow--light">{content.heroEyebrow}</span>
             <h1>{content.heroTitle}</h1>
@@ -336,20 +338,6 @@ export function PublicHome({ locale }: PublicHomeProps) {
             <div className="hero__badge">
               <Icon name="shield" size={18} />
               {content.heroBadge}
-            </div>
-            <div
-              className="hero__telemetry"
-              aria-label={locale === "ar" ? "مميزات رحال" : "Rahal highlights"}
-            >
-              <span className="hero__telemetry-ring" aria-hidden="true">
-                <span>R</span>
-              </span>
-              <div>
-                <strong>{locale === "ar" ? "تجربة رحال" : "RAHAL EXPERIENCE"}</strong>
-                <span>
-                  {locale === "ar" ? "مصر • جنيه مصري • الفرع فقط" : "EGYPT • EGP • BRANCH ONLY"}
-                </span>
-              </div>
             </div>
           </div>
         </section>

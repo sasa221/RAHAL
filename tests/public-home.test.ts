@@ -79,7 +79,7 @@ describe("Milestone 2 public home", () => {
   it("progressively enhances the home with accessible premium motion", () => {
     expect(component).toContain("<ExperienceMotion />");
     expect(component).toContain("data-tilt");
-    expect(component).toContain("hero__telemetry");
+    expect(component).toContain("hero__edition");
     expect(motion).toContain("IntersectionObserver");
     expect(motion).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
     expect(motion).toContain('matchMedia("(pointer: fine)")');
