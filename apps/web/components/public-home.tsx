@@ -314,7 +314,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
             fill
             priority
             sizes="100vw"
-            src="/images/rahal-hero.jpg"
+            src="/images/rahal-hero-gem.png"
           />
           <div className="hero__overlay" />
           <div className="hero__motion-grid" aria-hidden="true" />

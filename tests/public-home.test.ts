@@ -57,7 +57,7 @@ describe("Milestone 2 public home", () => {
 
     for (const image of [
       "rahal-logo.png",
-      "rahal-hero.jpg",
+      "rahal-hero-gem.png",
       "silver-sedan.jpg",
       "black-suv.jpg",
       "white-sedan.jpg",
