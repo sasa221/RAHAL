@@ -7,6 +7,6 @@ export default defineConfig({
   datasource: {
     url:
       process.env.DATABASE_URL ??
-      "postgresql://rahal:rahal_dev_password@localhost:5432/rahal?schema=public",
+      "postgresql://rahal:rahal_dev_password@127.0.0.1:5433/rahal?schema=public",
   },
 });

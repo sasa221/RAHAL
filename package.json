@@ -13,7 +13,9 @@
     "test": "vitest run",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @rahal/database generate",
-    "db:format": "pnpm --filter @rahal/database format"
+    "db:format": "pnpm --filter @rahal/database format",
+    "db:migrate": "pnpm --filter @rahal/database migrate:deploy",
+    "db:seed": "pnpm --filter @rahal/database seed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

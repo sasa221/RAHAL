@@ -17,11 +17,13 @@ Bilingual car-rental reservation and fleet-management platform for Egypt.
 cp .env.example .env
 docker compose up -d
 pnpm install
-pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
 pnpm dev
 ```
 
 - Web: http://localhost:3000
 - API health: http://localhost:4000/api/health
+- PostgreSQL: `127.0.0.1:5433` (the container uses `5432` internally)
 
-The initial UI and API use fictional demo vehicles. Production integrations for private documents, email, push notifications, and WhatsApp are intentionally not configured yet.
+The public UI currently uses fictional local content, while the API reads a fictional eight-vehicle fleet and branch from PostgreSQL. Production integrations for private documents, email, push notifications, and WhatsApp are intentionally not configured yet.

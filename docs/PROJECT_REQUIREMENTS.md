@@ -7,27 +7,25 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 ## Current repository state
 
 - The repository is a pnpm monorepo with `apps/web`, `apps/api`, and `packages/database`.
-- The current directory is not a Git worktree; `git status` fails because `.git` is absent.
-- `docs/` and `design-reference/` were missing before this documentation pass.
-- `node_modules`, `apps/web/.next`, `apps/api/dist`, and generated Prisma client output exist locally and should remain ignored build/dependency artifacts.
-- The web app is a small bilingual public landing page using Next.js 16 and React 19.
-- The API is a minimal NestJS service with health and demo vehicle endpoints.
-- The database package contains a Prisma 7 schema with many core entities, but no migrations yet.
-- Docker Compose currently provides PostgreSQL only.
+- Git is initialized and the Milestone 1 and public-web baselines are committed.
+- The web app has bilingual home, fleet, vehicle-detail, availability, and reservation-preview routes using Next.js 16 and React 19.
+- The API has health, database-backed vehicle, and active-branch endpoints.
+- The Prisma 7 package contains the Milestone 3 domain baseline, a reviewed SQL migration, and a repeatable fictional seed.
+- Docker Compose provides PostgreSQL on host port `5433` to avoid collisions with a workstation PostgreSQL service on `5432`.
+- Generated clients, build output, dependencies, logs, and large Stitch ZIP exports remain ignored artifacts.
 
-## Conflicts and gaps found locally
+## Resolved foundation gaps
 
-- Arabic text in `README.md`, `PROJECT_CONTEXT.md`, and source files appears mojibaked in this environment. The product requires correct Arabic and RTL support, so text encoding/content must be repaired before UI copy is considered valid.
-- The web app hard-codes demo dates such as `2026-07-20` and `2026-07-23`; demo dates must be generated relative to seed/runtime date.
-- The web app uses generated CSS car silhouettes rather than supplied brand/fleet assets. This is acceptable only as a temporary scaffold.
-- `design-reference/` is absent, so the latest Stitch export, logo, and storefront image cannot yet be inspected.
-- There is no `AGENTS.md` despite the recommended structure mentioning it.
-- There are no tests, lint configuration, formatter configuration, API validation layer, or end-to-end test setup yet.
-- The API returns `{ error: "VEHICLE_NOT_FOUND" }` with a normal response body instead of a proper HTTP error.
-- The current API demo vehicle data is not connected to Prisma.
-- The Prisma schema is broad but incomplete against the full requirements. Missing or partial areas include sessions/devices, user verification history, explicit bookings, price snapshot line items, alternative offers, document access logs, contracts, internal notes as separate records, customer-visible messages, notification templates/preferences per event, branches/settings split, content translations, vehicle translations, vehicle rates/rules versioning, document required-rule configuration, optimistic version fields, and database-level exclusion protection for overlapping confirmed/active bookings.
-- `VehicleStatus` does not include `OVERDUE` or a distinct archived status.
-- Vehicle fields do not yet include doors, maximum rental duration, featured flag, ordered public media metadata completeness, or configurable required document rules.
+- Source encoding is verified by static mojibake/replacement-character tests, including `PROJECT_CONTEXT.md`.
+- Demo dates are generated relative to seed/runtime time rather than hard-coded historical dates.
+- The public web uses local fictional fleet imagery and the supplied transparent Rahal logo treatment.
+- `design-reference/`, its tracked guidance, and `AGENTS.md` are present; large Stitch ZIP exports remain untracked.
+- Lint, formatting, type checks, builds, static tests, API integration tests, validation, and consistent HTTP errors are configured.
+- The vehicle and branch API now read through repositories backed by Prisma/PostgreSQL.
+- The schema now includes sessions/devices, explicit bookings and EGP price snapshots, alternative offers, document access logs, contracts, separate notes/messages, notification outbox/templates, branch settings, content/vehicle translations, rate rules, and database-level overlap protection for confirmed/active bookings.
+- `VehicleStatus` now includes `OVERDUE` and `ARCHIVED`.
+
+Remaining configuration work includes maximum rental duration, configurable required-document rules, and final production media metadata.
 
 ## Product scope
 

@@ -129,6 +129,8 @@ Goal: extend the approved bilingual home into real public routes before database
 
 Goal: align Prisma with the required domain before implementing workflows.
 
+Status: completed locally on 2026-07-18. The baseline migration and relative demo seed were applied to PostgreSQL, and the vehicle and branch endpoints were verified against the database.
+
 ### Scope
 
 - Expand the schema to cover missing entities listed in `docs/DATABASE_SCHEMA.md`.

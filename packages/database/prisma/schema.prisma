@@ -35,7 +35,51 @@ enum VehicleStatus {
   RENTED
   MAINTENANCE
   MANUALLY_BLOCKED
+  OVERDUE
   INACTIVE
+  ARCHIVED
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum AlternativeOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum ContractStatus {
+  DRAFT
+  READY_FOR_SIGNATURE
+  SIGNED
+  VOIDED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
 }
 
 enum DriverPolicy {
@@ -128,16 +172,56 @@ model User {
   reservations           Reservation[]            @relation("CustomerReservations")
   assignedReservations   Reservation[]            @relation("AssignedSales")
   verificationCodes      VerificationCode[]
+  sessions               Session[]
+  devices                Device[]
   permissionOverrides    UserPermissionOverride[]
   notificationPreference NotificationPreference?
   pushSubscriptions      PushSubscription[]
   notifications          Notification[]
   auditEntries           AuditLog[]               @relation("AuditActor")
+  internalNotes          InternalNote[]           @relation("InternalNoteAuthor")
+  customerMessages       CustomerMessage[]        @relation("CustomerMessageSender")
+  documentAccesses       DocumentAccessLog[]      @relation("DocumentAccessActor")
+  alternativeOffers      AlternativeOffer[]       @relation("AlternativeOfferCreator")
+  contractsRecorded      Contract[]               @relation("ContractRecorder")
+  bookings               Booking[]                @relation("CustomerBookings")
   reviews                Review[]
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
 
   @@index([systemRole, status])
+}
+
+model Session {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String        @unique
+  status           SessionStatus @default(ACTIVE)
+  ipHash           String?
+  userAgent        String?
+  expiresAt        DateTime
+  lastSeenAt       DateTime      @default(now())
+  revokedAt        DateTime?
+  createdAt        DateTime      @default(now())
+
+  @@index([userId, status, expiresAt])
+}
+
+model Device {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fingerprintHash String
+  label           String?
+  platform        String?
+  trusted         Boolean  @default(false)
+  lastSeenAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, fingerprintHash])
+  @@index([userId, trusted])
 }
 
 model VerificationCode {
@@ -196,28 +280,42 @@ model UserPermissionOverride {
 }
 
 model Branch {
-  id              String        @id @default(cuid())
+  id              String          @id @default(cuid())
   nameAr          String
   nameEn          String
   addressAr       String
   addressEn       String?
-  latitude        Decimal?      @db.Decimal(10, 7)
-  longitude       Decimal?      @db.Decimal(10, 7)
+  latitude        Decimal?        @db.Decimal(10, 7)
+  longitude       Decimal?        @db.Decimal(10, 7)
   phones          Json
   whatsappNumbers Json
   workingHours    Json
-  active          Boolean       @default(true)
+  active          Boolean         @default(true)
   vehicles        Vehicle[]
   reservations    Reservation[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  bookings        Booking[]
+  settings        BranchSetting[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model BranchSetting {
+  id        String   @id @default(cuid())
+  branchId  String
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, key])
 }
 
 model Vehicle {
-  id                     String            @id @default(cuid())
+  id                     String               @id @default(cuid())
   branchId               String
-  branch                 Branch            @relation(fields: [branchId], references: [id])
-  slug                   String            @unique
+  branch                 Branch               @relation(fields: [branchId], references: [id])
+  slug                   String               @unique
   nameAr                 String
   nameEn                 String
   descriptionAr          String?
@@ -225,38 +323,75 @@ model Vehicle {
   make                   String
   model                  String
   year                   Int
-  registrationNumber     String            @unique
+  registrationNumber     String               @unique
   category               String
   transmission           String
   fuelType               String
   seats                  Int
   luggage                Int?
-  status                 VehicleStatus     @default(AVAILABLE)
-  dailyRate              Decimal           @db.Decimal(12, 2)
-  weeklyRate             Decimal?          @db.Decimal(12, 2)
-  minimumRentalDays      Int               @default(1)
-  driverPolicy           DriverPolicy      @default(OPTIONAL)
+  doors                  Int?
+  status                 VehicleStatus        @default(AVAILABLE)
+  dailyRate              Decimal              @db.Decimal(12, 2)
+  weeklyRate             Decimal?             @db.Decimal(12, 2)
+  minimumRentalDays      Int                  @default(1)
+  driverPolicy           DriverPolicy         @default(OPTIONAL)
   driverChargeType       DriverChargeType?
-  driverCharge           Decimal?          @db.Decimal(12, 2)
+  driverCharge           Decimal?             @db.Decimal(12, 2)
   driverIncludedHours    Int?
-  driverExtraHourRate    Decimal?          @db.Decimal(12, 2)
+  driverExtraHourRate    Decimal?             @db.Decimal(12, 2)
   mileageAllowancePerDay Int?
-  extraKilometreRate     Decimal?          @db.Decimal(12, 2)
-  depositAmount          Decimal?          @db.Decimal(12, 2)
+  extraKilometreRate     Decimal?             @db.Decimal(12, 2)
+  depositAmount          Decimal?             @db.Decimal(12, 2)
   insuranceInfoAr        String?
   insuranceInfoEn        String?
   fuelPolicyAr           String?
   fuelPolicyEn           String?
-  active                 Boolean           @default(true)
+  active                 Boolean              @default(true)
+  featured               Boolean              @default(false)
+  archivedAt             DateTime?
   images                 VehicleImage[]
+  translations           VehicleTranslation[]
+  rateRules              VehicleRateRule[]
   reservations           Reservation[]
+  bookings               Booking[]
+  alternativeOffers      AlternativeOffer[]
   blocks                 VehicleBlock[]
   reviews                Review[]
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   @@index([branchId, status, active])
   @@index([category, dailyRate])
+}
+
+model VehicleTranslation {
+  id            String  @id @default(cuid())
+  vehicleId     String
+  vehicle       Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  locale        String
+  name          String
+  description   String?
+  insuranceInfo String?
+  fuelPolicy    String?
+
+  @@unique([vehicleId, locale])
+}
+
+model VehicleRateRule {
+  id         String   @id @default(cuid())
+  vehicleId  String
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name       String
+  startsAt   DateTime
+  endsAt     DateTime
+  dailyRate  Decimal  @db.Decimal(12, 2)
+  weeklyRate Decimal? @db.Decimal(12, 2)
+  priority   Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([vehicleId, active, startsAt, endsAt])
 }
 
 model VehicleImage {
@@ -308,7 +443,6 @@ model Reservation {
   estimatedTotal       Decimal               @db.Decimal(12, 2)
   finalTotal           Decimal?              @db.Decimal(12, 2)
   customerNotes        String?
-  internalNotes        String?
   termsVersion         String?
   termsAcceptedAt      DateTime?
   privacyConsentAt     DateTime?
@@ -324,6 +458,11 @@ model Reservation {
   cancellationReason   String?
   documents            ReservationDocument[]
   events               ReservationEvent[]
+  alternativeOffers    AlternativeOffer[]
+  internalNotes        InternalNote[]
+  customerMessages     CustomerMessage[]
+  contracts            Contract[]
+  booking              Booking?
   deposit              Deposit?
   notifications        Notification[]
   review               Review?
@@ -335,12 +474,90 @@ model Reservation {
   @@index([assignedSalesId, status])
 }
 
+model AlternativeOffer {
+  id                String                 @id @default(cuid())
+  reservationId     String
+  reservation       Reservation            @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  vehicleId         String
+  vehicle           Vehicle                @relation(fields: [vehicleId], references: [id])
+  createdById       String
+  createdBy         User                   @relation("AlternativeOfferCreator", fields: [createdById], references: [id])
+  status            AlternativeOfferStatus @default(PENDING)
+  proposedPickupAt  DateTime
+  proposedReturnAt  DateTime
+  dailyRateSnapshot Decimal                @db.Decimal(12, 2)
+  estimatedTotal    Decimal                @db.Decimal(12, 2)
+  note              String?
+  expiresAt         DateTime
+  respondedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([reservationId, status, expiresAt])
+}
+
+model Booking {
+  id            String                @id @default(cuid())
+  reference     String                @unique
+  reservationId String                @unique
+  reservation   Reservation           @relation(fields: [reservationId], references: [id])
+  customerId    String
+  customer      User                  @relation("CustomerBookings", fields: [customerId], references: [id])
+  vehicleId     String
+  vehicle       Vehicle               @relation(fields: [vehicleId], references: [id])
+  branchId      String
+  branch        Branch                @relation(fields: [branchId], references: [id])
+  status        BookingStatus         @default(CONFIRMED)
+  pickupAt      DateTime
+  returnAt      DateTime
+  confirmedAt   DateTime              @default(now())
+  activatedAt   DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  priceSnapshot BookingPriceSnapshot?
+  contracts     Contract[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([vehicleId, status, pickupAt, returnAt])
+  @@index([customerId, createdAt])
+}
+
+model BookingPriceSnapshot {
+  id              String                     @id @default(cuid())
+  bookingId       String                     @unique
+  booking         Booking                    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  currency        String                     @default("EGP")
+  rentalDays      Int
+  vehicleSubtotal Decimal                    @db.Decimal(12, 2)
+  driverSubtotal  Decimal                    @default(0) @db.Decimal(12, 2)
+  discountTotal   Decimal                    @default(0) @db.Decimal(12, 2)
+  taxTotal        Decimal                    @default(0) @db.Decimal(12, 2)
+  grandTotal      Decimal                    @db.Decimal(12, 2)
+  items           BookingPriceSnapshotItem[]
+  createdAt       DateTime                   @default(now())
+}
+
+model BookingPriceSnapshotItem {
+  id          String               @id @default(cuid())
+  snapshotId  String
+  snapshot    BookingPriceSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  code        String
+  description String
+  quantity    Decimal              @db.Decimal(12, 2)
+  unitAmount  Decimal              @db.Decimal(12, 2)
+  totalAmount Decimal              @db.Decimal(12, 2)
+  sortOrder   Int                  @default(0)
+
+  @@index([snapshotId, sortOrder])
+}
+
 model ReservationDocument {
-  id              String         @id @default(cuid())
+  id              String              @id @default(cuid())
   reservationId   String
-  reservation     Reservation    @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservation     Reservation         @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   type            DocumentType
-  status          DocumentStatus @default(UPLOADED)
+  status          DocumentStatus      @default(UPLOADED)
   storageKey      String
   originalName    String
   mimeType        String
@@ -350,10 +567,72 @@ model ReservationDocument {
   verifiedAt      DateTime?
   rejectionReason String?
   deletedAt       DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  accessLogs      DocumentAccessLog[]
 
   @@index([reservationId, type, status])
+}
+
+model DocumentAccessLog {
+  id         String              @id @default(cuid())
+  documentId String
+  document   ReservationDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User                @relation("DocumentAccessActor", fields: [actorId], references: [id])
+  action     String
+  reason     String
+  ipHash     String?
+  succeeded  Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+
+  @@index([documentId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model InternalNote {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User        @relation("InternalNoteAuthor", fields: [authorId], references: [id])
+  body          String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([reservationId, createdAt])
+}
+
+model CustomerMessage {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  senderId      String
+  sender        User        @relation("CustomerMessageSender", fields: [senderId], references: [id])
+  body          String
+  readAt        DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([reservationId, createdAt])
+}
+
+model Contract {
+  id            String         @id @default(cuid())
+  reservationId String
+  reservation   Reservation    @relation(fields: [reservationId], references: [id])
+  bookingId     String?
+  booking       Booking?       @relation(fields: [bookingId], references: [id])
+  status        ContractStatus @default(DRAFT)
+  version       Int            @default(1)
+  storageKey    String?
+  signedAt      DateTime?
+  recordedById  String?
+  recordedBy    User?          @relation("ContractRecorder", fields: [recordedById], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([reservationId, version])
+  @@index([bookingId, status])
 }
 
 model ReservationEvent {
@@ -432,6 +711,40 @@ model NotificationDelivery {
   @@index([status, channel, createdAt])
 }
 
+model NotificationEvent {
+  id            String       @id @default(cuid())
+  eventKey      String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  availableAt   DateTime     @default(now())
+  processedAt   DateTime?
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status, availableAt])
+  @@index([aggregateType, aggregateId])
+}
+
+model NotificationTemplate {
+  id        String              @id @default(cuid())
+  eventKey  String
+  channel   NotificationChannel
+  locale    String
+  subject   String?
+  body      String
+  active    Boolean             @default(true)
+  version   Int                 @default(1)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([eventKey, channel, locale, version])
+  @@index([eventKey, active])
+}
+
 model PushSubscription {
   id         String   @id @default(cuid())
   userId     String
@@ -479,4 +792,41 @@ model Review {
   createdAt     DateTime    @default(now())
 
   @@index([vehicleId, approvedAt])
+}
+
+model ContentEntry {
+  id           String               @id @default(cuid())
+  key          String               @unique
+  type         String
+  status       ContentStatus        @default(DRAFT)
+  translations ContentTranslation[]
+  publishedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+}
+
+model ContentTranslation {
+  id        String       @id @default(cuid())
+  contentId String
+  content   ContentEntry @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  locale    String
+  title     String?
+  body      Json
+
+  @@unique([contentId, locale])
+}
+
+model PolicyVersion {
+  id          String    @id @default(cuid())
+  policyKey   String
+  version     String
+  locale      String
+  title       String
+  body        String
+  effectiveAt DateTime
+  retiredAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([policyKey, version, locale])
+  @@index([policyKey, effectiveAt])
 }

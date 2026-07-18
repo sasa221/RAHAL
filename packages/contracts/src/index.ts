@@ -34,3 +34,12 @@ export type DemoVehicle = {
   dailyRateEgp: number;
   status: VehicleOperationalStatus;
 };
+
+export type BranchSummary = {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  addressAr: string;
+  addressEn: string | null;
+  active: boolean;
+};
