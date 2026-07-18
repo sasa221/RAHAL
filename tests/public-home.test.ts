@@ -47,13 +47,15 @@ describe("Milestone 2 public home", () => {
     expect(availability).toContain('"ar-EG"');
   });
 
-  it("uses a full Rahal mark and local photographic assets", () => {
-    expect(component).toContain("rahal-logo__crown");
-    expect(component).toContain("rahal-logo__shield");
+  it("uses the official transparent Rahal mark and local photographic assets", () => {
+    expect(component).toContain('src="/images/rahal-logo.png"');
+    expect(component).toContain('className="rahal-logo__image"');
+    expect(component).not.toContain("rahal-logo__crown");
     expect(component).not.toContain("car-silhouette");
     expect(component).not.toContain("brand-mark");
 
     for (const image of [
+      "rahal-logo.png",
       "rahal-hero.jpg",
       "silver-sedan.jpg",
       "black-suv.jpg",

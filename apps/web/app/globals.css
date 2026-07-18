@@ -158,52 +158,19 @@ select {
 .rahal-logo {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
 }
 
-.rahal-logo__mark {
-  width: 38px;
-  height: 47px;
-  overflow: visible;
+.rahal-logo__image {
+  display: block;
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 5px rgb(59 39 9 / 18%));
 }
 
-.rahal-logo__crown,
-.rahal-logo__shield,
-.rahal-logo__inner {
-  fill: none;
-  stroke: var(--color-gold);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.rahal-logo__crown,
-.rahal-logo__shield {
-  stroke-width: 3;
-}
-
-.rahal-logo__inner {
-  stroke-width: 1.5;
-  opacity: 0.7;
-}
-
-.rahal-logo__letter {
-  fill: var(--color-gold);
-}
-
-.rahal-logo__word {
-  font-family: Arial, sans-serif;
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.rahal-logo--compact .rahal-logo__mark {
-  width: 34px;
-  height: 41px;
-}
-
-.rahal-logo--compact .rahal-logo__word {
-  font-size: 1.05rem;
+.rahal-logo--compact .rahal-logo__image {
+  width: 96px;
+  height: 96px;
 }
 
 .brand-tagline {
@@ -1184,13 +1151,9 @@ select {
     display: none;
   }
 
-  .rahal-logo__mark {
-    width: 32px;
-    height: 40px;
-  }
-
-  .rahal-logo__word {
-    font-size: 1.05rem;
+  .rahal-logo__image {
+    width: 64px;
+    height: 64px;
   }
 
   .hero {

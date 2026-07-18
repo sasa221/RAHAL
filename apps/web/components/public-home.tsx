@@ -96,16 +96,14 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 export function RahalLogo({ compact = false }: { compact?: boolean }) {
   return (
     <span className={`rahal-logo${compact ? " rahal-logo--compact" : ""}`} aria-hidden="true">
-      <svg className="rahal-logo__mark" viewBox="0 0 64 76">
-        <path className="rahal-logo__crown" d="M13 18 8 8l13 7L32 3l11 12 13-7-5 10" />
-        <path className="rahal-logo__shield" d="M8 20h48v26c0 15-13 23-24 27C21 69 8 61 8 46V20Z" />
-        <path className="rahal-logo__inner" d="M15 27h34v18c0 10-8 16-17 20-9-4-17-10-17-20V27Z" />
-        <path
-          className="rahal-logo__letter"
-          d="M23 55V34h11c6 0 10 3 10 8 0 4-2 6-6 7l7 7h-8l-6-7v-5h3c2 0 3-1 3-3 0-1-1-2-3-2h-4v16Z"
-        />
-      </svg>
-      <span className="rahal-logo__word">RAHAL</span>
+      <Image
+        alt=""
+        className="rahal-logo__image"
+        height={compact ? 104 : 112}
+        priority={!compact}
+        src="/images/rahal-logo.png"
+        width={compact ? 104 : 112}
+      />
     </span>
   );
 }
