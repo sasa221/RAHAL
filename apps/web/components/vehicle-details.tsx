@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 import {
   dateInputValue,
   formatEgp,
@@ -92,16 +95,31 @@ function buildAvailability(locale: PublicLocale) {
 export function VehicleDetails({
   locale,
   vehicle,
+  pickup,
+  returnDate,
+  requestedDriver,
 }: {
   locale: PublicLocale;
   vehicle: PublicVehicle;
+  pickup?: string;
+  returnDate?: string;
+  requestedDriver?: string;
 }) {
   const content = getPublicContent(locale);
   const copy = detailsCopy[locale];
   const availability = buildAvailability(locale);
   const gallery = [vehicle, ...publicVehicles.filter((item) => item.id !== vehicle.id)];
-  const requestHref = `${localizedPath(locale, "/reservation")}?vehicle=${vehicle.id}`;
-  const alternateHref = `${localizedPath(locale === "ar" ? "en" : "ar", "/cars")}/${vehicle.id}`;
+  const [selectedImage, setSelectedImage] = useState(vehicle);
+  const selectionParams = new URLSearchParams();
+  if (pickup) selectionParams.set("pickup", pickup);
+  if (returnDate) selectionParams.set("return", returnDate);
+  if (requestedDriver) selectionParams.set("driver", requestedDriver);
+  const selectionQuery = selectionParams.toString();
+  const requestParams = new URLSearchParams(selectionParams);
+  requestParams.set("vehicle", vehicle.id);
+  const requestHref = `${localizedPath(locale, "/reservation")}?${requestParams.toString()}`;
+  const alternateHref = `${localizedPath(locale === "ar" ? "en" : "ar", "/cars")}/${vehicle.id}${selectionQuery ? `?${selectionQuery}` : ""}`;
+  const fleetHref = `${localizedPath(locale, "/cars")}${selectionQuery ? `?${selectionQuery}` : ""}`;
 
   return (
     <div className="public-site public-inner-page" dir={content.dir} lang={content.htmlLang}>
@@ -115,7 +133,7 @@ export function VehicleDetails({
           <nav className="breadcrumbs" aria-label={locale === "ar" ? "مسار الصفحة" : "Breadcrumb"}>
             <a href={localizedPath(locale)}>{locale === "ar" ? "الرئيسية" : "Home"}</a>
             <span aria-hidden="true">/</span>
-            <a href={localizedPath(locale, "/cars")}>{copy.back}</a>
+            <a href={fleetHref}>{copy.back}</a>
             <span aria-hidden="true">/</span>
             <span>{vehicle.name[locale]}</span>
           </nav>
@@ -135,21 +153,28 @@ export function VehicleDetails({
             <div>
               <div className="vehicle-gallery__main">
                 <Image
-                  alt={vehicle.imageAlt[locale]}
+                  alt={selectedImage.imageAlt[locale]}
                   fill
                   priority
                   sizes="(max-width: 900px) 100vw, 66vw"
-                  src={vehicle.image}
+                  src={selectedImage.image}
                 />
               </div>
               <div
                 className="vehicle-gallery__thumbs"
                 aria-label={locale === "ar" ? "صور العربية" : "Vehicle images"}
               >
-                {gallery.map((image, index) => (
-                  <div className={index === 0 ? "is-active" : ""} key={image.id}>
+                {gallery.map((image) => (
+                  <button
+                    aria-label={`${locale === "ar" ? "عرض صورة" : "Show image"}: ${image.name[locale]}`}
+                    aria-pressed={selectedImage.id === image.id}
+                    className={selectedImage.id === image.id ? "is-active" : ""}
+                    key={image.id}
+                    onClick={() => setSelectedImage(image)}
+                    type="button"
+                  >
                     <Image alt="" fill sizes="180px" src={image.image} />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

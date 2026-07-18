@@ -30,6 +30,9 @@ describe("public multi-page experience", () => {
     expect(fleet).toContain("setCategory");
     expect(fleet).toContain("setDriver");
     expect(fleet).toContain("setMaxPrice");
+    expect(fleet).toContain("requestedCategory");
+    expect(fleet).toContain("requestedDriver");
+    expect(fleet).toContain("detailsQuery");
   });
 
   it("creates localized detail routes for every typed demo vehicle", () => {
@@ -54,17 +57,23 @@ describe("public multi-page experience", () => {
     expect(details).toContain("No customer data or documents");
     expect(details).not.toContain("customerId");
     expect(details).not.toContain("identityNumber");
+    expect(details).toContain("requestParams.set");
+    expect(details).toContain("setSelectedImage");
+    expect(details).toContain("aria-pressed={selectedImage.id === image.id}");
   });
 
   it("provides a non-persistent first reservation step with branch-only confirmation copy", () => {
     const arabicRoute = read("apps/web/app/reservation/page.tsx");
     const englishRoute = read("apps/web/app/en/reservation/page.tsx");
 
-    expect(arabicRoute).toContain('<ReservationStart locale="ar"');
-    expect(englishRoute).toContain('<ReservationStart locale="en"');
+    expect(arabicRoute).toMatch(/<ReservationStart\s+locale="ar"/);
+    expect(englishRoute).toMatch(/<ReservationStart\s+locale="en"/);
     expect(reservation).toContain("event.preventDefault()");
     expect(reservation).toContain("sends no real data");
     expect(reservation).toContain("deposit recording");
     expect(reservation).not.toContain('type="file"');
+    expect(reservation).toContain("requestedPickup");
+    expect(reservation).toContain("requestedReturn");
+    expect(reservation).toContain("addDays(pickup || minimumDate, vehicle.minimumDays)");
   });
 });

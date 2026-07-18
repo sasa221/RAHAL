@@ -14,6 +14,8 @@ type PublicFleetProps = {
   locale: PublicLocale;
   pickup?: string;
   returnDate?: string;
+  requestedDriver?: string;
+  requestedCategory?: string;
 };
 
 const fleetCopy = {
@@ -90,12 +92,28 @@ function formatSelectedDate(value: string | undefined, locale: PublicLocale) {
   }).format(date);
 }
 
-export function PublicFleet({ locale, pickup, returnDate }: PublicFleetProps) {
+const validCategories = new Set(["economy", "sedan", "suv"]);
+
+export function PublicFleet({
+  locale,
+  pickup,
+  returnDate,
+  requestedDriver,
+  requestedCategory,
+}: PublicFleetProps) {
   const content = getPublicContent(locale);
   const copy = fleetCopy[locale];
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(
+    requestedCategory && validCategories.has(requestedCategory) ? requestedCategory : "all",
+  );
   const [seats, setSeats] = useState("all");
-  const [driver, setDriver] = useState("all");
+  const [driver, setDriver] = useState(
+    requestedDriver === "with-driver"
+      ? "optional"
+      : requestedDriver === "self"
+        ? "self-drive"
+        : "all",
+  );
   const [maxPrice, setMaxPrice] = useState("all");
   const [sort, setSort] = useState("recommended");
 
@@ -117,6 +135,11 @@ export function PublicFleet({ locale, pickup, returnDate }: PublicFleetProps) {
 
   const selectedPickup = formatSelectedDate(pickup, locale);
   const selectedReturn = formatSelectedDate(returnDate, locale);
+  const detailsQuery = new URLSearchParams(
+    Object.entries({ pickup, return: returnDate, driver: requestedDriver }).filter(
+      (entry): entry is [string, string] => Boolean(entry[1]),
+    ),
+  ).toString();
 
   function clearFilters() {
     setCategory("all");
@@ -235,7 +258,12 @@ export function PublicFleet({ locale, pickup, returnDate }: PublicFleetProps) {
               {vehicles.length ? (
                 <div className="vehicle-grid vehicle-grid--listing">
                   {vehicles.map((vehicle) => (
-                    <VehicleCard key={vehicle.id} locale={locale} vehicle={vehicle} />
+                    <VehicleCard
+                      detailsQuery={detailsQuery}
+                      key={vehicle.id}
+                      locale={locale}
+                      vehicle={vehicle}
+                    />
                   ))}
                 </div>
               ) : (

@@ -8,8 +8,18 @@ export default async function ReservationPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const query = await searchParams;
-  const vehicleId = Array.isArray(query.vehicle) ? query.vehicle[0] : query.vehicle;
+  const firstValue = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
+  const vehicleId = firstValue(query.vehicle);
   const vehicle = publicVehicles.find((item) => item.id === vehicleId);
   if (!vehicle) notFound();
-  return <ReservationStart locale="ar" vehicle={vehicle} />;
+  return (
+    <ReservationStart
+      locale="ar"
+      requestedDriver={firstValue(query.driver)}
+      requestedPickup={firstValue(query.pickup)}
+      requestedReturn={firstValue(query.return)}
+      vehicle={vehicle}
+    />
+  );
 }

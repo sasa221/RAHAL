@@ -63,23 +63,63 @@ function formatReservationDate(value: string, locale: PublicLocale) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
+function isDateInputValue(value: string | undefined): value is string {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)));
+}
+
+function addDays(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export function ReservationStart({
   locale,
   vehicle,
+  requestedPickup,
+  requestedReturn,
+  requestedDriver,
 }: {
   locale: PublicLocale;
   vehicle: PublicVehicle;
+  requestedPickup?: string;
+  requestedReturn?: string;
+  requestedDriver?: string;
 }) {
   const content = getPublicContent(locale);
   const copy = requestCopy[locale];
   const minimumDate = dateInputValue(1);
-  const [pickup, setPickup] = useState(dateInputValue(2));
-  const [returnDate, setReturnDate] = useState(dateInputValue(vehicle.minimumDays + 2));
+  const initialPickup =
+    isDateInputValue(requestedPickup) && requestedPickup >= minimumDate
+      ? requestedPickup
+      : dateInputValue(2);
+  const minimumReturnDate = addDays(initialPickup, vehicle.minimumDays);
+  const initialReturn =
+    isDateInputValue(requestedReturn) && requestedReturn >= minimumReturnDate
+      ? requestedReturn
+      : minimumReturnDate;
+  const [pickup, setPickup] = useState(initialPickup);
+  const [returnDate, setReturnDate] = useState(initialReturn);
   const [driver, setDriver] = useState(
-    vehicle.driverPolicyKey === "self-drive" ? "self-drive" : "later",
+    vehicle.driverPolicyKey === "self-drive"
+      ? "self-drive"
+      : requestedDriver === "with-driver"
+        ? "with-driver"
+        : requestedDriver === "self"
+          ? "self-drive"
+          : "later",
   );
   const [reviewing, setReviewing] = useState(false);
-  const alternateHref = `${localizedPath(locale === "ar" ? "en" : "ar", "/reservation")}?vehicle=${vehicle.id}`;
+  const selectionParams = new URLSearchParams({
+    vehicle: vehicle.id,
+    pickup,
+    return: returnDate,
+    driver: driver === "with-driver" ? "with-driver" : driver === "self-drive" ? "self" : "any",
+  });
+  const alternateHref = `${localizedPath(locale === "ar" ? "en" : "ar", "/reservation")}?${selectionParams.toString()}`;
+  const backParams = new URLSearchParams(selectionParams);
+  backParams.delete("vehicle");
+  const backHref = `${localizedPath(locale, "/cars")}/${vehicle.id}?${backParams.toString()}`;
 
   return (
     <div className="public-site public-inner-page" dir={content.dir} lang={content.htmlLang}>
@@ -120,7 +160,10 @@ export function ReservationStart({
                   lang={content.htmlLang}
                   min={minimumDate}
                   onChange={(event) => {
-                    setPickup(event.target.value);
+                    const nextPickup = event.target.value;
+                    const nextMinimumReturn = addDays(nextPickup, vehicle.minimumDays);
+                    setPickup(nextPickup);
+                    if (returnDate < nextMinimumReturn) setReturnDate(nextMinimumReturn);
                     setReviewing(false);
                   }}
                   required
@@ -133,7 +176,7 @@ export function ReservationStart({
                 <span>{copy.return}</span>
                 <input
                   lang={content.htmlLang}
-                  min={pickup || minimumDate}
+                  min={addDays(pickup || minimumDate, vehicle.minimumDays)}
                   onChange={(event) => {
                     setReturnDate(event.target.value);
                     setReviewing(false);
@@ -205,7 +248,7 @@ export function ReservationStart({
             ) : null}
             <p>{copy.next}</p>
             <div className="reservation-assurance__notice">{copy.notice}</div>
-            <a href={`${localizedPath(locale, "/cars")}/${vehicle.id}`}>{copy.back}</a>
+            <a href={backHref}>{copy.back}</a>
           </aside>
         </div>
       </main>

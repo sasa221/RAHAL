@@ -21,6 +21,8 @@ export default async function CarsPage({ searchParams }: CarsPageProps) {
       locale="ar"
       pickup={firstValue(query.pickup)}
       returnDate={firstValue(query.return)}
+      requestedCategory={firstValue(query.category)}
+      requestedDriver={firstValue(query.driver)}
     />
   );
 }

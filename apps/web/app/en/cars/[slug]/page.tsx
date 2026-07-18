@@ -8,11 +8,24 @@ export function generateStaticParams() {
 
 export default async function EnglishVehicleDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
+  const firstValue = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
   const vehicle = publicVehicles.find((item) => item.id === slug);
   if (!vehicle) notFound();
-  return <VehicleDetails locale="en" vehicle={vehicle} />;
+  return (
+    <VehicleDetails
+      locale="en"
+      pickup={firstValue(query.pickup)}
+      requestedDriver={firstValue(query.driver)}
+      returnDate={firstValue(query.return)}
+      vehicle={vehicle}
+    />
+  );
 }

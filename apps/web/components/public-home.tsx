@@ -145,9 +145,13 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
             </span>
             {content.languageLabel}
           </a>
-          <a className="button button--dark header-sign-in" href="#contact">
+          <span
+            aria-disabled="true"
+            className="button button--dark header-sign-in header-sign-in--disabled"
+            title={locale === "ar" ? "سيُتاح مع نظام الحسابات" : "Available with customer accounts"}
+          >
             {content.signIn}
-          </a>
+          </span>
           <details className="mobile-menu">
             <summary aria-label={content.menuLabel}>
               <Icon name="menu" />
@@ -159,7 +163,7 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
                 </a>
               ))}
               <a href={languageHref ?? content.languageHref}>{content.languageLabel}</a>
-              <a href="#contact">{content.signIn}</a>
+              <span aria-disabled="true">{content.signIn}</span>
             </nav>
           </details>
         </div>
@@ -171,9 +175,11 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
 export function VehicleCard({
   locale,
   vehicle,
+  detailsQuery,
 }: {
   locale: PublicLocale;
   vehicle: (typeof publicVehicles)[number];
+  detailsQuery?: string;
 }) {
   const content = getPublicContent(locale);
   const isAvailable = vehicle.status === "available";
@@ -215,7 +221,7 @@ export function VehicleCard({
         </div>
         <a
           className="button button--outline"
-          href={`${localizedPath(locale, "/cars")}/${vehicle.id}`}
+          href={`${localizedPath(locale, "/cars")}/${vehicle.id}${detailsQuery ? `?${detailsQuery}` : ""}`}
         >
           {content.viewDetails}
           <Icon name="arrow" size={17} />
@@ -366,7 +372,10 @@ export function PublicHome({ locale }: PublicHomeProps) {
                   </span>
                   <h3>{title}</h3>
                   <p>{description}</p>
-                  <a href="#fleet" aria-label={`${content.viewAll}: ${title}`}>
+                  <a
+                    href={`${localizedPath(locale, "/cars")}?${index === 3 ? "driver=with-driver" : `category=${["economy", "sedan", "suv"][index]}`}`}
+                    aria-label={`${content.viewAll}: ${title}`}
+                  >
                     <Icon name="arrow" />
                   </a>
                 </article>
