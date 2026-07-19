@@ -2963,7 +2963,15 @@ select {
   font-size: 0.78rem;
 }
 
-.auth-success > a {
+.auth-success__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.auth-success__actions a {
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -2971,6 +2979,23 @@ select {
   font-size: 0.8rem;
   font-weight: 800;
   text-decoration: none;
+}
+
+.auth-success__actions button {
+  padding: 9px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(25, 24, 21, 0.45);
+  color: rgba(25, 24, 21, 0.65);
+  background: transparent;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-success__actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .auth-panel {

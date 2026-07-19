@@ -62,6 +62,8 @@ const authCopy = {
     requestingCode: "جاري إنشاء الرمز...",
     confirmingCode: "جاري التحقق...",
     continue: "استعرض السيارات",
+    signOut: "تسجيل الخروج",
+    signingOut: "جاري تسجيل الخروج...",
     security: "لن نعرض كلمة المرور أو رمز الجلسة داخل الصفحة.",
     connectionError: "تعذر الاتصال بخدمة الحسابات. تأكد أن API تعمل ثم حاول مرة أخرى.",
     verificationUnavailable:
@@ -111,6 +113,8 @@ const authCopy = {
     requestingCode: "Creating code...",
     confirmingCode: "Verifying...",
     continue: "Explore the fleet",
+    signOut: "Sign out",
+    signingOut: "Signing out...",
     security: "Your password and raw session token are never rendered on this page.",
     connectionError:
       "The account service could not be reached. Make sure the API is running and try again.",
@@ -130,6 +134,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   const [verificationDestination, setVerificationDestination] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -206,7 +211,30 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode);
     setError("");
-    setSession(null);
+  }
+
+  async function logout() {
+    setLoggingOut(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/session", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        setError(copy.connectionError);
+        return;
+      }
+      setSession(null);
+      setVerificationChannel(null);
+      setVerificationCode("");
+      setVerificationNotice("");
+      setMode("login");
+    } catch {
+      setError(copy.connectionError);
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   async function requestVerification(channel: VerificationChannel) {
@@ -313,24 +341,26 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         </section>
 
         <section className="auth-workspace" id="auth-workspace">
-          <div className="auth-mode-switch" role="tablist" aria-label={copy.heroEyebrow}>
-            <button
-              aria-selected={mode === "login"}
-              onClick={() => switchMode("login")}
-              role="tab"
-              type="button"
-            >
-              {copy.loginTab}
-            </button>
-            <button
-              aria-selected={mode === "register"}
-              onClick={() => switchMode("register")}
-              role="tab"
-              type="button"
-            >
-              {copy.registerTab}
-            </button>
-          </div>
+          {!session ? (
+            <div className="auth-mode-switch" role="tablist" aria-label={copy.heroEyebrow}>
+              <button
+                aria-selected={mode === "login"}
+                onClick={() => switchMode("login")}
+                role="tab"
+                type="button"
+              >
+                {copy.loginTab}
+              </button>
+              <button
+                aria-selected={mode === "register"}
+                onClick={() => switchMode("register")}
+                role="tab"
+                type="button"
+              >
+                {copy.registerTab}
+              </button>
+            </div>
+          ) : null}
 
           {session ? (
             <div className="auth-success auth-panel" aria-live="polite">
@@ -411,10 +441,15 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                   {error}
                 </p>
               ) : null}
-              <a href={localizedPath(locale, "/cars")}>
-                {copy.continue}
-                <Icon name="arrow" size={18} />
-              </a>
+              <div className="auth-success__actions">
+                <a href={localizedPath(locale, "/cars")}>
+                  {copy.continue}
+                  <Icon name="arrow" size={18} />
+                </a>
+                <button disabled={loggingOut} onClick={logout} type="button">
+                  {loggingOut ? copy.signingOut : copy.signOut}
+                </button>
+              </div>
             </div>
           ) : (
             <form className="auth-form auth-panel" key={mode} onSubmit={submit}>
