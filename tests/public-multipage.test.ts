@@ -27,7 +27,9 @@ describe("public multi-page experience", () => {
 
     expect(arabicRoute).toMatch(/<PublicFleet\s+locale="ar"/);
     expect(englishRoute).toMatch(/<PublicFleet\s+locale="en"/);
-    expect(fleet).toContain("publicVehicles.filter");
+    expect(fleet).toContain("useState<PublicVehicle[]>(publicVehicles)");
+    expect(fleet).toContain('fetch("/api/vehicles"');
+    expect(fleet).toContain("fleetVehicles.filter");
     expect(fleet).toContain("setCategory");
     expect(fleet).toContain("setDriver");
     expect(fleet).toContain("setMaxPrice");
@@ -51,7 +53,7 @@ describe("public multi-page experience", () => {
     ]) {
       expect(existsSync(join(root, route))).toBe(true);
       expect(read(route)).toContain("generateStaticParams");
-      expect(read(route)).toContain("publicVehicles.find");
+      expect(read(route)).toContain("getPublicVehicle(slug)");
     }
 
     expect(publicVehicles).toHaveLength(3);

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { VehicleDetails } from "../../../../components/vehicle-details";
+import { getPublicVehicle } from "../../../../lib/public-api";
 import { publicVehicles } from "../../../../lib/public-content";
 
 export function generateStaticParams() {
@@ -17,7 +18,7 @@ export default async function EnglishVehicleDetailsPage({
   const query = await searchParams;
   const firstValue = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
-  const vehicle = publicVehicles.find((item) => item.id === slug);
+  const vehicle = await getPublicVehicle(slug);
   if (!vehicle) notFound();
   return (
     <VehicleDetails

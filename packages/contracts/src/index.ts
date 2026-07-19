@@ -35,6 +35,27 @@ export type DemoVehicle = {
   status: VehicleOperationalStatus;
 };
 
+export type PublicVehicle = {
+  id: string;
+  name: Record<Locale, string>;
+  category: Record<Locale, string>;
+  categoryKey: "economy" | "sedan" | "suv";
+  image: string;
+  imageAlt: Record<Locale, string>;
+  dailyRateEgp: number;
+  weeklyRateEgp: number;
+  minimumDays: number;
+  seats: number;
+  bags: number;
+  year: number;
+  transmission: Record<Locale, string>;
+  driverPolicy: Record<Locale, string>;
+  driverPolicyKey: "optional" | "required" | "self-drive";
+  fuelPolicy: Record<Locale, string>;
+  mileagePolicy: Record<Locale, string>;
+  status: "available" | "review";
+};
+
 export type BranchSummary = {
   id: string;
   nameAr: string;

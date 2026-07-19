@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   formatEgp,
   getPublicContent,
@@ -221,9 +221,32 @@ export function PublicFleet({
   const [maxPrice, setMaxPrice] = useState("all");
   const [sort, setSort] = useState("recommended");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [fleetVehicles, setFleetVehicles] = useState<PublicVehicle[]>(publicVehicles);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadFleet() {
+      try {
+        const response = await fetch("/api/vehicles", {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { data?: PublicVehicle[] };
+        if (payload.data?.length) setFleetVehicles(payload.data);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+
+    void loadFleet();
+    return () => controller.abort();
+  }, []);
 
   const vehicles = useMemo(() => {
-    const filtered = publicVehicles.filter((vehicle) => {
+    const filtered = fleetVehicles.filter((vehicle) => {
       if (category !== "all" && vehicle.categoryKey !== category) return false;
       if (seats !== "all" && vehicle.seats < Number(seats)) return false;
       if (driver !== "all" && vehicle.driverPolicyKey !== driver) return false;
@@ -236,7 +259,7 @@ export function PublicFleet({
       if (sort === "price-high") return second.dailyRateEgp - first.dailyRateEgp;
       return Number(second.status === "available") - Number(first.status === "available");
     });
-  }, [category, driver, maxPrice, seats, sort]);
+  }, [category, driver, fleetVehicles, maxPrice, seats, sort]);
 
   const selectedPickup = formatSelectedDate(pickup, locale);
   const selectedReturn = formatSelectedDate(returnDate, locale);
