@@ -277,6 +277,20 @@ export function Footer({ locale }: PublicHomeProps) {
 
   return (
     <footer className="site-footer" id="contact">
+      <div className="container footer-statement">
+        <div>
+          <span>{locale === "ar" ? "جاهز تختار رحلتك؟" : "READY TO CHOOSE YOUR JOURNEY?"}</span>
+          <strong>
+            {locale === "ar"
+              ? "ابدأ بعربية تناسب مشوارك."
+              : "Start with a car that fits the way you move."}
+          </strong>
+        </div>
+        <a href={localizedPath(locale, "/cars")}>
+          {content.heroPrimary}
+          <Icon name="arrow" size={20} />
+        </a>
+      </div>
       <div className="container footer-grid">
         <div className="footer-brand">
           <RahalLogo compact />
@@ -466,17 +480,27 @@ export function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section trust-section" data-reveal>
-          <div className="container">
-            <SectionHeading eyebrow={content.trustEyebrow} title={content.trustTitle} />
+        <section className="section trust-section" id="trust" data-reveal>
+          <div className="container trust-layout">
+            <div className="trust-intro">
+              <SectionHeading eyebrow={content.trustEyebrow} title={content.trustTitle} />
+              <span className="trust-intro__label">
+                {locale === "ar" ? "03 · معايير رحال" : "03 · RAHAL STANDARDS"}
+              </span>
+            </div>
             <div className="trust-grid">
               {content.trustItems.map(([title, description], index) => (
                 <article data-reveal data-tilt key={title}>
-                  <span className="trust-icon">
-                    <Icon name={(["document", "users", "shield"] as IconName[])[index]} />
-                  </span>
-                  <h3>{title}</h3>
-                  <p>{description}</p>
+                  <div className="trust-card__top">
+                    <span className="trust-card__number">0{index + 1}</span>
+                    <span className="trust-icon">
+                      <Icon name={(["document", "users", "shield"] as IconName[])[index]} />
+                    </span>
+                  </div>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{description}</p>
+                  </div>
                 </article>
               ))}
             </div>
@@ -487,6 +511,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
           <div className="container branch-card">
             <div className="branch-card__map" aria-hidden="true">
               <div className="map-grid" />
+              <span className="map-coordinates">30.0444° N · 31.2357° E</span>
               <span className="map-pin">
                 <Icon name="pin" size={28} />
               </span>
@@ -499,6 +524,13 @@ export function PublicHome({ locale }: PublicHomeProps) {
               <div className="branch-note">
                 <Icon name="pin" size={18} />
                 {content.branchNote}
+              </div>
+              <div className="branch-facts">
+                <span>
+                  {locale === "ar" ? "الاستلام والإرجاع من الفرع" : "Branch pickup & return"}
+                </span>
+                <span>{locale === "ar" ? "الدفع بالجنيه المصري" : "EGP only"}</span>
+                <span>{locale === "ar" ? "لا يوجد دفع أونلاين" : "No online payment"}</span>
               </div>
               <div className="branch-actions">
                 <a className="button button--dark" href="tel:01011105159">

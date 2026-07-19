@@ -56,6 +56,15 @@ describe("Milestone 2 public home", () => {
     expect(component).toContain('role="note"');
   });
 
+  it("provides dedicated mobile interaction for trust, branch, and footer content", () => {
+    expect(component).toContain('className="trust-card__top"');
+    expect(component).toContain('className="branch-facts"');
+    expect(component).toContain("footer-statement");
+    expect(styles).toContain("scroll-snap-type: inline mandatory");
+    expect(styles).toContain("overscroll-behavior-inline: contain");
+    expect(styles).toContain("min-width: min(82vw, 330px)");
+  });
+
   it("includes desktop and mobile navigation with accessible labels", () => {
     expect(component).toContain('className="desktop-navigation"');
     expect(component).toContain('className="mobile-menu"');
