@@ -311,4 +311,119 @@ describe("reservation draft service", () => {
       "Document processing consent is required before upload.",
     );
   });
+
+  it("returns masked final-review data and blocks development-only policies", async () => {
+    const policyKeys = ["RENTAL_TERMS", "PRIVACY", "DOCUMENT_PROCESSING", "RESERVATION_PROCESS"];
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: {
+            id: "customer-1",
+            role: "CUSTOMER",
+            preferredLocale: "en",
+            fullName: "Trusted Customer",
+            email: "trusted@example.com",
+            phone: "+201001112222",
+            emailVerified: true,
+            phoneVerified: true,
+          },
+        }),
+      } as never,
+      {
+        findOwnedDraftReview: vi.fn().mockResolvedValue({
+          id: "draft-1",
+          reference: "RHL-2026-123456",
+          pickupAt: new Date(Date.now() + 172_800_000),
+          returnAt: new Date(Date.now() + 432_000_000),
+          driverRequested: false,
+          estimatedTotal: { toNumber: () => 13_500 },
+          customerNameSnapshot: "Trusted Customer",
+          customerEmailSnapshot: "trusted@example.com",
+          customerPhoneSnapshot: "+201001112222",
+          nationalitySnapshot: "Egyptian",
+          customerCategorySnapshot: "EGYPTIAN",
+          addressSnapshot: "Fictional Cairo address",
+          emergencyContactNameSnapshot: "Emergency Contact",
+          emergencyContactPhoneSnapshot: "+201009998888",
+          customerDetailsCompletedAt: new Date(),
+          termsVersion: "DEV-2026-07-19",
+          termsAcceptedAt: new Date(),
+          privacyConsentAt: new Date(),
+          documentConsentAt: new Date(),
+          operationalConsentAt: new Date(),
+          marketingConsentAt: null,
+          vehicle: {
+            id: "silver-executive",
+            nameAr: "سيارة فضية",
+            nameEn: "Silver Executive Sedan",
+            status: "AVAILABLE",
+            active: true,
+            archivedAt: null,
+          },
+          branch: { id: "branch-1", nameAr: "فرع رحال", nameEn: "Rahal Branch" },
+        }),
+        findDocumentRequirementRules: vi.fn().mockResolvedValue([
+          {
+            documentType: "NATIONAL_ID_FRONT",
+            requiresSelfDrive: false,
+            labelAr: "وجه الهوية",
+            labelEn: "National ID front",
+          },
+        ]),
+        findActiveDocuments: vi
+          .fn()
+          .mockResolvedValue([{ type: "NATIONAL_ID_FRONT", status: "UPLOADED" }]),
+        findConsentPolicies: vi.fn().mockResolvedValue(
+          policyKeys.map((policyKey) => ({
+            policyKey,
+            version: "DEV-2026-07-19",
+            title: "Policy",
+            body: "Development policy body",
+          })),
+        ),
+        hasSubmissionConflict: vi.fn().mockResolvedValue(false),
+      } as never,
+    );
+
+    const review = await service.getReview("session-token", "draft-1");
+
+    expect(review).toMatchObject({
+      canSubmit: false,
+      blockers: ["APPROVED_POLICY_REQUIRED"],
+      customer: {
+        emailMasked: expect.stringContaining("***"),
+        phoneMasked: expect.stringContaining("••••"),
+        addressMasked: expect.not.stringContaining("Fictional Cairo address"),
+      },
+    });
+  });
+
+  it("returns only pending review after an authoritative submission", async () => {
+    const submitDraft = vi.fn().mockResolvedValue({
+      kind: "SUBMITTED",
+      data: {
+        id: "draft-1",
+        reference: "RHL-2026-123456",
+        status: "PENDING_REVIEW",
+        submittedAt: "2026-07-19T18:00:00.000Z",
+      },
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER", preferredLocale: "en" },
+        }),
+      } as never,
+      { submitDraft } as never,
+    );
+
+    await expect(service.submitReservation("session-token", "draft-1")).resolves.toMatchObject({
+      status: "PENDING_REVIEW",
+    });
+    expect(submitDraft).toHaveBeenCalledWith({
+      draftId: "draft-1",
+      customerId: "customer-1",
+      locale: "en",
+    });
+  });
 });

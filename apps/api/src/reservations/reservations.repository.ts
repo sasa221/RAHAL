@@ -4,6 +4,7 @@ import type {
   ReservationCustomerDetails,
   ReservationDocumentType,
   ReservationDraft,
+  SubmittedReservation,
 } from "@rahal/contracts";
 import type { DriverPolicy } from "@rahal/database";
 import { randomInt } from "node:crypto";
@@ -292,6 +293,233 @@ export class ReservationsRepository {
     });
   }
 
+  findOwnedDraftReview(draftId: string, customerId: string) {
+    return this.prisma.client.reservation.findFirst({
+      where: { id: draftId, customerId, status: "DRAFT" },
+      select: {
+        id: true,
+        reference: true,
+        pickupAt: true,
+        returnAt: true,
+        driverRequested: true,
+        estimatedTotal: true,
+        customerNameSnapshot: true,
+        customerEmailSnapshot: true,
+        customerPhoneSnapshot: true,
+        nationalitySnapshot: true,
+        customerCategorySnapshot: true,
+        addressSnapshot: true,
+        emergencyContactNameSnapshot: true,
+        emergencyContactPhoneSnapshot: true,
+        customerDetailsCompletedAt: true,
+        termsVersion: true,
+        termsAcceptedAt: true,
+        privacyConsentAt: true,
+        documentConsentAt: true,
+        operationalConsentAt: true,
+        marketingConsentAt: true,
+        vehicle: {
+          select: {
+            id: true,
+            nameAr: true,
+            nameEn: true,
+            active: true,
+            archivedAt: true,
+            status: true,
+          },
+        },
+        branch: { select: { id: true, nameAr: true, nameEn: true } },
+      },
+    });
+  }
+
+  async hasSubmissionConflict(vehicleId: string, pickupAt: Date, returnAt: Date) {
+    const [block, booking] = await Promise.all([
+      this.prisma.client.vehicleBlock.findFirst({
+        where: { vehicleId, startsAt: { lt: returnAt }, endsAt: { gt: pickupAt } },
+        select: { id: true },
+      }),
+      this.prisma.client.booking.findFirst({
+        where: {
+          vehicleId,
+          status: { in: ["CONFIRMED", "ACTIVE"] },
+          pickupAt: { lt: returnAt },
+          returnAt: { gt: pickupAt },
+        },
+        select: { id: true },
+      }),
+    ]);
+    return Boolean(block || booking);
+  }
+
+  async submitDraft(input: { draftId: string; customerId: string; locale: "ar" | "en" }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: { id: input.draftId, customerId: input.customerId },
+        select: {
+          id: true,
+          reference: true,
+          status: true,
+          submittedAt: true,
+          vehicleId: true,
+          pickupAt: true,
+          returnAt: true,
+          driverRequested: true,
+          customerDetailsCompletedAt: true,
+          customerCategorySnapshot: true,
+          termsVersion: true,
+          termsAcceptedAt: true,
+          privacyConsentAt: true,
+          documentConsentAt: true,
+          operationalConsentAt: true,
+          customer: { select: { emailVerifiedAt: true, phoneVerifiedAt: true } },
+          vehicle: { select: { active: true, archivedAt: true, status: true } },
+        },
+      });
+      if (!reservation) return { kind: "NOT_FOUND" as const };
+      if (reservation.status === "PENDING_REVIEW" && reservation.submittedAt) {
+        return {
+          kind: "SUBMITTED" as const,
+          data: toSubmittedReservation(
+            reservation.id,
+            reservation.reference,
+            reservation.submittedAt,
+          ),
+        };
+      }
+      if (reservation.status !== "DRAFT") return { kind: "INVALID_STATUS" as const };
+
+      const requiredConsents = Boolean(
+        reservation.termsVersion &&
+        reservation.termsAcceptedAt &&
+        reservation.privacyConsentAt &&
+        reservation.documentConsentAt &&
+        reservation.operationalConsentAt,
+      );
+      if (
+        !reservation.customer.emailVerifiedAt ||
+        !reservation.customer.phoneVerifiedAt ||
+        !reservation.customerDetailsCompletedAt ||
+        !reservation.customerCategorySnapshot ||
+        !requiredConsents
+      ) {
+        return { kind: "NOT_READY" as const };
+      }
+
+      const policyCount = await transaction.policyVersion.count({
+        where: {
+          locale: input.locale,
+          version: reservation.termsVersion!,
+          policyKey: {
+            in: ["RENTAL_TERMS", "PRIVACY", "DOCUMENT_PROCESSING", "RESERVATION_PROCESS"],
+          },
+          effectiveAt: { lte: new Date() },
+          OR: [{ retiredAt: null }, { retiredAt: { gt: new Date() } }],
+        },
+      });
+      if (reservation.termsVersion!.startsWith("DEV-") || policyCount !== 4) {
+        return { kind: "POLICY_NOT_APPROVED" as const };
+      }
+
+      const rules = await transaction.documentRequirementRule.findMany({
+        where: { customerCategory: reservation.customerCategorySnapshot, active: true },
+        select: { documentType: true, requiresSelfDrive: true },
+      });
+      const requiredTypes = rules
+        .filter((rule) => !rule.requiresSelfDrive || !reservation.driverRequested)
+        .map((rule) => rule.documentType);
+      const uploadedDocuments = await transaction.reservationDocument.findMany({
+        where: {
+          reservationId: reservation.id,
+          type: { in: requiredTypes },
+          status: { in: ["UPLOADED", "UNDER_REVIEW", "VERIFIED"] },
+          deletedAt: null,
+        },
+        select: { type: true },
+      });
+      const uploadedTypes = new Set(uploadedDocuments.map((document) => document.type));
+      if (!requiredTypes.length || requiredTypes.some((type) => !uploadedTypes.has(type))) {
+        return { kind: "DOCUMENTS_INCOMPLETE" as const };
+      }
+
+      const [block, booking] = await Promise.all([
+        transaction.vehicleBlock.findFirst({
+          where: {
+            vehicleId: reservation.vehicleId,
+            startsAt: { lt: reservation.returnAt },
+            endsAt: { gt: reservation.pickupAt },
+          },
+          select: { id: true },
+        }),
+        transaction.booking.findFirst({
+          where: {
+            vehicleId: reservation.vehicleId,
+            status: { in: ["CONFIRMED", "ACTIVE"] },
+            pickupAt: { lt: reservation.returnAt },
+            returnAt: { gt: reservation.pickupAt },
+          },
+          select: { id: true },
+        }),
+      ]);
+      if (
+        !reservation.vehicle.active ||
+        reservation.vehicle.archivedAt ||
+        !["AVAILABLE", "PENDING_REQUEST"].includes(reservation.vehicle.status) ||
+        reservation.pickupAt <= new Date() ||
+        block ||
+        booking
+      ) {
+        return { kind: "VEHICLE_UNAVAILABLE" as const };
+      }
+
+      const submittedAt = new Date();
+      const updated = await transaction.reservation.updateMany({
+        where: { id: reservation.id, customerId: input.customerId, status: "DRAFT" },
+        data: { status: "PENDING_REVIEW", submittedAt },
+      });
+      if (!updated.count) return { kind: "INVALID_STATUS" as const };
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: reservation.id,
+          fromStatus: "DRAFT",
+          toStatus: "PENDING_REVIEW",
+          actorId: input.customerId,
+          note: "Customer submitted the reservation request for sales review.",
+        },
+      });
+      await transaction.notification.create({
+        data: {
+          userId: input.customerId,
+          reservationId: reservation.id,
+          eventKey: "RESERVATION_REQUEST_SUBMITTED",
+          titleAr: "تم إرسال طلبك للمراجعة",
+          titleEn: "Your request was submitted for review",
+          bodyAr: `طلب ${reservation.reference} قيد مراجعة فريق المبيعات. هذا ليس حجزًا مؤكدًا.`,
+          bodyEn: `Request ${reservation.reference} is awaiting sales review. This is not a confirmed booking.`,
+          important: true,
+        },
+      });
+      await transaction.notificationEvent.create({
+        data: {
+          eventKey: "RESERVATION_REQUEST_SUBMITTED",
+          aggregateType: "RESERVATION",
+          aggregateId: reservation.id,
+          payload: {
+            reservationId: reservation.id,
+            reference: reservation.reference,
+            customerId: input.customerId,
+            locale: input.locale,
+            status: "PENDING_REVIEW",
+          },
+        },
+      });
+      return {
+        kind: "SUBMITTED" as const,
+        data: toSubmittedReservation(reservation.id, reservation.reference, submittedAt),
+      };
+    });
+  }
+
   async replaceDocument(input: {
     draftId: string;
     customerId: string;
@@ -448,4 +676,12 @@ function maskEmail(value: string) {
 
 function maskPhone(value: string) {
   return `${value.slice(0, 3)}••••${value.slice(-4)}`;
+}
+
+function toSubmittedReservation(
+  id: string,
+  reference: string,
+  submittedAt: Date,
+): SubmittedReservation {
+  return { id, reference, status: "PENDING_REVIEW", submittedAt: submittedAt.toISOString() };
 }

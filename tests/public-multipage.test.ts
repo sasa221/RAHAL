@@ -113,6 +113,13 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("reservation-stage__visual");
     expect(reservation).toContain("reservation-form__options");
     expect(reservation).toContain('aria-live="polite"');
+    expect(reservation).toContain("/review`");
+    expect(reservation).toContain("/submit`");
+    expect(reservation).toContain('status: "PENDING_REVIEW"');
+    expect(reservation).toContain("This is not a confirmed booking yet");
+    expect(reservation).toContain("There is no online payment");
+    expect(reservation).toContain("APPROVED_POLICY_REQUIRED");
+    expect(reservation).not.toContain("storageKey");
   });
 
   it("provides shared bilingual account access without exposing protected identity data", () => {

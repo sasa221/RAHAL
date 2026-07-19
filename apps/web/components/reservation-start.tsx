@@ -179,12 +179,141 @@ const requestCopy = {
   },
 } as const;
 
+type ReservationReviewData = {
+  draftId: string;
+  reference: string;
+  status: "DRAFT";
+  vehicle: { id: string; name: string };
+  branch: { id: string; name: string };
+  pickupAt: string;
+  returnAt: string;
+  driverRequested: boolean;
+  estimate: { currency: "EGP"; total: number; finalAmountConfirmedAtBranch: true };
+  customer: {
+    fullName: string;
+    emailMasked: string;
+    phoneMasked: string;
+    nationality: string | null;
+    customerCategory: "EGYPTIAN" | "FOREIGN" | null;
+    addressMasked: string | null;
+    emergencyContactNameMasked: string | null;
+    emergencyContactPhoneMasked: string | null;
+  };
+  verification: { email: boolean; phone: boolean };
+  documents: Array<{ type: string; label: string; status: string }>;
+  consents: { policyVersion: string | null; requiredAccepted: boolean; marketingAccepted: boolean };
+  blockers: string[];
+  canSubmit: boolean;
+};
+
+const finalReviewCopy = {
+  ar: {
+    step: "الخطوة 5 من 6: المراجعة النهائية",
+    title: "راجع طلبك قبل إرساله للمبيعات",
+    copy: "نعرض بيانات التواصل بصورة مخفية. لن تظهر مستنداتك أو أرقام هويتك هنا.",
+    loading: "جارٍ تجهيز المراجعة النهائية...",
+    failed: "تعذر تحميل المراجعة النهائية. حاول مرة أخرى.",
+    trip: "تفاصيل الرحلة",
+    customer: "بيانات العميل المحمية",
+    readiness: "جاهزية الطلب",
+    documents: "المستندات",
+    email: "البريد الإلكتروني",
+    phone: "الهاتف",
+    address: "العنوان",
+    emergency: "جهة اتصال الطوارئ",
+    verified: "موثّق",
+    pending: "بانتظار التوثيق",
+    uploaded: "مرفوع بأمان",
+    missing: "مطلوب",
+    estimate: "التقدير الحالي",
+    branchAmount: "المبلغ النهائي يراجعه فريق المبيعات في فرع رحال. لا يوجد دفع إلكتروني.",
+    ready: "الطلب جاهز للإرسال للمراجعة.",
+    blocked: "أكمل البنود التالية قبل الإرسال:",
+    submit: "أرسل طلب الحجز للمراجعة",
+    submitting: "جارٍ إرسال الطلب بأمان...",
+    submitFailed: "تعذر إرسال الطلب. راجع المتطلبات وحاول مرة أخرى.",
+    submittedTitle: "تم إرسال طلبك للمراجعة",
+    submittedCopy: "استلم فريق المبيعات طلبك. هذا ليس حجزًا مؤكدًا بعد.",
+    submittedAt: "وقت الإرسال",
+    pendingReview: "قيد مراجعة المبيعات",
+    confirmationNotice:
+      "التأكيد النهائي يتطلب مراجعة المبيعات والحضور للفرع وتسجيل العربون وتوقيع مستندات الإيجار.",
+    driver: "السائق",
+    withDriver: "مع سائق",
+    selfDrive: "بدون سائق",
+  },
+  en: {
+    step: "Step 5 of 6: final review",
+    title: "Review your request before sending it to sales",
+    copy: "Contact details are masked. Your documents and identity numbers never appear here.",
+    loading: "Preparing the final review...",
+    failed: "The final review could not be loaded. Please try again.",
+    trip: "Trip details",
+    customer: "Protected customer details",
+    readiness: "Request readiness",
+    documents: "Documents",
+    email: "Email",
+    phone: "Phone",
+    address: "Address",
+    emergency: "Emergency contact",
+    verified: "Verified",
+    pending: "Verification pending",
+    uploaded: "Uploaded securely",
+    missing: "Required",
+    estimate: "Current estimate",
+    branchAmount:
+      "Sales confirms the final amount at the Rahal branch. There is no online payment.",
+    ready: "The request is ready to send for review.",
+    blocked: "Complete these items before submission:",
+    submit: "Send reservation request for review",
+    submitting: "Sending request securely...",
+    submitFailed: "The request could not be submitted. Review the requirements and try again.",
+    submittedTitle: "Your request was sent for review",
+    submittedCopy: "The sales team received your request. This is not a confirmed booking yet.",
+    submittedAt: "Submitted at",
+    pendingReview: "Pending sales review",
+    confirmationNotice:
+      "Final confirmation requires sales review, branch attendance, deposit recording, and signed rental documents.",
+    driver: "Driver",
+    withDriver: "With driver",
+    selfDrive: "Self-drive",
+  },
+} as const;
+
+const submissionBlockerCopy = {
+  ar: {
+    EMAIL_VERIFICATION_REQUIRED: "توثيق البريد الإلكتروني",
+    PHONE_VERIFICATION_REQUIRED: "توثيق رقم الهاتف",
+    CUSTOMER_DETAILS_REQUIRED: "استكمال بيانات العميل",
+    REQUIRED_CONSENTS_REQUIRED: "الموافقة على السياسات المطلوبة",
+    APPROVED_POLICY_REQUIRED: "اعتماد النسخة النهائية من السياسات قبل الإطلاق",
+    REQUIRED_DOCUMENTS_REQUIRED: "رفع كل المستندات المطلوبة",
+    VEHICLE_UNAVAILABLE: "اختيار موعد متاح لهذه السيارة",
+  },
+  en: {
+    EMAIL_VERIFICATION_REQUIRED: "Verify the email address",
+    PHONE_VERIFICATION_REQUIRED: "Verify the phone number",
+    CUSTOMER_DETAILS_REQUIRED: "Complete customer details",
+    REQUIRED_CONSENTS_REQUIRED: "Accept all required policies",
+    APPROVED_POLICY_REQUIRED: "Publish the approved production policy version",
+    REQUIRED_DOCUMENTS_REQUIRED: "Upload every required document",
+    VEHICLE_UNAVAILABLE: "Choose dates when this vehicle is available",
+  },
+} as const;
+
 function formatReservationDate(value: string, locale: PublicLocale) {
   return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-EG", {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
+}
+
+function formatReservationDateTime(value: string, locale: PublicLocale) {
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-EG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function isDateInputValue(value: string | undefined): value is string {
@@ -290,6 +419,15 @@ export function ReservationStart({
   } | null>(null);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [reservationReview, setReservationReview] = useState<ReservationReviewData | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [submittedReservation, setSubmittedReservation] = useState<{
+    id: string;
+    reference: string;
+    status: "PENDING_REVIEW";
+    submittedAt: string;
+  } | null>(null);
   const selectionParams = new URLSearchParams({
     vehicle: vehicle.id,
     pickup,
@@ -345,12 +483,35 @@ export function ReservationStart({
     return () => controller.abort();
   }, [copy.uploadFailed, savedConsents, savedDraft]);
 
+  useEffect(() => {
+    if (!savedDraft || !documentChecklist || submittedReservation) return;
+    const controller = new AbortController();
+    setReviewError(null);
+    fetch(`/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/review`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as { data?: ReservationReviewData };
+        if (!response.ok || !payload.data) throw new Error("reservation review unavailable");
+        setReservationReview(payload.data);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setReviewError(finalReviewCopy[locale].failed);
+      });
+    return () => controller.abort();
+  }, [documentChecklist, locale, savedDraft, submittedReservation]);
+
   function resetSavedDraft() {
     setReviewing(false);
     setSavedDraft(null);
     setSavedDetails(null);
     setSavedConsents(null);
     setDocumentChecklist(null);
+    setReservationReview(null);
+    setReviewError(null);
+    setSubmittedReservation(null);
     setConsentBundle(null);
     setAcceptedPolicies({});
     setSaveError(null);
@@ -365,12 +526,18 @@ export function ReservationStart({
     setAcceptedPolicies({});
     setConsentError(null);
     setDocumentError(null);
+    setReservationReview(null);
+    setReviewError(null);
+    setSubmittedReservation(null);
   }
 
   function invalidateConsents() {
     setSavedConsents(null);
     setDocumentChecklist(null);
     setDocumentError(null);
+    setReservationReview(null);
+    setReviewError(null);
+    setSubmittedReservation(null);
   }
 
   async function saveDraft() {
@@ -539,6 +706,36 @@ export function ReservationStart({
     }
   }
 
+  async function submitReservationRequest() {
+    if (!savedDraft || !reservationReview?.canSubmit) return;
+    setSubmittingRequest(true);
+    setReviewError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/submit`,
+        { method: "POST", credentials: "include" },
+      );
+      const payload = (await response.json()) as {
+        data?: {
+          id: string;
+          reference: string;
+          status: "PENDING_REVIEW";
+          submittedAt: string;
+        };
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.data) {
+        setReviewError(payload.error?.message ?? finalReviewCopy[locale].submitFailed);
+        return;
+      }
+      setSubmittedReservation(payload.data);
+    } catch {
+      setReviewError(finalReviewCopy[locale].submitFailed);
+    } finally {
+      setSubmittingRequest(false);
+    }
+  }
+
   return (
     <div
       className="public-site public-inner-page reservation-experience-page"
@@ -608,15 +805,17 @@ export function ReservationStart({
                   <span
                     className={
                       index <=
-                      (documentChecklist?.complete
-                        ? 4
-                        : savedConsents
-                          ? 3
-                          : savedDetails
-                            ? 2
-                            : savedDraft
-                              ? 1
-                              : 0)
+                      (submittedReservation
+                        ? 5
+                        : reservationReview
+                          ? 4
+                          : savedConsents
+                            ? 3
+                            : savedDetails
+                              ? 2
+                              : savedDraft
+                                ? 1
+                                : 0)
                         ? "is-active"
                         : ""
                     }
@@ -1025,6 +1224,160 @@ export function ReservationStart({
                         </div>
                       ) : null}
                       {documentError ? <p>{documentError}</p> : null}
+                    </section>
+                  ) : null}
+                  {savedDraft && documentChecklist ? (
+                    <section className="reservation-form reservation-final-review">
+                      <div className="reservation-form-heading">
+                        <span>05</span>
+                        <div>
+                          <h2>{finalReviewCopy[locale].title}</h2>
+                          <p>{finalReviewCopy[locale].copy}</p>
+                        </div>
+                      </div>
+                      {submittedReservation ? (
+                        <div className="reservation-submit-success" aria-live="polite">
+                          <span>{finalReviewCopy[locale].pendingReview}</span>
+                          <h3>{finalReviewCopy[locale].submittedTitle}</h3>
+                          <p>{finalReviewCopy[locale].submittedCopy}</p>
+                          <dl>
+                            <div>
+                              <dt>{copy.reference}</dt>
+                              <dd>{submittedReservation.reference}</dd>
+                            </div>
+                            <div>
+                              <dt>{finalReviewCopy[locale].submittedAt}</dt>
+                              <dd>
+                                {formatReservationDateTime(
+                                  submittedReservation.submittedAt,
+                                  locale,
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                          <strong>{finalReviewCopy[locale].confirmationNotice}</strong>
+                        </div>
+                      ) : reservationReview ? (
+                        <>
+                          <div className="reservation-review-grid">
+                            <article className="reservation-review-card">
+                              <span>{finalReviewCopy[locale].trip}</span>
+                              <h3>{reservationReview.vehicle.name}</h3>
+                              <dl>
+                                <div>
+                                  <dt>{copy.pickup}</dt>
+                                  <dd>
+                                    {formatReservationDateTime(reservationReview.pickupAt, locale)}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>{copy.return}</dt>
+                                  <dd>
+                                    {formatReservationDateTime(reservationReview.returnAt, locale)}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>{copy.branch}</dt>
+                                  <dd>{reservationReview.branch.name}</dd>
+                                </div>
+                                <div>
+                                  <dt>{finalReviewCopy[locale].driver}</dt>
+                                  <dd>
+                                    {reservationReview.driverRequested
+                                      ? finalReviewCopy[locale].withDriver
+                                      : finalReviewCopy[locale].selfDrive}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </article>
+                            <article className="reservation-review-card">
+                              <span>{finalReviewCopy[locale].customer}</span>
+                              <h3>{reservationReview.customer.fullName}</h3>
+                              <dl>
+                                <div>
+                                  <dt>{finalReviewCopy[locale].email}</dt>
+                                  <dd>{reservationReview.customer.emailMasked}</dd>
+                                </div>
+                                <div>
+                                  <dt>{finalReviewCopy[locale].phone}</dt>
+                                  <dd>{reservationReview.customer.phoneMasked}</dd>
+                                </div>
+                                <div>
+                                  <dt>{finalReviewCopy[locale].address}</dt>
+                                  <dd>{reservationReview.customer.addressMasked ?? "—"}</dd>
+                                </div>
+                                <div>
+                                  <dt>{finalReviewCopy[locale].emergency}</dt>
+                                  <dd>
+                                    {reservationReview.customer.emergencyContactNameMasked ?? "—"}
+                                    {reservationReview.customer.emergencyContactPhoneMasked
+                                      ? ` · ${reservationReview.customer.emergencyContactPhoneMasked}`
+                                      : ""}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </article>
+                            <article className="reservation-review-card reservation-review-card--wide">
+                              <span>{finalReviewCopy[locale].documents}</span>
+                              <ul className="reservation-review-documents">
+                                {reservationReview.documents.map((document) => (
+                                  <li key={document.type}>
+                                    <strong>{document.label}</strong>
+                                    <small>
+                                      {document.status === "MISSING" ||
+                                      document.status === "REJECTED"
+                                        ? finalReviewCopy[locale].missing
+                                        : finalReviewCopy[locale].uploaded}
+                                    </small>
+                                  </li>
+                                ))}
+                              </ul>
+                            </article>
+                          </div>
+                          <div className="reservation-review-total">
+                            <span>{finalReviewCopy[locale].estimate}</span>
+                            <strong>{formatEgp(reservationReview.estimate.total, locale)}</strong>
+                            <p>{finalReviewCopy[locale].branchAmount}</p>
+                          </div>
+                          <div
+                            className={`reservation-readiness${reservationReview.canSubmit ? " is-ready" : ""}`}
+                          >
+                            <span>{finalReviewCopy[locale].readiness}</span>
+                            {reservationReview.canSubmit ? (
+                              <strong>{finalReviewCopy[locale].ready}</strong>
+                            ) : (
+                              <>
+                                <strong>{finalReviewCopy[locale].blocked}</strong>
+                                <ul>
+                                  {reservationReview.blockers.map((blocker) => (
+                                    <li key={blocker}>
+                                      {submissionBlockerCopy[locale][
+                                        blocker as keyof (typeof submissionBlockerCopy)[typeof locale]
+                                      ] ?? blocker}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            className="button button--gold reservation-submit-button"
+                            disabled={!reservationReview.canSubmit || submittingRequest}
+                            onClick={() => void submitReservationRequest()}
+                            type="button"
+                          >
+                            {submittingRequest
+                              ? finalReviewCopy[locale].submitting
+                              : finalReviewCopy[locale].submit}
+                            <Icon name="arrow" size={18} />
+                          </button>
+                        </>
+                      ) : (
+                        <p>{finalReviewCopy[locale].loading}</p>
+                      )}
+                      {reviewError ? (
+                        <p className="reservation-review-error">{reviewError}</p>
+                      ) : null}
                     </section>
                   ) : null}
                 </div>

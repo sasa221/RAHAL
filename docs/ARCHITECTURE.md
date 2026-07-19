@@ -125,6 +125,8 @@ Cross-cutting concerns:
 
 PostgreSQL exclusion constraints are the preferred final enforcement mechanism for confirmed/active booking conflicts and operational blocks. Prisma may need raw SQL migrations for those constraints.
 
+Customer submission is a separate transactional boundary from booking confirmation. The review endpoint is read-only and returns masked contacts and safe document states. The submit transaction rereads verification, consent version, document rules, vehicle state, operational blocks, and confirmed/active booking overlap before conditionally moving only a `DRAFT` to `PENDING_REVIEW`. The same transaction records `submittedAt`, a reservation event, an in-app customer notification, and a minimal notification outbox payload. It never creates a booking or records a deposit.
+
 ## Notification architecture
 
 Use an outbox pattern:

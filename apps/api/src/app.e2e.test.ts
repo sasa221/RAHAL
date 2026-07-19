@@ -153,6 +153,63 @@ describe("RAHAL API", () => {
                 documentConsentAt: new Date(),
               }
             : null,
+        findOwnedDraftReview: async (id: string, customerId: string) => {
+          if (id !== "reservation-draft-e2e" || customerId !== authUser.id) return null;
+          const pickupAt = new Date();
+          pickupAt.setUTCDate(pickupAt.getUTCDate() + 2);
+          const returnAt = new Date(pickupAt);
+          returnAt.setUTCDate(returnAt.getUTCDate() + 3);
+          return {
+            id,
+            reference: "RHL-2026-123456",
+            status: "DRAFT",
+            pickupAt,
+            returnAt,
+            driverRequested: false,
+            estimatedTotal: { toNumber: () => 13_500 },
+            customerNameSnapshot: "Rahal Customer",
+            customerEmailSnapshot: "customer@example.com",
+            customerPhoneSnapshot: "+201001112222",
+            nationalitySnapshot: "Egyptian",
+            customerCategorySnapshot: "EGYPTIAN",
+            addressSnapshot: "Fictional Cairo address",
+            emergencyContactNameSnapshot: "Emergency Contact",
+            emergencyContactPhoneSnapshot: "+201009998888",
+            customerDetailsCompletedAt: new Date(),
+            termsVersion: "DEV-2026-07-19",
+            termsAcceptedAt: new Date(),
+            privacyConsentAt: new Date(),
+            documentConsentAt: new Date(),
+            operationalConsentAt: new Date(),
+            marketingConsentAt: null,
+            vehicle: {
+              id: "silver-executive",
+              nameAr: "سيدان تنفيذية فضية",
+              nameEn: "Silver Executive Sedan",
+              status: "AVAILABLE",
+              active: true,
+              archivedAt: null,
+            },
+            branch: {
+              id: "demo-branch-cairo",
+              nameAr: "فرع رحال القاهرة التجريبي",
+              nameEn: "Rahal Cairo Demo Branch",
+            },
+          };
+        },
+        hasSubmissionConflict: async () => false,
+        submitDraft: async (input: { draftId: string; customerId: string }) =>
+          input.draftId === "reservation-draft-e2e" && input.customerId === authUser.id
+            ? {
+                kind: "SUBMITTED",
+                data: {
+                  id: input.draftId,
+                  reference: "RHL-2026-123456",
+                  status: "PENDING_REVIEW",
+                  submittedAt: new Date("2026-07-19T18:00:00.000Z").toISOString(),
+                },
+              }
+            : { kind: "NOT_FOUND" },
         saveCustomerDetails: async (input: {
           draftId: string;
           reference: string;
@@ -487,5 +544,38 @@ describe("RAHAL API", () => {
         contentType: "image/png",
       })
       .expect(400);
+  });
+
+  it("returns a masked final review and blocks development policy submission", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/api/reservations/drafts/reservation-draft-e2e/review")
+      .set("Cookie", documentCookie)
+      .expect(200);
+
+    expect(response.body.data).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "DRAFT",
+      canSubmit: false,
+      blockers: expect.arrayContaining(["APPROVED_POLICY_REQUIRED"]),
+      customer: {
+        emailMasked: expect.stringContaining("***"),
+        phoneMasked: expect.stringContaining("••••"),
+      },
+    });
+    expect(JSON.stringify(response.body)).not.toContain("Fictional Cairo address");
+    expect(JSON.stringify(response.body)).not.toContain("private-document.png");
+  });
+
+  it("submits to pending review without ever confirming a booking", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/drafts/reservation-draft-e2e/submit")
+      .set("Cookie", documentCookie)
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "PENDING_REVIEW",
+    });
+    expect(response.body.data.status).not.toBe("CONFIRMED");
   });
 });

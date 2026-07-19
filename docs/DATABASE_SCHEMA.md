@@ -75,6 +75,8 @@ The existing consent timestamps now record required terms, privacy, document-pro
 
 The protected-document slice now records an explicit Egyptian/foreign customer category snapshot and database-backed `DocumentRequirementRule` records. Rules select document type, localized label, self-drive condition, allowed MIME types, and maximum size. `ReservationDocument` stores only private object keys and metadata; replacement and removal soft-delete prior metadata, while no storage key is returned to the browser.
 
+The submission slice adds nullable `Reservation.submittedAt`. A guarded transaction sets it only when a fully eligible `DRAFT` changes to `PENDING_REVIEW`, then writes the matching `ReservationEvent`, customer `Notification`, and privacy-minimized `NotificationEvent` outbox record. A `Booking` remains a separate later record and is never created by customer submission.
+
 ## Notifications
 
 - `notifications`: in-app notification records.

@@ -16,6 +16,8 @@ import type {
   ReservationConsents,
   ReservationCustomerDetails,
   ReservationDocumentChecklist,
+  ReservationReview,
+  SubmittedReservation,
   ReservationDraft,
 } from "@rahal/contracts";
 import type { Request } from "express";
@@ -97,5 +99,21 @@ export class ReservationsController {
     return {
       data: await this.reservations.deleteDocument(readAuthCookie(request), id, documentId),
     };
+  }
+
+  @Get("drafts/:id/review")
+  async reviewDraft(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<ReservationReview>> {
+    return { data: await this.reservations.getReview(readAuthCookie(request), id) };
+  }
+
+  @Post("drafts/:id/submit")
+  async submitDraft(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SubmittedReservation>> {
+    return { data: await this.reservations.submitReservation(readAuthCookie(request), id) };
   }
 }

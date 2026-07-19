@@ -463,6 +463,7 @@ model Reservation {
   documentConsentAt             DateTime?
   operationalConsentAt          DateTime?
   marketingConsentAt            DateTime?
+  submittedAt                   DateTime?
   preApprovalExpiresAt          DateTime?
   confirmedAt                   DateTime?
   deliveredAt                   DateTime?

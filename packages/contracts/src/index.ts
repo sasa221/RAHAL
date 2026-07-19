@@ -114,6 +114,57 @@ export type ReservationDocumentChecklist = {
   complete: boolean;
 };
 
+export type ReservationSubmissionBlocker =
+  | "EMAIL_VERIFICATION_REQUIRED"
+  | "PHONE_VERIFICATION_REQUIRED"
+  | "CUSTOMER_DETAILS_REQUIRED"
+  | "REQUIRED_CONSENTS_REQUIRED"
+  | "APPROVED_POLICY_REQUIRED"
+  | "REQUIRED_DOCUMENTS_REQUIRED"
+  | "VEHICLE_UNAVAILABLE";
+
+export type ReservationReview = {
+  draftId: string;
+  reference: string;
+  status: "DRAFT";
+  vehicle: { id: string; name: string };
+  branch: { id: string; name: string };
+  pickupAt: string;
+  returnAt: string;
+  driverRequested: boolean;
+  estimate: { currency: "EGP"; total: number; finalAmountConfirmedAtBranch: true };
+  customer: {
+    fullName: string;
+    emailMasked: string;
+    phoneMasked: string;
+    nationality: string | null;
+    customerCategory: "EGYPTIAN" | "FOREIGN" | null;
+    addressMasked: string | null;
+    emergencyContactNameMasked: string | null;
+    emergencyContactPhoneMasked: string | null;
+  };
+  verification: { email: boolean; phone: boolean };
+  documents: Array<{
+    type: ReservationDocumentType;
+    label: string;
+    status: "MISSING" | "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
+  }>;
+  consents: {
+    policyVersion: string | null;
+    requiredAccepted: boolean;
+    marketingAccepted: boolean;
+  };
+  blockers: ReservationSubmissionBlocker[];
+  canSubmit: boolean;
+};
+
+export type SubmittedReservation = {
+  id: string;
+  reference: string;
+  status: "PENDING_REVIEW";
+  submittedAt: string;
+};
+
 export type ReservationConsentBundle = {
   version: string;
   developmentOnly: boolean;

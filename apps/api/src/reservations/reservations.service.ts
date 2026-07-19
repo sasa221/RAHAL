@@ -13,6 +13,9 @@ import type {
   ReservationDocumentChecklist,
   ReservationDocumentType,
   ReservationDraft,
+  ReservationReview,
+  ReservationSubmissionBlocker,
+  SubmittedReservation,
 } from "@rahal/contracts";
 import { basename } from "node:path";
 import { AuthService } from "../auth/auth.service";
@@ -293,6 +296,155 @@ export class ReservationsService {
     return this.getDocumentChecklist(token, draftId);
   }
 
+  async getReview(token: string | undefined, draftId: string): Promise<ReservationReview> {
+    const session = await this.auth.getSession(token);
+    if (session.user.role !== "CUSTOMER") {
+      throw new ForbiddenException("Only customer accounts can review reservation drafts.");
+    }
+    const draft = await this.reservations.findOwnedDraftReview(draftId, session.user.id);
+    if (!draft) throw new NotFoundException("The reservation draft was not found.");
+
+    const rules = draft.customerCategorySnapshot
+      ? await this.reservations.findDocumentRequirementRules(draft.customerCategorySnapshot)
+      : [];
+    const applicableRules = rules.filter(
+      (rule) => !rule.requiresSelfDrive || !draft.driverRequested,
+    );
+    const storedDocuments = await this.reservations.findActiveDocuments(draftId);
+    const documents = applicableRules.map((rule) => {
+      const document = storedDocuments.find((item) => item.type === rule.documentType);
+      const reviewableStatus =
+        document && ["UPLOADED", "UNDER_REVIEW", "VERIFIED", "REJECTED"].includes(document.status)
+          ? (document.status as "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED")
+          : null;
+      return {
+        type: rule.documentType as ReservationDocumentType,
+        label: session.user.preferredLocale === "ar" ? rule.labelAr : rule.labelEn,
+        status: reviewableStatus ?? ("MISSING" as const),
+      };
+    });
+    const documentsComplete =
+      documents.length > 0 &&
+      documents.every((document) =>
+        ["UPLOADED", "UNDER_REVIEW", "VERIFIED"].includes(document.status),
+      );
+    const requiredAccepted = Boolean(
+      draft.termsVersion &&
+      draft.termsAcceptedAt &&
+      draft.privacyConsentAt &&
+      draft.documentConsentAt &&
+      draft.operationalConsentAt,
+    );
+    let approvedPolicy: boolean;
+    try {
+      const bundle = await this.getConsentBundle(session.user.preferredLocale);
+      approvedPolicy = Boolean(
+        requiredAccepted && !bundle.developmentOnly && draft.termsVersion === bundle.version,
+      );
+    } catch {
+      approvedPolicy = false;
+    }
+    const vehicleConflict = await this.reservations.hasSubmissionConflict(
+      draft.vehicle.id,
+      draft.pickupAt,
+      draft.returnAt,
+    );
+    const vehicleAvailable = Boolean(
+      draft.vehicle.active &&
+      !draft.vehicle.archivedAt &&
+      ["AVAILABLE", "PENDING_REQUEST"].includes(draft.vehicle.status) &&
+      draft.pickupAt > new Date() &&
+      !vehicleConflict,
+    );
+    const blockers: ReservationSubmissionBlocker[] = [];
+    if (!session.user.emailVerified) blockers.push("EMAIL_VERIFICATION_REQUIRED");
+    if (!session.user.phoneVerified) blockers.push("PHONE_VERIFICATION_REQUIRED");
+    if (!draft.customerDetailsCompletedAt) blockers.push("CUSTOMER_DETAILS_REQUIRED");
+    if (!requiredAccepted) blockers.push("REQUIRED_CONSENTS_REQUIRED");
+    if (!approvedPolicy) blockers.push("APPROVED_POLICY_REQUIRED");
+    if (!documentsComplete) blockers.push("REQUIRED_DOCUMENTS_REQUIRED");
+    if (!vehicleAvailable) blockers.push("VEHICLE_UNAVAILABLE");
+
+    const locale = session.user.preferredLocale;
+    return {
+      draftId: draft.id,
+      reference: draft.reference,
+      status: "DRAFT",
+      vehicle: {
+        id: draft.vehicle.id,
+        name: locale === "ar" ? draft.vehicle.nameAr : draft.vehicle.nameEn,
+      },
+      branch: {
+        id: draft.branch.id,
+        name: locale === "ar" ? draft.branch.nameAr : draft.branch.nameEn,
+      },
+      pickupAt: draft.pickupAt.toISOString(),
+      returnAt: draft.returnAt.toISOString(),
+      driverRequested: draft.driverRequested,
+      estimate: {
+        currency: "EGP",
+        total: draft.estimatedTotal.toNumber(),
+        finalAmountConfirmedAtBranch: true,
+      },
+      customer: {
+        fullName: draft.customerNameSnapshot ?? session.user.fullName,
+        emailMasked: maskEmail(draft.customerEmailSnapshot ?? session.user.email),
+        phoneMasked: maskPhone(draft.customerPhoneSnapshot ?? session.user.phone),
+        nationality: draft.nationalitySnapshot,
+        customerCategory: draft.customerCategorySnapshot,
+        addressMasked: maskText(draft.addressSnapshot),
+        emergencyContactNameMasked: maskName(draft.emergencyContactNameSnapshot),
+        emergencyContactPhoneMasked: draft.emergencyContactPhoneSnapshot
+          ? maskPhone(draft.emergencyContactPhoneSnapshot)
+          : null,
+      },
+      verification: {
+        email: session.user.emailVerified,
+        phone: session.user.phoneVerified,
+      },
+      documents,
+      consents: {
+        policyVersion: draft.termsVersion,
+        requiredAccepted,
+        marketingAccepted: Boolean(draft.marketingConsentAt),
+      },
+      blockers,
+      canSubmit: blockers.length === 0,
+    };
+  }
+
+  async submitReservation(
+    token: string | undefined,
+    draftId: string,
+  ): Promise<SubmittedReservation> {
+    const session = await this.auth.getSession(token);
+    if (session.user.role !== "CUSTOMER") {
+      throw new ForbiddenException("Only customer accounts can submit reservation requests.");
+    }
+    const result = await this.reservations.submitDraft({
+      draftId,
+      customerId: session.user.id,
+      locale: session.user.preferredLocale,
+    });
+    if (result.kind === "SUBMITTED") return result.data;
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("The reservation draft was not found.");
+    }
+    if (result.kind === "POLICY_NOT_APPROVED") {
+      throw new ConflictException("Approved production policies are required before submission.");
+    }
+    if (result.kind === "DOCUMENTS_INCOMPLETE") {
+      throw new ConflictException("Every required document must be uploaded before submission.");
+    }
+    if (result.kind === "VEHICLE_UNAVAILABLE") {
+      throw new ConflictException("The selected vehicle is no longer available for these dates.");
+    }
+    if (result.kind === "INVALID_STATUS") {
+      throw new ConflictException("The reservation is no longer an editable draft.");
+    }
+    throw new ConflictException("Complete verification and every required step before submission.");
+  }
+
   private async getDocumentContext(token: string | undefined, draftId: string) {
     const session = await this.auth.getSession(token);
     if (session.user.role !== "CUSTOMER") {
@@ -336,4 +488,23 @@ function safeOriginalName(value: string) {
   return basename(value)
     .replace(/[^\p{L}\p{N}._ -]/gu, "_")
     .slice(0, 120);
+}
+
+function maskEmail(value: string) {
+  const [name, domain] = value.split("@");
+  return `${name?.slice(0, 2) || "**"}***@${domain ?? "***"}`;
+}
+
+function maskPhone(value: string) {
+  return `${value.slice(0, 3)}••••${value.slice(-4)}`;
+}
+
+function maskText(value: string | null) {
+  if (!value) return null;
+  return `${Array.from(value).slice(0, 5).join("")}••••`;
+}
+
+function maskName(value: string | null) {
+  if (!value) return null;
+  return `${Array.from(value)[0] ?? "•"}•••`;
 }

@@ -89,6 +89,8 @@ Permissions must be enforced server-side. UI hiding is not authorization.
 
 An authenticated customer may save the dates/vehicle/driver selection as a `DRAFT` before completing verification. A draft is not a submitted request, does not notify sales, and does not reserve availability. Submission to `PENDING_REVIEW` remains blocked until both email and phone are verified and the required consent/document steps are complete.
 
+The implemented final-review endpoint exposes only masked customer contacts, safe document status labels, the EGP estimate, and explicit readiness blockers. The submit endpoint independently rechecks every prerequisite and availability inside one database transaction before moving to `PENDING_REVIEW`; it also records the status event, customer notification, and notification outbox event. It does not create a confirmed booking. The current `DEV-` policy bundle deliberately keeps submission disabled until approved production legal text is published.
+
 Required consent must be recorded separately for rental terms, privacy, private-document processing, and reservation operations against the exact active bilingual policy bundle version. Marketing consent is optional and must remain false unless the customer explicitly selects it. Development policy copy cannot enable production submission.
 
 The customer wizard contains:

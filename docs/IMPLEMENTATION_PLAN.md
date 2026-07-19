@@ -204,7 +204,7 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 
 Goal: persist the customer's first vehicle/date/driver selection safely without presenting it as a submitted request or confirmed booking.
 
-Status: first-step draft, secure customer-details, versioned-consent, and protected-document slices completed locally on 2026-07-19. Final review and verified submission steps are pending.
+Status: the customer wizard through final review and the guarded `DRAFT` to `PENDING_REVIEW` submission transition was completed locally on 2026-07-19. Production submission intentionally remains blocked while the active legal bundle is development-only.
 
 ### Completed first-step scope
 
@@ -229,14 +229,17 @@ Status: first-step draft, secure customer-details, versioned-consent, and protec
 - Owner-authorized JPEG, PNG, and PDF uploads validate configured size, MIME type, and file signatures.
 - Private storage keys stay server-side; replacements and removals soft-delete metadata and remove local development objects.
 - The bilingual responsive document step reports progress without asking for or displaying identity numbers.
+- The bilingual final review returns only masked contact information and safe document statuses.
+- Readiness blockers explain missing verification, details, consent, approved policy, documents, or vehicle availability.
+- Submission authoritatively rechecks the database and atomically writes `submittedAt`, the `PENDING_REVIEW` transition event, an in-app notification, and an outbox event.
+- Repeated submission of the same pending request is idempotent and never creates a confirmed booking.
 
 ### Remaining scope
 
-- Verified contact review before final submission.
 - Administrator management screens for required-document rules and the approved production private-storage adapter.
 - Approved production legal copy to replace the development-only consent bundle.
-- Final review and verified transition from `DRAFT` to `PENDING_REVIEW`.
-- Availability recheck, notification outbox events, customer draft listing, and expiry/abandonment handling.
+- Customer draft/request listing and expiry/abandonment handling.
+- Notification worker delivery and sales-recipient routing for the existing outbox event.
 
 ### Acceptance criteria
 
@@ -257,6 +260,8 @@ Status: first-step draft, secure customer-details, versioned-consent, and protec
 - Consent bundle/version tests, stale-version rejection, required-consent validation, and optional-marketing coverage.
 - Static bilingual UI coverage for draft/not-confirmed copy, customer fields, separate consent controls, privacy exclusions, and same-origin API calls.
 - API integration coverage for valid private upload, file-signature rejection, and storage-key redaction.
+- API integration coverage for masked review data, development-policy blocking, and `PENDING_REVIEW` submission without confirmation.
+- Static bilingual UI coverage for review/submit routes, readiness blockers, no-online-payment copy, and pending-review success state.
 
 ## Decisions not blocking Milestone 1
 
