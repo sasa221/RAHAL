@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { ReservationStart } from "../../../components/reservation-start";
-import { publicVehicles } from "../../../lib/public-content";
+import { getPublicVehicle } from "../../../lib/public-api";
 
 export default async function EnglishReservationPage({
   searchParams,
@@ -11,7 +11,7 @@ export default async function EnglishReservationPage({
   const firstValue = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
   const vehicleId = firstValue(query.vehicle);
-  const vehicle = publicVehicles.find((item) => item.id === vehicleId);
+  const vehicle = vehicleId ? await getPublicVehicle(vehicleId) : null;
   if (!vehicle) notFound();
   return (
     <ReservationStart

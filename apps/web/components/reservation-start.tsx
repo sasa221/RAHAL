@@ -15,8 +15,18 @@ import { Footer, Header, Icon } from "./public-home";
 
 const requestCopy = {
   ar: {
+    saveDraft: "احفظ المسودة بأمان",
+    savingDraft: "جارٍ حفظ المسودة...",
+    savedDraft: "تم حفظ المسودة",
+    reference: "رقم المسودة",
+    estimate: "التقدير الحالي",
+    signIn: "سجّل الدخول للمتابعة",
+    authRequired: "سجّل الدخول بحساب العميل لحفظ اختياراتك.",
+    saveFailed: "تعذر حفظ المسودة الآن. حاول مرة أخرى.",
+    chooseDriver: "اختر هل تريد سائقًا قبل حفظ المسودة.",
+    draftNotice: "هذه مسودة فقط وليست طلبًا مرسلًا أو حجزًا مؤكدًا.",
     title: "ابدأ طلب الحجز",
-    copy: "راجع اختيار العربية وحدد المواعيد ونظام السائق. هذه معاينة للخطوة الأولى ولا ترسل بيانات حقيقية.",
+    copy: "راجع اختيار العربية والمواعيد ونظام السائق، وبعدها احفظ الخطوة الأولى بأمان في حسابك.",
     step: "الخطوة 1 من 6: المواعيد",
     vehicle: "العربية المختارة",
     pickup: "تاريخ الاستلام",
@@ -43,8 +53,18 @@ const requestCopy = {
     reviewReady: "اختياراتك جاهزة للمراجعة",
   },
   en: {
+    saveDraft: "Save draft securely",
+    savingDraft: "Saving draft...",
+    savedDraft: "Draft saved",
+    reference: "Draft reference",
+    estimate: "Current estimate",
+    signIn: "Sign in to continue",
+    authRequired: "Sign in with a customer account to save your selections.",
+    saveFailed: "The draft could not be saved. Please try again.",
+    chooseDriver: "Choose whether you want a driver before saving the draft.",
+    draftNotice: "This is only a draft. It is not a submitted request or a confirmed booking.",
     title: "Start reservation request",
-    copy: "Review the selected vehicle, dates, and driver option. This is a step-one preview and sends no real data.",
+    copy: "Review the selected vehicle, dates, and driver option, then securely save this first step to your account.",
     step: "Step 1 of 6: rental dates",
     vehicle: "Selected vehicle",
     pickup: "Pickup date",
@@ -120,13 +140,22 @@ export function ReservationStart({
   const [driver, setDriver] = useState(
     vehicle.driverPolicyKey === "self-drive"
       ? "self-drive"
-      : requestedDriver === "with-driver"
+      : vehicle.driverPolicyKey === "required"
         ? "with-driver"
-        : requestedDriver === "self"
-          ? "self-drive"
-          : "later",
+        : requestedDriver === "with-driver"
+          ? "with-driver"
+          : requestedDriver === "self"
+            ? "self-drive"
+            : "later",
   );
   const [reviewing, setReviewing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<{
+    reference: string;
+    estimatedTotalEgp: number;
+  } | null>(null);
   const selectionParams = new URLSearchParams({
     vehicle: vehicle.id,
     pickup,
@@ -137,6 +166,53 @@ export function ReservationStart({
   const backParams = new URLSearchParams(selectionParams);
   backParams.delete("vehicle");
   const backHref = `${localizedPath(locale, "/cars")}/${vehicle.id}?${backParams.toString()}`;
+
+  function resetSavedDraft() {
+    setReviewing(false);
+    setSavedDraft(null);
+    setSaveError(null);
+    setAuthRequired(false);
+  }
+
+  async function saveDraft() {
+    if (driver === "later") {
+      setSaveError(copy.chooseDriver);
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    setAuthRequired(false);
+    try {
+      const response = await fetch("/api/reservations/drafts", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          vehicleId: vehicle.id,
+          pickupDate: pickup,
+          returnDate,
+          driverRequested: driver === "with-driver",
+        }),
+      });
+      const payload = (await response.json()) as {
+        data?: { reference: string; estimatedTotalEgp: number };
+        error?: { message?: string };
+      };
+      if (response.status === 401) {
+        setAuthRequired(true);
+        return;
+      }
+      if (!response.ok || !payload.data) {
+        setSaveError(payload.error?.message ?? copy.saveFailed);
+        return;
+      }
+      setSavedDraft(payload.data);
+    } catch {
+      setSaveError(copy.saveFailed);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div
@@ -234,7 +310,7 @@ export function ReservationStart({
                       const nextMinimumReturn = addDays(nextPickup, vehicle.minimumDays);
                       setPickup(nextPickup);
                       if (returnDate < nextMinimumReturn) setReturnDate(nextMinimumReturn);
-                      setReviewing(false);
+                      resetSavedDraft();
                     }}
                     required
                     type="date"
@@ -251,7 +327,7 @@ export function ReservationStart({
                     min={addDays(pickup || minimumDate, vehicle.minimumDays)}
                     onChange={(event) => {
                       setReturnDate(event.target.value);
-                      setReviewing(false);
+                      resetSavedDraft();
                     }}
                     required
                     type="date"
@@ -266,15 +342,20 @@ export function ReservationStart({
                 <label className="field">
                   <span>{copy.driver}</span>
                   <select
-                    disabled={vehicle.driverPolicyKey === "self-drive"}
+                    disabled={
+                      vehicle.driverPolicyKey === "self-drive" ||
+                      vehicle.driverPolicyKey === "required"
+                    }
                     onChange={(event) => {
                       setDriver(event.target.value);
-                      setReviewing(false);
+                      resetSavedDraft();
                     }}
                     value={driver}
                   >
                     {vehicle.driverPolicyKey === "self-drive" ? (
                       <option value="self-drive">{copy.selfDrive}</option>
+                    ) : vehicle.driverPolicyKey === "required" ? (
+                      <option value="with-driver">{copy.withDriver}</option>
                     ) : (
                       <>
                         <option value="later">{copy.optional}</option>
@@ -330,6 +411,38 @@ export function ReservationStart({
               ) : null}
               <p>{copy.next}</p>
               <div className="reservation-assurance__notice">{copy.notice}</div>
+              {reviewing ? (
+                <div aria-live="polite">
+                  {savedDraft ? (
+                    <div className="reservation-assurance__notice">
+                      <strong>{copy.savedDraft}</strong>
+                      <p>
+                        {copy.reference}: {savedDraft.reference}
+                      </p>
+                      <p>
+                        {copy.estimate}: {formatEgp(savedDraft.estimatedTotalEgp, locale)}
+                      </p>
+                      <small>{copy.draftNotice}</small>
+                    </div>
+                  ) : (
+                    <button
+                      className="button button--dark"
+                      disabled={saving}
+                      onClick={() => void saveDraft()}
+                      type="button"
+                    >
+                      {saving ? copy.savingDraft : copy.saveDraft}
+                      <Icon name="arrow" size={18} />
+                    </button>
+                  )}
+                  {authRequired ? (
+                    <p>
+                      {copy.authRequired} <a href={localizedPath(locale, "/auth")}>{copy.signIn}</a>
+                    </p>
+                  ) : null}
+                  {saveError ? <p>{saveError}</p> : null}
+                </div>
+              ) : null}
             </aside>
           </div>
         </div>

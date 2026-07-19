@@ -8,6 +8,7 @@ import { VehiclesRepository } from "./vehicles/vehicles.repository";
 import { AuthRepository } from "./auth/auth.repository";
 import { PasswordService } from "./auth/password.service";
 import { hashSessionToken } from "./auth/auth.service";
+import { ReservationsRepository } from "./reservations/reservations.repository";
 
 const fakeVehicles = [
   {
@@ -102,6 +103,33 @@ describe("RAHAL API", () => {
       .useValue({
         hash: async () => "secure-password-hash",
         verify: async (password: string) => password === "correct-customer-password",
+      })
+      .overrideProvider(ReservationsRepository)
+      .useValue({
+        findVehicle: async () => ({
+          id: "silver-executive",
+          branchId: "demo-branch-cairo",
+          minimumRentalDays: 2,
+          driverPolicy: "OPTIONAL",
+          dailyRate: { toNumber: () => 4500 },
+          driverCharge: { toNumber: () => 700 },
+        }),
+        saveDraft: async (input: {
+          vehicle: { id: string };
+          pickupAt: Date;
+          returnAt: Date;
+          driverRequested: boolean;
+          rentalDays: number;
+        }) => ({
+          id: "reservation-draft-e2e",
+          reference: "RHL-2026-123456",
+          status: "DRAFT",
+          vehicleId: input.vehicle.id,
+          pickupAt: input.pickupAt.toISOString(),
+          returnAt: input.returnAt.toISOString(),
+          driverRequested: input.driverRequested,
+          estimatedTotalEgp: 4500 * input.rentalDays,
+        }),
       })
       .compile();
 
@@ -214,5 +242,35 @@ describe("RAHAL API", () => {
       .send({ identifier: authUser.email, password: "" })
       .expect(400);
     expect(response.body.error).toMatchObject({ code: "BAD_REQUEST", statusCode: 400 });
+  });
+
+  it("saves an authenticated reservation draft without confirming a booking", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+    const pickup = new Date();
+    pickup.setUTCDate(pickup.getUTCDate() + 2);
+    const returnDate = new Date(pickup);
+    returnDate.setUTCDate(returnDate.getUTCDate() + 3);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/drafts")
+      .set("Cookie", cookie)
+      .send({
+        vehicleId: "silver-executive",
+        pickupDate: pickup.toISOString().slice(0, 10),
+        returnDate: returnDate.toISOString().slice(0, 10),
+        driverRequested: false,
+      })
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "DRAFT",
+      vehicleId: "silver-executive",
+    });
+    expect(response.body.data.status).not.toBe("CONFIRMED");
   });
 });

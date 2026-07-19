@@ -8,8 +8,8 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 
 - The repository is a pnpm monorepo with `apps/web`, `apps/api`, and `packages/database`.
 - Git is initialized and the Milestone 1 and public-web baselines are committed.
-- The web app has bilingual home, fleet, vehicle-detail, availability, and reservation-preview routes using Next.js 16 and React 19.
-- The API has health, database-backed vehicle, and active-branch endpoints.
+- The web app has bilingual home, database-backed fleet, vehicle-detail, availability, and authenticated reservation-draft routes using Next.js 16 and React 19.
+- The API has health, database-backed vehicle, active-branch, authentication, verification, and reservation-draft endpoints.
 - The Prisma 7 package contains the Milestone 3 domain baseline, a reviewed SQL migration, and a repeatable fictional seed.
 - Docker Compose provides PostgreSQL on host port `5433` to avoid collisions with a workstation PostgreSQL service on `5432`.
 - Generated clients, build output, dependencies, logs, and large Stitch ZIP exports remain ignored artifacts.
@@ -86,6 +86,8 @@ Permissions must be enforced server-side. UI hiding is not authorization.
 - Sign in, registration, verification, and password reset.
 
 ## Reservation request requirements
+
+An authenticated customer may save the dates/vehicle/driver selection as a `DRAFT` before completing verification. A draft is not a submitted request, does not notify sales, and does not reserve availability. Submission to `PENDING_REVIEW` remains blocked until both email and phone are verified and the required consent/document steps are complete.
 
 The customer wizard contains:
 

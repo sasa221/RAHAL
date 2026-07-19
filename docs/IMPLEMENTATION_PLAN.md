@@ -200,6 +200,45 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 - API integration tests for cookie flags, secret-free responses, session lookup, and payload validation.
 - Future verification/recovery tests must include expiry, reuse, resend, attempt limits, and session revocation.
 
+## Milestone 5: Reservation wizard and draft persistence
+
+Goal: persist the customer's first vehicle/date/driver selection safely without presenting it as a submitted request or confirmed booking.
+
+Status: first-step draft slice completed locally on 2026-07-19. The remaining customer details, protected documents, consent, review, and verified submission steps are pending.
+
+### Completed first-step scope
+
+- Database-backed reservation pages support every active public vehicle.
+- Customer-session authentication is enforced by the API before draft persistence.
+- Pickup/return dates, vehicle minimum duration, and driver policy are revalidated server-side.
+- Vehicle and driver rates are snapshotted and an EGP estimate is stored with the draft.
+- Human-readable `RHL-YYYY-NNNNNN` references are generated with collision retry.
+- Repeated identical first-step saves return the existing draft instead of creating duplicates.
+- Draft creation and its initial status event are written in one transaction.
+- The bilingual UI clearly distinguishes a saved draft from submission and confirmation.
+
+### Remaining scope
+
+- Customer details and verified contact review.
+- Configurable required-document rules and private document upload flow.
+- Terms, privacy, document, and operational consent capture with policy versions.
+- Final review and verified transition from `DRAFT` to `PENDING_REVIEW`.
+- Availability recheck, notification outbox events, customer draft listing, and expiry/abandonment handling.
+
+### Acceptance criteria
+
+- Visitors and staff accounts cannot persist customer reservation drafts.
+- Dates and driver options are never trusted from the browser without server validation.
+- Saving a draft never changes vehicle availability or creates a confirmed booking.
+- Stored estimates use rate snapshots and EGP only.
+- Final submission remains unavailable until verification, documents, and consent are complete.
+
+### Tests
+
+- Unit coverage for future dates, minimum duration, customer role, and driver-policy rules.
+- API integration coverage for session-cookie authorization and `DRAFT` status.
+- Static bilingual UI coverage for the draft/not-confirmed copy and same-origin API call.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

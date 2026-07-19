@@ -4,9 +4,10 @@ import { BranchesModule } from "./branches/branches.module";
 import { DatabaseModule } from "./database/database.module";
 import { VehiclesModule } from "./vehicles/vehicles.module";
 import { AuthModule } from "./auth/auth.module";
+import { ReservationsModule } from "./reservations/reservations.module";
 
 @Module({
-  imports: [DatabaseModule, VehiclesModule, BranchesModule, AuthModule],
+  imports: [DatabaseModule, VehiclesModule, BranchesModule, AuthModule, ReservationsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

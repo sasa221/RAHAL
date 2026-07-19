@@ -56,6 +56,17 @@ export type PublicVehicle = {
   status: "available" | "review";
 };
 
+export type ReservationDraft = {
+  id: string;
+  reference: string;
+  status: "DRAFT";
+  vehicleId: string;
+  pickupAt: string;
+  returnAt: string;
+  driverRequested: boolean;
+  estimatedTotalEgp: number;
+};
+
 export type BranchSummary = {
   id: string;
   nameAr: string;

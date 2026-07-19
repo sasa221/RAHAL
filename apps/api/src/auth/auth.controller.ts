@@ -3,21 +3,12 @@ import type { ApiSuccess, AuthSession } from "@rahal/contracts";
 import { createHmac } from "node:crypto";
 import type { Request, Response } from "express";
 import { loadApiConfig } from "../config";
+import { authCookieName, readAuthCookie } from "./auth-cookie";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
 import { ConfirmVerificationDto, LoginDto, RegisterDto, RequestVerificationDto } from "./auth.dto";
 import { AuthService, type AuthRequestContext } from "./auth.service";
 
-const cookieName = "rahal_session";
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
-
-function readCookie(request: Request) {
-  const cookies = request.headers.cookie?.split(";") ?? [];
-  for (const cookie of cookies) {
-    const [name, ...value] = cookie.trim().split("=");
-    if (name === cookieName) return decodeURIComponent(value.join("="));
-  }
-  return undefined;
-}
 
 @Controller("auth")
 export class AuthController {
@@ -56,7 +47,7 @@ export class AuthController {
 
   @Get("session")
   async session(@Req() request: Request): Promise<ApiSuccess<AuthSession>> {
-    return { data: await this.auth.getSession(readCookie(request)) };
+    return { data: await this.auth.getSession(readAuthCookie(request)) };
   }
 
   @Delete("session")
@@ -64,8 +55,8 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiSuccess<{ loggedOut: true }>> {
-    await this.auth.logout(readCookie(request), this.context(request));
-    response.clearCookie(cookieName, this.cookieOptions());
+    await this.auth.logout(readAuthCookie(request), this.context(request));
+    response.clearCookie(authCookieName, this.cookieOptions());
     return { data: { loggedOut: true } };
   }
 
@@ -78,7 +69,7 @@ export class AuthController {
       15 * 60 * 1000,
     );
     return {
-      data: await this.auth.requestVerification(readCookie(request), input, context),
+      data: await this.auth.requestVerification(readAuthCookie(request), input, context),
     };
   }
 
@@ -91,7 +82,7 @@ export class AuthController {
       15 * 60 * 1000,
     );
     return {
-      data: await this.auth.confirmVerification(readCookie(request), input, context),
+      data: await this.auth.confirmVerification(readAuthCookie(request), input, context),
     };
   }
 
@@ -113,6 +104,6 @@ export class AuthController {
   }
 
   private setSessionCookie(response: Response, token: string) {
-    response.cookie(cookieName, token, { ...this.cookieOptions(), maxAge: sessionLifetimeMs });
+    response.cookie(authCookieName, token, { ...this.cookieOptions(), maxAge: sessionLifetimeMs });
   }
 }

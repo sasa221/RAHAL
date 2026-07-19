@@ -81,14 +81,17 @@ describe("public multi-page experience", () => {
     expect(details).not.toContain("online payment");
   });
 
-  it("provides a non-persistent first reservation step with branch-only confirmation copy", () => {
+  it("persists a safe first-step draft without claiming a confirmed booking", () => {
     const arabicRoute = read("apps/web/app/reservation/page.tsx");
     const englishRoute = read("apps/web/app/en/reservation/page.tsx");
 
     expect(arabicRoute).toMatch(/<ReservationStart\s+locale="ar"/);
     expect(englishRoute).toMatch(/<ReservationStart\s+locale="en"/);
     expect(reservation).toContain("event.preventDefault()");
-    expect(reservation).toContain("sends no real data");
+    expect(reservation).toContain('fetch("/api/reservations/drafts"');
+    expect(reservation).toContain('credentials: "include"');
+    expect(reservation).toContain("This is only a draft");
+    expect(reservation).toContain("It is not a submitted request or a confirmed booking");
     expect(reservation).toContain("deposit recording");
     expect(reservation).not.toContain('type="file"');
     expect(reservation).toContain("requestedPickup");
