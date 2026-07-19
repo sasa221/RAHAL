@@ -70,6 +70,10 @@ describe("public multi-page experience", () => {
     expect(details).toContain("aria-pressed={selectedImage.id === image.id}");
     expect(details).toContain("vehicle-gallery__assurances");
     expect(details).toContain("mobile-request-bar");
+    expect(details).toContain("<ExperienceMotion />");
+    expect(details).toContain("vehicle-cinematic__image");
+    expect(details).toContain("request-experience");
+    expect(details).toContain("data-reveal");
     expect(details).toContain("The deposit is recorded at the branch");
     expect(details).not.toContain("online payment");
   });

@@ -11,6 +11,7 @@ import {
   type PublicLocale,
   type PublicVehicle,
 } from "../lib/public-content";
+import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
 
 const detailsCopy = {
@@ -55,6 +56,12 @@ const detailsCopy = {
     priceNote: "العربون يسجل داخل الفرع.",
     clearBefore: "واضحة قبل الطلب",
     noPersonalData: "بدون بيانات شخصية",
+    heroCopy: "راحة محسوبة، حضور واضح، وتفاصيل تعرفها قبل ما تبدأ طلبك.",
+    requestEyebrow: "طلب واضح من البداية",
+    requestTitle: "اختيارك جاهز للمراجعة.",
+    requestCopy:
+      "راجع التقدير، وبعدها ابعت الطلب لفريق المبيعات عشان يتأكد من التوافر ويتواصل معك.",
+    explore: "اكتشف التفاصيل",
   },
   en: {
     home: "Home",
@@ -101,6 +108,12 @@ const detailsCopy = {
     priceNote: "The deposit is recorded at the branch.",
     clearBefore: "Clear before requesting",
     noPersonalData: "No personal data",
+    heroCopy: "Considered comfort, confident presence, and every detail clear before you request.",
+    requestEyebrow: "A CLEAR REQUEST FROM THE START",
+    requestTitle: "Your selection, ready for review.",
+    requestCopy:
+      "Review the estimate, then send your request to the sales team to confirm availability and contact you.",
+    explore: "Explore the details",
   },
 } as const;
 
@@ -154,88 +167,121 @@ export function VehicleDetails({
       dir={content.dir}
       lang={content.htmlLang}
     >
+      <ExperienceMotion />
       <a className="skip-link" href="#vehicle-main">
         {content.skip}
       </a>
       <Header locale={locale} languageHref={alternateHref} />
 
       <main className="vehicle-details" id="vehicle-main">
-        <div className="container">
-          <nav className="breadcrumbs" aria-label={locale === "ar" ? "مسار الصفحة" : "Breadcrumb"}>
-            <a href={localizedPath(locale)}>{copy.home}</a>
-            <span aria-hidden="true">/</span>
-            <a href={fleetHref}>{copy.back}</a>
-            <span aria-hidden="true">/</span>
-            <span>{vehicle.name[locale]}</span>
-          </nav>
+        <section className="vehicle-cinematic vehicle-gallery__main">
+          <Image
+            alt={selectedImage.imageAlt[locale]}
+            className="vehicle-cinematic__image"
+            fill
+            priority
+            sizes="100vw"
+            src={selectedImage.image}
+          />
+          <span className="vehicle-cinematic__overlay" aria-hidden="true" />
+          <span className="vehicle-cinematic__grain" aria-hidden="true" />
+          <span className="vehicle-cinematic__grid" aria-hidden="true" />
 
-          <header className="vehicle-detail-heading">
-            <div>
-              <span className="eyebrow">{vehicle.category[locale]} / RAHAL</span>
+          <div className="container vehicle-cinematic__inner">
+            <nav
+              className="breadcrumbs"
+              aria-label={locale === "ar" ? "مسار الصفحة" : "Breadcrumb"}
+            >
+              <a href={localizedPath(locale)}>{copy.home}</a>
+              <span aria-hidden="true">/</span>
+              <a href={fleetHref}>{copy.back}</a>
+              <span aria-hidden="true">/</span>
+              <span>{vehicle.name[locale]}</span>
+            </nav>
+
+            <div className="vehicle-cinematic__content">
+              <div className="vehicle-cinematic__kicker">
+                <span className="eyebrow">{vehicle.category[locale]} / RAHAL</span>
+                <span className={`status-badge status-badge--${vehicle.status}`}>
+                  <span aria-hidden="true" />
+                  {vehicle.status === "available" ? copy.available : copy.review}
+                </span>
+              </div>
               <h1>{vehicle.name[locale]}</h1>
-            </div>
-            <div className="vehicle-detail-heading__meta">
-              <span className={`status-badge status-badge--${vehicle.status}`}>
-                <span aria-hidden="true" />
-                {vehicle.status === "available" ? copy.available : copy.review}
-              </span>
-              <p>
-                <small>{copy.from}</small>
-                <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
-                <span>{copy.perDay}</span>
-              </p>
-            </div>
-          </header>
-
-          <div className="vehicle-details__layout">
-            <div className="vehicle-gallery-shell">
-              <div className="vehicle-gallery__thumbs" aria-label={copy.gallery}>
-                {gallery.map((image, index) => (
-                  <button
-                    aria-label={`${copy.showImage}: ${image.name[locale]}`}
-                    aria-pressed={selectedImage.id === image.id}
-                    className={selectedImage.id === image.id ? "is-active" : ""}
-                    key={image.id}
-                    onClick={() => setSelectedImage(image)}
-                    type="button"
-                  >
-                    <Image alt="" fill sizes="160px" src={image.image} />
-                    <span aria-hidden="true">0{index + 1}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="vehicle-gallery__main">
-                <Image
-                  alt={selectedImage.imageAlt[locale]}
-                  fill
-                  priority
-                  sizes="(max-width: 900px) 100vw, 66vw"
-                  src={selectedImage.image}
-                />
-                <span className="vehicle-gallery__caption">
-                  {copy.selectedImage} / {selectedImage.name[locale]}
-                </span>
-              </div>
-
-              <div className="vehicle-gallery__assurances">
-                <span>
-                  <Icon name="pin" size={18} />
-                  {copy.branch}
-                </span>
-                <span>
-                  <Icon name="shield" size={18} />
-                  {copy.salesReview}
-                </span>
-                <span>
-                  <Icon name="check" size={18} />
-                  {copy.egpOnly}
-                </span>
+              <p>{copy.heroCopy}</p>
+              <div className="vehicle-cinematic__action">
+                <p>
+                  <small>{copy.from}</small>
+                  <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
+                  <span>{copy.perDay}</span>
+                </p>
+                <a href={requestHref}>
+                  {copy.request}
+                  <Icon name="arrow" size={18} />
+                </a>
               </div>
             </div>
 
-            <aside className="request-summary" id="request-summary">
-              <span className="request-summary__eyebrow">RAHAL / REQUEST</span>
+            <div className="vehicle-gallery__thumbs" aria-label={copy.gallery}>
+              {gallery.map((image, index) => (
+                <button
+                  aria-label={`${copy.showImage}: ${image.name[locale]}`}
+                  aria-pressed={selectedImage.id === image.id}
+                  className={selectedImage.id === image.id ? "is-active" : ""}
+                  key={image.id}
+                  onClick={() => setSelectedImage(image)}
+                  type="button"
+                >
+                  <Image alt="" fill sizes="130px" src={image.image} />
+                  <span aria-hidden="true">0{index + 1}</span>
+                </button>
+              ))}
+            </div>
+
+            <span className="vehicle-gallery__caption">
+              {copy.selectedImage} / {selectedImage.name[locale]}
+            </span>
+            <a className="vehicle-cinematic__scroll" href="#vehicle-story">
+              <span aria-hidden="true" />
+              {copy.explore}
+            </a>
+          </div>
+        </section>
+
+        <section className="vehicle-story" id="vehicle-story" data-reveal>
+          <div className="container vehicle-gallery__assurances">
+            <span>
+              <Icon name="pin" size={18} />
+              {copy.branch}
+            </span>
+            <span>
+              <Icon name="shield" size={18} />
+              {copy.salesReview}
+            </span>
+            <span>
+              <Icon name="check" size={18} />
+              {copy.egpOnly}
+            </span>
+          </div>
+        </section>
+
+        <div className="container">
+          <section className="request-experience" id="request-summary" data-reveal>
+            <div className="request-experience__intro">
+              <span className="eyebrow">{copy.requestEyebrow}</span>
+              <h2>{copy.requestTitle}</h2>
+              <p>{copy.requestCopy}</p>
+              <div className="request-summary__notice">
+                <Icon name="shield" size={19} />
+                <div>
+                  <strong>{copy.requestNotice}</strong>
+                  <p>{copy.requestSteps}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="request-experience__price">
+              <span>RAHAL / REQUEST</span>
               <div className="request-summary__rates">
                 <div>
                   <span>{copy.daily}</span>
@@ -251,28 +297,18 @@ export function VehicleDetails({
                 <strong>{formatEgp(vehicle.dailyRateEgp * vehicle.minimumDays, locale)}</strong>
                 <small>{copy.estimateNote}</small>
               </div>
-              <div className="request-summary__branch">
-                <Icon name="pin" size={18} />
-                {copy.branch}
-              </div>
               <a className="button button--gold" href={requestHref}>
                 {copy.request}
                 <Icon name="arrow" size={18} />
               </a>
               <small className="request-summary__payment-note">{copy.priceNote}</small>
-              <div className="request-summary__notice">
-                <Icon name="shield" size={19} />
-                <div>
-                  <strong>{copy.requestNotice}</strong>
-                  <p>{copy.requestSteps}</p>
-                </div>
-              </div>
-            </aside>
-          </div>
+            </div>
+          </section>
 
           <section
             className="details-section details-section--specs"
             aria-labelledby="specifications-title"
+            data-reveal
           >
             <div className="details-section__heading details-section__heading--editorial">
               <div>
@@ -301,6 +337,7 @@ export function VehicleDetails({
           <section
             className="details-section details-section--policies"
             aria-labelledby="policies-title"
+            data-reveal
           >
             <div className="details-section__heading details-section__heading--editorial">
               <div>
@@ -329,6 +366,7 @@ export function VehicleDetails({
           <section
             className="details-section availability-calendar"
             aria-labelledby="availability-calendar-title"
+            data-reveal
           >
             <div className="details-section__heading details-section__heading--split">
               <div>
