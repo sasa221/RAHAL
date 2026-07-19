@@ -39,6 +39,14 @@ type Review = QueueItem & {
   }>;
 };
 
+type DecisionResult = {
+  id: string;
+  reference: string;
+  status: "MORE_INFORMATION_REQUIRED" | "PRE_APPROVED" | "REJECTED";
+  decidedAt: string;
+  expiresAt: string | null;
+};
+
 const copy = {
   ar: {
     brand: "رحال / المبيعات",
@@ -85,6 +93,24 @@ const copy = {
     claimFailed: "تعذر استلام الطلب؛ ربما استلمه موظف آخر.",
     safety:
       "لا تظهر روابط الملفات أو أرقام الهوية هنا. الحجز النهائي يتطلب الحضور للفرع والعربون والعقد الموقع.",
+    decisionTitle: "قرار المراجعة",
+    decisionCopy: "اكتب رسالة واضحة للعميل ثم اختر الإجراء المناسب. لا يؤكد أي إجراء هنا الحجز.",
+    decisionNote: "رسالة العميل",
+    decisionPlaceholder: "اشرح المطلوب أو سبب القرار بوضوح (10 أحرف على الأقل)",
+    decisionHint: "ستُحفظ الرسالة في سجل محادثات الطلب ويصل للعميل إشعار منفصل.",
+    requestInfo: "اطلب معلومات إضافية",
+    preApprove: "موافقة مبدئية لمدة 48 ساعة",
+    reject: "ارفض الطلب",
+    deciding: "جارٍ تسجيل القرار...",
+    decisionFailed: "تعذر تسجيل القرار. راجع الرسالة وحالة إسناد الطلب.",
+    decisionDone: "تم تسجيل القرار وإبلاغ العميل",
+    expires: "تنتهي الموافقة المبدئية",
+    moreInfoDone: "بانتظار معلومات إضافية من العميل.",
+    preApprovedDone: "الطلب موافق عليه مبدئيًا فقط، وليس حجزًا مؤكدًا.",
+    rejectedDone: "تم إغلاق الطلب وشرح السبب للعميل.",
+    moreInfoStatus: "معلومات إضافية مطلوبة",
+    preApprovedStatus: "موافقة مبدئية",
+    rejectedStatus: "مرفوض",
     driver: "مع سائق",
     selfDrive: "بدون سائق",
   },
@@ -134,6 +160,26 @@ const copy = {
     claimFailed: "The request could not be claimed; another employee may have taken it.",
     safety:
       "File links and identity numbers never appear here. Final booking requires branch attendance, deposit, and a signed contract.",
+    decisionTitle: "Review decision",
+    decisionCopy:
+      "Write a clear customer message, then choose the appropriate action. No action here confirms a booking.",
+    decisionNote: "Customer message",
+    decisionPlaceholder: "Clearly explain what is needed or why (at least 10 characters)",
+    decisionHint:
+      "The message is stored in the request conversation and a separate notification is queued.",
+    requestInfo: "Request more information",
+    preApprove: "Pre-approve for 48 hours",
+    reject: "Reject request",
+    deciding: "Recording decision...",
+    decisionFailed: "The decision could not be recorded. Check the message and assignment state.",
+    decisionDone: "Decision recorded and customer notified",
+    expires: "Pre-approval expires",
+    moreInfoDone: "Waiting for more information from the customer.",
+    preApprovedDone: "The request is only pre-approved; it is not a confirmed booking.",
+    rejectedDone: "The request was closed and the reason was sent to the customer.",
+    moreInfoStatus: "More information required",
+    preApprovedStatus: "Pre-approved",
+    rejectedStatus: "Rejected",
     driver: "With driver",
     selfDrive: "Self-drive",
   },
@@ -170,6 +216,9 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   const [loading, setLoading] = useState(true);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [decisionNote, setDecisionNote] = useState("");
+  const [decidingAction, setDecidingAction] = useState<string | null>(null);
+  const [decisionResult, setDecisionResult] = useState<DecisionResult | null>(null);
   const [error, setError] = useState<"AUTH" | "FORBIDDEN" | "GENERAL" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -202,6 +251,8 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   async function openReview(id: string) {
     setSelectedId(id);
     setReview(null);
+    setDecisionNote("");
+    setDecisionResult(null);
     setReviewLoading(true);
     setActionError(null);
     try {
@@ -245,6 +296,47 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       setActionError(text.claimFailed);
     } finally {
       setClaiming(false);
+    }
+  }
+
+  async function submitDecision(action: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT") {
+    if (!review || decisionNote.trim().length < 10) {
+      setActionError(text.decisionFailed);
+      return;
+    }
+    setDecidingAction(action);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/decision`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action, note: decisionNote.trim() }),
+        },
+      );
+      const payload = (await response.json()) as { data?: DecisionResult };
+      if (!response.ok || !payload.data) throw new Error("decision unavailable");
+      setDecisionResult(payload.data);
+      setQueue((current) =>
+        payload.data!.status === "MORE_INFORMATION_REQUIRED"
+          ? current.map((item) =>
+              item.id === payload.data!.id
+                ? { ...item, status: "MORE_INFORMATION_REQUIRED" }
+                : item,
+            )
+          : current.filter((item) => item.id !== payload.data!.id),
+      );
+      if (payload.data.status === "MORE_INFORMATION_REQUIRED") {
+        setReview((current) =>
+          current ? { ...current, status: "MORE_INFORMATION_REQUIRED" } : current,
+        );
+      }
+    } catch {
+      setActionError(text.decisionFailed);
+    } finally {
+      setDecidingAction(null);
     }
   }
 
@@ -464,7 +556,81 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
 
                   <div className="sales-safety-note">{text.safety}</div>
                   {review.assignedToCurrentUser ? (
-                    <div className="sales-assigned">✓ {text.assigned}</div>
+                    <>
+                      <div className="sales-assigned">✓ {text.assigned}</div>
+                      {decisionResult ? (
+                        <div className="sales-decision-success" aria-live="polite">
+                          <span>{text.decisionDone}</span>
+                          <h3>
+                            {decisionResult.status === "MORE_INFORMATION_REQUIRED"
+                              ? text.moreInfoStatus
+                              : decisionResult.status === "PRE_APPROVED"
+                                ? text.preApprovedStatus
+                                : text.rejectedStatus}
+                          </h3>
+                          <p>
+                            {decisionResult.status === "MORE_INFORMATION_REQUIRED"
+                              ? text.moreInfoDone
+                              : decisionResult.status === "PRE_APPROVED"
+                                ? text.preApprovedDone
+                                : text.rejectedDone}
+                          </p>
+                          {decisionResult.expiresAt ? (
+                            <small>
+                              {text.expires}: {formatDate(decisionResult.expiresAt, locale)}
+                            </small>
+                          ) : null}
+                        </div>
+                      ) : review.status === "UNDER_REVIEW" ? (
+                        <section className="sales-decision-panel">
+                          <h3>{text.decisionTitle}</h3>
+                          <p>{text.decisionCopy}</p>
+                          <label>
+                            <span>{text.decisionNote}</span>
+                            <textarea
+                              maxLength={500}
+                              minLength={10}
+                              onChange={(event) => {
+                                setDecisionNote(event.target.value);
+                                setActionError(null);
+                              }}
+                              placeholder={text.decisionPlaceholder}
+                              rows={5}
+                              value={decisionNote}
+                            />
+                            <small>
+                              {text.decisionHint} · {decisionNote.length}/500
+                            </small>
+                          </label>
+                          <div className="sales-decision-actions">
+                            <button
+                              disabled={decidingAction !== null || decisionNote.trim().length < 10}
+                              onClick={() => void submitDecision("REQUEST_INFORMATION")}
+                              type="button"
+                            >
+                              {decidingAction === "REQUEST_INFORMATION"
+                                ? text.deciding
+                                : text.requestInfo}
+                            </button>
+                            <button
+                              disabled={decidingAction !== null || decisionNote.trim().length < 10}
+                              onClick={() => void submitDecision("PRE_APPROVE")}
+                              type="button"
+                            >
+                              {decidingAction === "PRE_APPROVE" ? text.deciding : text.preApprove}
+                            </button>
+                            <button
+                              className="is-danger"
+                              disabled={decidingAction !== null || decisionNote.trim().length < 10}
+                              onClick={() => void submitDecision("REJECT")}
+                              type="button"
+                            >
+                              {decidingAction === "REJECT" ? text.deciding : text.reject}
+                            </button>
+                          </div>
+                        </section>
+                      ) : null}
+                    </>
                   ) : (
                     <button
                       className="sales-action sales-action--claim"

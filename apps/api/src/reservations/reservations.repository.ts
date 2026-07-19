@@ -656,6 +656,113 @@ export class ReservationsRepository {
     });
   }
 
+  async decideSalesReview(input: {
+    reservationId: string;
+    actorId: string;
+    canOverrideAssignment: boolean;
+    locale: "ar" | "en";
+    action: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT";
+    note: string;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: { id: input.reservationId, status: "UNDER_REVIEW" },
+        select: {
+          id: true,
+          reference: true,
+          customerId: true,
+          assignedSalesId: true,
+        },
+      });
+      if (!reservation) return { kind: "NOT_FOUND" as const };
+      if (!input.canOverrideAssignment && reservation.assignedSalesId !== input.actorId) {
+        return { kind: "NOT_ASSIGNED" as const };
+      }
+
+      const status =
+        input.action === "REQUEST_INFORMATION"
+          ? ("MORE_INFORMATION_REQUIRED" as const)
+          : input.action === "PRE_APPROVE"
+            ? ("PRE_APPROVED" as const)
+            : ("REJECTED" as const);
+      const decidedAt = new Date();
+      const expiresAt =
+        input.action === "PRE_APPROVE" ? new Date(decidedAt.getTime() + 48 * 60 * 60 * 1000) : null;
+      const updated = await transaction.reservation.updateMany({
+        where: {
+          id: reservation.id,
+          status: "UNDER_REVIEW",
+          ...(input.canOverrideAssignment ? {} : { assignedSalesId: input.actorId }),
+        },
+        data: {
+          status,
+          rejectionReason: input.action === "REJECT" ? input.note : null,
+          preApprovalExpiresAt: expiresAt,
+        },
+      });
+      if (!updated.count) return { kind: "NOT_ASSIGNED" as const };
+
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: reservation.id,
+          fromStatus: "UNDER_REVIEW",
+          toStatus: status,
+          actorId: input.actorId,
+          note: `Sales recorded the ${input.action.toLowerCase()} decision.`,
+          metadata: expiresAt
+            ? { action: input.action, preApprovalExpiresAt: expiresAt.toISOString() }
+            : { action: input.action },
+        },
+      });
+      await transaction.customerMessage.create({
+        data: {
+          reservationId: reservation.id,
+          senderId: input.actorId,
+          body: input.note,
+        },
+      });
+
+      const notificationCopy = salesDecisionNotification(input.action, reservation.reference);
+      await transaction.notification.create({
+        data: {
+          userId: reservation.customerId,
+          reservationId: reservation.id,
+          eventKey: notificationCopy.eventKey,
+          titleAr: notificationCopy.titleAr,
+          titleEn: notificationCopy.titleEn,
+          bodyAr: notificationCopy.bodyAr,
+          bodyEn: notificationCopy.bodyEn,
+          important: true,
+        },
+      });
+      await transaction.notificationEvent.create({
+        data: {
+          eventKey: notificationCopy.eventKey,
+          aggregateType: "RESERVATION",
+          aggregateId: reservation.id,
+          payload: {
+            reservationId: reservation.id,
+            reference: reservation.reference,
+            customerId: reservation.customerId,
+            locale: input.locale,
+            status,
+          },
+        },
+      });
+
+      return {
+        kind: "DECIDED" as const,
+        data: {
+          id: reservation.id,
+          reference: reservation.reference,
+          status,
+          decidedAt: decidedAt.toISOString(),
+          expiresAt: expiresAt?.toISOString() ?? null,
+        },
+      };
+    });
+  }
+
   async replaceDocument(input: {
     draftId: string;
     customerId: string;
@@ -796,6 +903,37 @@ const salesQueueSelect = {
   vehicle: { select: { id: true, nameAr: true, nameEn: true } },
   branch: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
+
+function salesDecisionNotification(
+  action: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT",
+  reference: string,
+) {
+  if (action === "REQUEST_INFORMATION") {
+    return {
+      eventKey: "RESERVATION_INFORMATION_REQUIRED",
+      titleAr: "معلومات إضافية مطلوبة",
+      titleEn: "More information is required",
+      bodyAr: `يحتاج فريق المبيعات معلومات إضافية لمتابعة طلب ${reference}. هذا ليس حجزًا مؤكدًا.`,
+      bodyEn: `Sales needs more information to continue request ${reference}. This is not a confirmed booking.`,
+    };
+  }
+  if (action === "PRE_APPROVE") {
+    return {
+      eventKey: "RESERVATION_PRE_APPROVED",
+      titleAr: "موافقة مبدئية على الطلب",
+      titleEn: "Request pre-approved",
+      bodyAr: `حصل طلب ${reference} على موافقة مبدئية مؤقتة. التأكيد النهائي يتم في فرع رحال.`,
+      bodyEn: `Request ${reference} is temporarily pre-approved. Final confirmation happens at the Rahal branch.`,
+    };
+  }
+  return {
+    eventKey: "RESERVATION_REJECTED",
+    titleAr: "تحديث على طلبك",
+    titleEn: "An update on your request",
+    bodyAr: `تعذر متابعة طلب ${reference}. راجع رسالة فريق المبيعات داخل حسابك.`,
+    bodyEn: `Request ${reference} cannot proceed. Review the sales message in your account.`,
+  };
+}
 
 function toReservationDraft(record: {
   id: string;

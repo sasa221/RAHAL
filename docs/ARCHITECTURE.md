@@ -129,6 +129,8 @@ Customer submission is a separate transactional boundary from booking confirmati
 
 The first sales boundary exposes only the active review queue. Sales employees can read unassigned pending work and their own assignments; administrators can read the full active queue. A claim uses a conditional transactional update so only one employee can move an unassigned `PENDING_REVIEW` request to `UNDER_REVIEW`. Staff detail responses remain metadata-only: masked contacts, safe document type/status, consent state, and a bounded event timeline. Private document access requires a later explicit permission and audited short-lived URL flow.
 
+Sales decisions are allowed only from `UNDER_REVIEW` for the assigned employee, with an explicit administrator override boundary. Request-information, rejection, and 48-hour pre-approval each update the reservation and write the event, customer-visible message, notification, and outbox record in one transaction. The free-form customer message stays out of the outbox payload. Pre-approval expiry is stored on the reservation but does not create a booking, deposit, or confirmation.
+
 ## Notification architecture
 
 Use an outbox pattern:

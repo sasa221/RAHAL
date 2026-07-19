@@ -45,4 +45,4 @@ Customer registration accepts passwords from 8 to 128 characters. The bilingual 
 
 ## Sales review foundation
 
-Authorized sales and administrator accounts can open the shared staff workspace at `/sales` or `/en/sales`. The first slice lists active submitted requests, returns only masked customer and safe document metadata, and lets one employee atomically claim an unassigned request for `UNDER_REVIEW`. Claiming never confirms a booking and never exposes private storage keys. Decision actions and audited document viewing remain pending.
+Authorized sales and administrator accounts can open the shared staff workspace at `/sales` or `/en/sales`. It lists active submitted requests, returns only masked customer and safe document metadata, and lets one employee atomically claim an unassigned request for `UNDER_REVIEW`. The assigned reviewer can request more information, reject with a customer-visible reason, or issue a 48-hour pre-approval. None of these actions confirms a booking or exposes private storage keys. Alternative offers and audited document viewing remain pending.

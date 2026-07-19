@@ -279,13 +279,17 @@ Status: the queue, protected review detail, and atomic claim slice was completed
 - The claim transaction writes a reservation event, customer in-app notification, and privacy-minimized notification outbox event.
 - Claiming is idempotent for the owning employee and fails with a conflict if another employee won the race.
 - Shared responsive Arabic/English sales routes are available at `/sales` and `/en/sales`.
+- The assigned reviewer can request more information, reject with a customer-visible reason, or issue a 48-hour pre-approval.
+- Decision messages are validated from 10 to 500 characters and stored in the separate customer conversation, not internal notes.
+- Every decision uses a conditional `UNDER_REVIEW` transaction and writes the status event, customer message, in-app notification, and privacy-minimized outbox event together.
+- Pre-approval sets `preApprovalExpiresAt` and remains explicitly separate from `CONFIRMED` and `Booking` creation.
 
 ### Remaining scope
 
 - Permission-granular actions beyond the initial system-role boundary.
 - Protected document view/sign-url flow with access reason, explicit permission, and access audit.
-- Request-more-information action and customer response workflow.
-- Pre-approval, rejection, alternative vehicle/date offers, and expiry handling.
+- Customer response workflow after a request for more information.
+- Alternative vehicle/date offers and automated pre-approval expiry handling.
 - Branch deposit receipt and signed-contract recording.
 - Final transactional availability check and separate `Booking` creation only after all branch requirements are complete.
 
@@ -295,12 +299,16 @@ Status: the queue, protected review detail, and atomic claim slice was completed
 - One unassigned request cannot be claimed by two employees.
 - Staff responses never include storage keys, permanent document URLs, or full sensitive identity/contact data.
 - Claiming produces `UNDER_REVIEW`, never `CONFIRMED`, and never creates a booking.
+- Only the assigned employee, or an administrator override, can record a decision on an `UNDER_REVIEW` request.
+- Request-information, pre-approval, and rejection create customer-visible messages and status-specific notifications without putting free-form notes in the outbox payload.
 - Arabic and English share the same responsive component and show loading, empty, unauthorized, forbidden, detail, and claim states.
 
 ### Tests
 
 - API integration tests for customer rejection, sales queue access, masked review detail, storage-key exclusion, and atomic claim response.
 - Static route/UI tests for bilingual sharing, protected fields, staff endpoints, and non-confirmation language.
+- API integration coverage for validated pre-approval, expiry output, short-message rejection, and continued non-confirmation.
+- Static coverage for all three decision controls and the separate customer-message write.
 
 ## Decisions not blocking Milestone 1
 

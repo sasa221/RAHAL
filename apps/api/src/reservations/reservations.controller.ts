@@ -17,6 +17,7 @@ import type {
   ReservationCustomerDetails,
   ReservationDocumentChecklist,
   ReservationReview,
+  SalesReservationDecisionResult,
   SalesReservationQueueItem,
   SalesReservationReview,
   SubmittedReservation,
@@ -28,6 +29,7 @@ import {
   SaveReservationConsentsDto,
   SaveReservationCustomerDetailsDto,
   SaveReservationDraftDto,
+  SalesReservationDecisionDto,
 } from "./reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
@@ -138,5 +140,16 @@ export class ReservationsController {
     @Req() request: Request,
   ): Promise<ApiSuccess<SalesReservationReview>> {
     return { data: await this.reservations.claimSalesReview(readAuthCookie(request), id) };
+  }
+
+  @Post("sales/:id/decision")
+  async decideSalesReview(
+    @Param("id") id: string,
+    @Body() input: SalesReservationDecisionDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesReservationDecisionResult>> {
+    return {
+      data: await this.reservations.decideSalesReview(readAuthCookie(request), id, input),
+    };
   }
 }

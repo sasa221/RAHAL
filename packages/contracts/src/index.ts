@@ -203,6 +203,14 @@ export type SalesReservationReview = SalesReservationQueueItem & {
   }>;
 };
 
+export type SalesReservationDecisionResult = {
+  id: string;
+  reference: string;
+  status: "MORE_INFORMATION_REQUIRED" | "PRE_APPROVED" | "REJECTED";
+  decidedAt: string;
+  expiresAt: string | null;
+};
+
 export type ReservationConsentBundle = {
   version: string;
   developmentOnly: boolean;

@@ -521,6 +521,132 @@
   background: #efdcd8;
 }
 
+.sales-decision-panel,
+.sales-decision-success {
+  padding: clamp(22px, 3.5vw, 36px);
+  background: #faf8f3;
+}
+
+.sales-decision-panel > h3,
+.sales-decision-success > h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-display), serif;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 500;
+}
+
+.sales-workspace[dir="rtl"] .sales-decision-panel > h3,
+.sales-workspace[dir="rtl"] .sales-decision-success > h3 {
+  font-family: var(--font-arabic), sans-serif;
+}
+
+.sales-decision-panel > p {
+  margin: 0 0 24px;
+  color: #6e685e;
+  line-height: 1.7;
+}
+
+.sales-decision-panel label,
+.sales-decision-panel label > span,
+.sales-decision-panel label > small {
+  display: block;
+}
+
+.sales-decision-panel label > span {
+  margin-bottom: 9px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.sales-decision-panel textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 16px;
+  color: #1b1a16;
+  background: #f0ece4;
+  border: 1px solid #cbc3b6;
+  border-radius: 0;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.sales-decision-panel textarea:focus {
+  border-color: #9f7220;
+  outline: 3px solid rgb(168 123 40 / 18%);
+}
+
+.sales-decision-panel label > small {
+  margin-top: 8px;
+  color: #7b756c;
+  font-size: 0.68rem;
+}
+
+.sales-decision-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.sales-decision-actions button {
+  min-height: 52px;
+  padding: 12px 16px;
+  color: #f9f5ec;
+  background: #1b1a16;
+  border: 1px solid #1b1a16;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.sales-decision-actions button:nth-child(2) {
+  color: #1a1915;
+  background: #dbb866;
+  border-color: #dbb866;
+}
+
+.sales-decision-actions button.is-danger {
+  grid-column: 1 / -1;
+  color: #7a3028;
+  background: transparent;
+  border-color: #b27b73;
+}
+
+.sales-decision-actions button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.7);
+  opacity: 0.45;
+}
+
+.sales-decision-success {
+  color: #223d2f;
+  background: #dce8dd;
+}
+
+.sales-decision-success > span {
+  display: block;
+  margin-bottom: 12px;
+  color: #3f7355;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sales-decision-success p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.sales-decision-success small {
+  display: block;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgb(34 61 47 / 18%);
+}
+
 @media (max-width: 1080px) {
   .sales-layout {
     grid-template-columns: minmax(360px, 0.8fr) minmax(420px, 1.2fr);
@@ -571,6 +697,14 @@
   .sales-detail-list,
   .sales-verification-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sales-decision-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-decision-actions button.is-danger {
+    grid-column: auto;
   }
 
   .sales-document-statuses li {

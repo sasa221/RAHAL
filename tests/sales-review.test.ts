@@ -20,6 +20,7 @@ describe("sales review workspace", () => {
   it("keeps queue access role-gated and customer data masked", () => {
     expect(controller).toContain('@Get("sales/queue")');
     expect(controller).toContain('@Post("sales/:id/claim")');
+    expect(controller).toContain('@Post("sales/:id/decision")');
     expect(workspace).toContain('fetch("/api/reservations/sales/queue"');
     expect(workspace).toContain("emailMasked");
     expect(workspace).toContain("phoneMasked");
@@ -39,5 +40,17 @@ describe("sales review workspace", () => {
     expect(workspace).toContain(
       "Final booking requires branch attendance, deposit, and a signed contract",
     );
+  });
+
+  it("records explicit customer-facing decisions without exposing notes as outbox fields", () => {
+    expect(repository).toContain('input.action === "REQUEST_INFORMATION"');
+    expect(repository).toContain('input.action === "PRE_APPROVE"');
+    expect(repository).toContain('input.action === "REJECT"');
+    expect(repository).toContain("transaction.customerMessage.create");
+    expect(repository).toContain('status: "UNDER_REVIEW"');
+    expect(workspace).toContain('submitDecision("REQUEST_INFORMATION")');
+    expect(workspace).toContain('submitDecision("PRE_APPROVE")');
+    expect(workspace).toContain('submitDecision("REJECT")');
+    expect(workspace).toContain("No action here confirms a booking");
   });
 });

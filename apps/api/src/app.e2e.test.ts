@@ -295,6 +295,28 @@ describe("RAHAL API", () => {
           salesAssigned = true;
           return { kind: "CLAIMED" };
         },
+        decideSalesReview: async (input: {
+          reservationId: string;
+          actorId: string;
+          action: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT";
+        }) =>
+          input.reservationId === "reservation-draft-e2e" && input.actorId === salesUser.id
+            ? {
+                kind: "DECIDED",
+                data: {
+                  id: input.reservationId,
+                  reference: "RHL-2026-123456",
+                  status:
+                    input.action === "REQUEST_INFORMATION"
+                      ? "MORE_INFORMATION_REQUIRED"
+                      : input.action === "PRE_APPROVE"
+                        ? "PRE_APPROVED"
+                        : "REJECTED",
+                  decidedAt: "2026-07-19T20:00:00.000Z",
+                  expiresAt: input.action === "PRE_APPROVE" ? "2026-07-21T20:00:00.000Z" : null,
+                },
+              }
+            : { kind: "NOT_ASSIGNED" },
         saveCustomerDetails: async (input: {
           draftId: string;
           reference: string;
@@ -713,5 +735,34 @@ describe("RAHAL API", () => {
       assignedToCurrentUser: true,
     });
     expect(claimed.body.data.status).not.toBe("CONFIRMED");
+  });
+
+  it("records a validated pre-approval without creating a confirmed booking", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: salesUser.email, password: "correct-customer-password" })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/sales/reservation-draft-e2e/decision")
+      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .send({
+        action: "PRE_APPROVE",
+        note: "Please attend the Rahal branch within the stated pre-approval window.",
+      })
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "PRE_APPROVED",
+      expiresAt: "2026-07-21T20:00:00.000Z",
+    });
+    expect(response.body.data.status).not.toBe("CONFIRMED");
+
+    await request(app.getHttpServer())
+      .post("/api/reservations/sales/reservation-draft-e2e/decision")
+      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .send({ action: "REJECT", note: "short" })
+      .expect(400);
   });
 });

@@ -59,3 +59,12 @@ export class SaveReservationConsentsDto {
   @IsBoolean()
   marketingAccepted!: boolean;
 }
+
+export class SalesReservationDecisionDto {
+  @IsIn(["REQUEST_INFORMATION", "PRE_APPROVE", "REJECT"])
+  action!: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT";
+
+  @IsString()
+  @Length(10, 500)
+  note!: string;
+}

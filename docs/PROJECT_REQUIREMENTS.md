@@ -113,6 +113,8 @@ After submission:
 
 Authorized sales staff may list active review requests and claim an unassigned `PENDING_REVIEW` request. Claiming changes the request only to `UNDER_REVIEW`, records the employee assignment and event, and notifies the customer that review started. It must not create a booking, accept a deposit, or imply confirmation. Staff detail views use masked contacts and document metadata only; document bytes require a separate permission-checked and audited access flow.
 
+The assigned reviewer may move an `UNDER_REVIEW` request to `MORE_INFORMATION_REQUIRED`, `PRE_APPROVED`, or `REJECTED` with a validated customer-visible message. A pre-approval expires after 48 hours and remains conditional on branch attendance, deposit recording, signed documents, and final availability. These decisions write their event, message, notification, and outbox record atomically but never create a `Booking`.
+
 ## Security and privacy requirements
 
 - Email and phone verification are both required before reservation submission.

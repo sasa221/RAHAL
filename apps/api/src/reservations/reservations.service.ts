@@ -16,6 +16,7 @@ import type {
   ReservationReview,
   ReservationSubmissionBlocker,
   SalesReservationQueueItem,
+  SalesReservationDecisionResult,
   SalesReservationReview,
   SubmittedReservation,
 } from "@rahal/contracts";
@@ -26,6 +27,7 @@ import type {
   SaveReservationCustomerDetailsDto,
   SaveReservationConsentsDto,
   SaveReservationDraftDto,
+  SalesReservationDecisionDto,
 } from "./reservations.dto";
 import { ReservationsRepository } from "./reservations.repository";
 
@@ -531,6 +533,30 @@ export class ReservationsService {
       throw new ConflictException("Another sales employee already claimed this request.");
     }
     return this.getSalesReview(token, reservationId);
+  }
+
+  async decideSalesReview(
+    token: string | undefined,
+    reservationId: string,
+    input: SalesReservationDecisionDto,
+  ): Promise<SalesReservationDecisionResult> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const result = await this.reservations.decideSalesReview({
+      reservationId,
+      actorId: session.user.id,
+      canOverrideAssignment: ["ADMIN", "SUPER_ADMIN"].includes(session.user.role),
+      locale: session.user.preferredLocale,
+      action: input.action,
+      note: input.note.trim(),
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("An under-review reservation request was not found.");
+    }
+    if (result.kind === "NOT_ASSIGNED") {
+      throw new ForbiddenException("Only the assigned sales employee can decide this request.");
+    }
+    return result.data;
   }
 
   private async getDocumentContext(token: string | undefined, draftId: string) {
