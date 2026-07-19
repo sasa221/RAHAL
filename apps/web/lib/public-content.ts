@@ -102,7 +102,7 @@ const shared = {
       ["طريقة الحجز", "#process"],
       ["الفرع", "#branch"],
     ],
-    signIn: "تسجيل الدخول قريبًا",
+    signIn: "تسجيل الدخول",
     heroEyebrow: "رحلتك تبدأ باختيار مطمئن",
     heroTitle: "العربية المناسبة، في الوقت المناسب.",
     heroCopy:
@@ -182,7 +182,7 @@ const shared = {
       ["How it works", "#process"],
       ["Branch", "#branch"],
     ],
-    signIn: "Sign in soon",
+    signIn: "Sign in",
     heroEyebrow: "Your journey starts with a confident choice",
     heroTitle: "The right car, right when you need it.",
     heroCopy:

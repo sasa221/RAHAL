@@ -12,6 +12,7 @@ describe("public multi-page experience", () => {
   const fleet = read("apps/web/components/public-fleet.tsx");
   const details = read("apps/web/components/vehicle-details.tsx");
   const reservation = read("apps/web/components/reservation-start.tsx");
+  const auth = read("apps/web/components/auth-access.tsx");
 
   it("defines valid localized public paths", () => {
     expect(localizedPath("ar")).toBe("/");
@@ -95,5 +96,25 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("reservation-stage__visual");
     expect(reservation).toContain("reservation-form__options");
     expect(reservation).toContain('aria-live="polite"');
+  });
+
+  it("provides shared bilingual account access without exposing protected identity data", () => {
+    const arabicRoute = read("apps/web/app/auth/page.tsx");
+    const englishRoute = read("apps/web/app/en/auth/page.tsx");
+    const home = read("apps/web/components/public-home.tsx");
+    const nextConfig = read("apps/web/next.config.ts");
+
+    expect(arabicRoute).toMatch(/<AuthAccess\s+locale="ar"/);
+    expect(englishRoute).toMatch(/<AuthAccess\s+locale="en"/);
+    expect(auth).toContain('/api/auth/${mode === "login" ? "login" : "register"}');
+    expect(auth).toContain('credentials: "include"');
+    expect(auth).toContain('autoComplete={mode === "login" ? "current-password" : "new-password"}');
+    expect(auth).toContain('pattern="\\+?[1-9][0-9]{7,14}"');
+    expect(auth).toContain("Phone and email verification are required");
+    expect(auth).not.toContain("identityNumber");
+    expect(auth).not.toContain('type="file"');
+    expect(home).toContain('localizedPath(locale, "/auth")');
+    expect(home).not.toContain('aria-disabled="true"');
+    expect(nextConfig).toContain('source: "/api/:path*"');
   });
 });

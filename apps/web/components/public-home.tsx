@@ -153,13 +153,9 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
             </span>
             {content.languageLabel}
           </a>
-          <span
-            aria-disabled="true"
-            className="button button--dark header-sign-in header-sign-in--disabled"
-            title={locale === "ar" ? "سيُتاح مع نظام الحسابات" : "Available with customer accounts"}
-          >
+          <a className="button button--dark header-sign-in" href={localizedPath(locale, "/auth")}>
             {content.signIn}
-          </span>
+          </a>
           <details className="mobile-menu">
             <summary aria-label={content.menuLabel}>
               <Icon name="menu" />
@@ -171,7 +167,7 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
                 </a>
               ))}
               <a href={languageHref ?? content.languageHref}>{content.languageLabel}</a>
-              <span aria-disabled="true">{content.signIn}</span>
+              <a href={localizedPath(locale, "/auth")}>{content.signIn}</a>
             </nav>
           </details>
         </div>

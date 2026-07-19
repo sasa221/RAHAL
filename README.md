@@ -37,4 +37,4 @@ The API exposes the first secure account/session slice under `/api/auth`:
 - `GET /session`: returns the current redacted user session.
 - `DELETE /session`: revokes the current session.
 
-Passwords use Node's memory-hard scrypt implementation. Browser sessions use an opaque token in an HTTP-only, same-site cookie; only the token hash is stored. Set a unique `AUTH_SECRET` of at least 32 characters in every deployed environment. Phone OTP, email verification, password reset, and the customer-facing auth screens remain deliberately unimplemented until their complete tested slices are added.
+Passwords use Node's memory-hard scrypt implementation. Browser sessions use an opaque token in an HTTP-only, same-site cookie; only the token hash is stored. Set a unique `AUTH_SECRET` of at least 32 characters in every deployed environment. Bilingual customer sign-in and registration are available at `/auth` and `/en/auth`; phone OTP, email verification, and password recovery remain deliberately unimplemented until their complete tested slices are added.

@@ -156,7 +156,7 @@ Status: completed locally on 2026-07-18. The baseline migration and relative dem
 
 Goal: establish secure customer identity and browser sessions before reservation drafts can be persisted.
 
-Status: foundation slice completed locally on 2026-07-19. Registration, login, current-session lookup, logout, password hashing, opaque session cookies, basic rate limiting, and authentication audit writes are implemented. Verification and recovery remain pending.
+Status: account-access slice completed locally on 2026-07-19. Registration, login, current-session lookup, logout, password hashing, opaque session cookies, basic rate limiting, authentication audit writes, and bilingual customer access screens are implemented. Verification and recovery remain pending.
 
 ### Completed foundation scope
 
@@ -170,6 +170,8 @@ Status: foundation slice completed locally on 2026-07-19. Registration, login, c
 - In-process authentication throttling as a local baseline; production must use the approved shared Redis-compatible limiter.
 - Redacted shared authentication contracts and structured 401/403/409/429 errors.
 - Authentication success/failure audit records without password or raw token data.
+- Shared Arabic and English sign-in and registration screens with responsive cinematic layouts.
+- Same-origin web-to-API authentication proxying so secure session cookies are not exposed to client code.
 
 ### Remaining scope
 
@@ -177,7 +179,7 @@ Status: foundation slice completed locally on 2026-07-19. Registration, login, c
 - Email verification issue and completion flow.
 - Password reset and reset-session revocation.
 - Session/device listing and individual/all-device revocation.
-- Customer-facing bilingual register, sign-in, verification, and recovery screens.
+- Customer-facing bilingual phone/email verification and password-recovery screens.
 - Shared production rate-limit storage and operational monitoring.
 
 ### Acceptance criteria
