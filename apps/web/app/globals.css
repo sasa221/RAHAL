@@ -3578,6 +3578,61 @@ select {
   }
 }
 
+/* Touch-first behavior: fast feedback without sticky desktop hover states. */
+@media (max-width: 900px) {
+  .mobile-menu summary {
+    width: 48px;
+    height: 48px;
+  }
+
+  .motion-ready [data-reveal] {
+    transform: translateY(18px);
+    transition-duration: 580ms;
+  }
+}
+
+@media (pointer: coarse) {
+  .button:hover,
+  .vehicle-card:hover,
+  [data-tilt]:hover {
+    transform: none;
+  }
+
+  .button:active,
+  .mobile-menu summary:active,
+  .footer-statement > a:active {
+    transform: scale(0.98);
+  }
+
+  .category-card:hover .category-card__image {
+    transform: none;
+  }
+
+  .category-card:active .category-card__image {
+    transform: scale(1.02);
+  }
+
+  .process-list li:hover {
+    padding-inline-start: 0;
+    background: transparent;
+  }
+
+  .public-site[dir="rtl"] .process-list li:hover {
+    padding-inline-end: 24px;
+    background: transparent;
+  }
+
+  .process-list li:hover::before,
+  .trust-grid article:hover::after {
+    transform: scale(0);
+  }
+
+  .process-list li:active::before,
+  .trust-grid article:active::after {
+    transform: scale(1);
+  }
+}
+
 @media (max-width: 900px) {
   .hero__edition {
     display: none;

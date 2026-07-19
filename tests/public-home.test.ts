@@ -65,6 +65,13 @@ describe("Milestone 2 public home", () => {
     expect(styles).toContain("min-width: min(82vw, 330px)");
   });
 
+  it("uses touch feedback instead of sticky hover motion on coarse pointers", () => {
+    expect(styles).toContain("@media (pointer: coarse)");
+    expect(styles).toContain(".category-card:active .category-card__image");
+    expect(styles).toContain(".footer-statement > a:active");
+    expect(styles).toContain("transition-duration: 580ms");
+  });
+
   it("includes desktop and mobile navigation with accessible labels", () => {
     expect(component).toContain('className="desktop-navigation"');
     expect(component).toContain('className="mobile-menu"');
