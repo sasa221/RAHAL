@@ -50,3 +50,5 @@ Authorized sales and administrator accounts can open the shared staff workspace 
 Authenticated customers can track only their own submitted requests at `/account/requests` or `/en/account/requests`. They see safe request/document states and the customer-visible conversation. If sales requests more information, a bounded customer reply returns the request to `UNDER_REVIEW` and notifies the assigned reviewer without confirming a booking.
 
 The assigned reviewer can also send a 48-hour alternative vehicle/date offer after availability checks. The customer may accept or decline it from the same request page; either response returns the request to sales review, and acceptance still does not confirm or create a booking.
+
+The API runs a non-overlapping review-window sweep on startup and every minute. Expired alternatives return to sales review, expired pre-approvals close as `EXPIRED`, and both paths write auditable events and notifications without creating bookings.

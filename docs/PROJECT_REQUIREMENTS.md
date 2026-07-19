@@ -119,6 +119,8 @@ Customers may list and inspect only their own submitted requests. The customer v
 
 The assigned reviewer may propose a 48-hour alternative vehicle and/or date range from `UNDER_REVIEW`. The API must validate the branch, vehicle state, driver policy, minimum duration, operational blocks, and confirmed/active overlap and store immutable EGP rate/total snapshots. The customer may accept or decline only their own pending offer. Acceptance applies the proposed snapshots only after another conflict check and returns the request to `UNDER_REVIEW`; it is not confirmation and does not create a booking.
 
+Expired alternative offers must return to sales review automatically. Expired pre-approvals must move to `EXPIRED` without confirmation. Expiry processing must be conditional, idempotent, non-overlapping, auditable, and produce customer notifications without inserting free-form or protected data into the outbox payload.
+
 ## Security and privacy requirements
 
 - Email and phone verification are both required before reservation submission.

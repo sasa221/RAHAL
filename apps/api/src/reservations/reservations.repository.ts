@@ -1228,6 +1228,154 @@ export class ReservationsRepository {
     }
   }
 
+  async expireStaleReviewWindows(now: Date) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const dueOffers = await transaction.alternativeOffer.findMany({
+        where: { status: "PENDING", expiresAt: { lte: now } },
+        orderBy: { expiresAt: "asc" },
+        take: 100,
+        select: {
+          id: true,
+          reservation: {
+            select: {
+              id: true,
+              reference: true,
+              customerId: true,
+              assignedSalesId: true,
+              customer: { select: { preferredLocale: true } },
+            },
+          },
+        },
+      });
+      let expiredOffers = 0;
+      for (const offer of dueOffers) {
+        const offerUpdated = await transaction.alternativeOffer.updateMany({
+          where: { id: offer.id, status: "PENDING", expiresAt: { lte: now } },
+          data: { status: "EXPIRED" },
+        });
+        if (!offerUpdated.count) continue;
+        const reservationUpdated = await transaction.reservation.updateMany({
+          where: { id: offer.reservation.id, status: "ALTERNATIVE_OFFERED" },
+          data: { status: "UNDER_REVIEW" },
+        });
+        if (!reservationUpdated.count) continue;
+        expiredOffers += 1;
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: offer.reservation.id,
+            fromStatus: "ALTERNATIVE_OFFERED",
+            toStatus: "UNDER_REVIEW",
+            note: "The alternative offer expired and returned to sales review.",
+            metadata: { offerId: offer.id, expiredAt: now.toISOString() },
+          },
+        });
+        await transaction.notification.create({
+          data: {
+            userId: offer.reservation.customerId,
+            reservationId: offer.reservation.id,
+            eventKey: "RESERVATION_ALTERNATIVE_EXPIRED",
+            titleAr: "انتهت صلاحية العرض البديل",
+            titleEn: "Alternative offer expired",
+            bodyAr: `انتهت صلاحية العرض البديل للطلب ${offer.reservation.reference} وعاد الطلب للمراجعة.`,
+            bodyEn: `The alternative for request ${offer.reservation.reference} expired and returned to review.`,
+            important: true,
+          },
+        });
+        if (offer.reservation.assignedSalesId) {
+          await transaction.notification.create({
+            data: {
+              userId: offer.reservation.assignedSalesId,
+              reservationId: offer.reservation.id,
+              eventKey: "RESERVATION_ALTERNATIVE_EXPIRED_STAFF",
+              titleAr: "انتهت صلاحية عرض بديل",
+              titleEn: "An alternative offer expired",
+              bodyAr: `عاد الطلب ${offer.reservation.reference} إلى قائمة المراجعة.`,
+              bodyEn: `Request ${offer.reservation.reference} returned to the review queue.`,
+              important: true,
+            },
+          });
+        }
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: "RESERVATION_ALTERNATIVE_EXPIRED",
+            aggregateType: "RESERVATION",
+            aggregateId: offer.reservation.id,
+            payload: {
+              reservationId: offer.reservation.id,
+              offerId: offer.id,
+              customerId: offer.reservation.customerId,
+              assignedSalesId: offer.reservation.assignedSalesId,
+              locale: offer.reservation.customer.preferredLocale,
+              status: "UNDER_REVIEW",
+            },
+          },
+        });
+      }
+
+      const duePreApprovals = await transaction.reservation.findMany({
+        where: { status: "PRE_APPROVED", preApprovalExpiresAt: { lte: now } },
+        orderBy: { preApprovalExpiresAt: "asc" },
+        take: 100,
+        select: {
+          id: true,
+          reference: true,
+          customerId: true,
+          preApprovalExpiresAt: true,
+          customer: { select: { preferredLocale: true } },
+        },
+      });
+      let expiredPreApprovals = 0;
+      for (const reservation of duePreApprovals) {
+        const updated = await transaction.reservation.updateMany({
+          where: {
+            id: reservation.id,
+            status: "PRE_APPROVED",
+            preApprovalExpiresAt: { lte: now },
+          },
+          data: { status: "EXPIRED" },
+        });
+        if (!updated.count) continue;
+        expiredPreApprovals += 1;
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: reservation.id,
+            fromStatus: "PRE_APPROVED",
+            toStatus: "EXPIRED",
+            note: "The 48-hour pre-approval window expired.",
+            metadata: { expiredAt: now.toISOString() },
+          },
+        });
+        await transaction.notification.create({
+          data: {
+            userId: reservation.customerId,
+            reservationId: reservation.id,
+            eventKey: "RESERVATION_PRE_APPROVAL_EXPIRED",
+            titleAr: "انتهت مدة الموافقة المبدئية",
+            titleEn: "Pre-approval expired",
+            bodyAr: `انتهت مدة الموافقة المبدئية للطلب ${reservation.reference} دون تأكيد نهائي في الفرع.`,
+            bodyEn: `The pre-approval for request ${reservation.reference} expired without final branch confirmation.`,
+            important: true,
+          },
+        });
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: "RESERVATION_PRE_APPROVAL_EXPIRED",
+            aggregateType: "RESERVATION",
+            aggregateId: reservation.id,
+            payload: {
+              reservationId: reservation.id,
+              customerId: reservation.customerId,
+              locale: reservation.customer.preferredLocale,
+              status: "EXPIRED",
+            },
+          },
+        });
+      }
+
+      return { expiredOffers, expiredPreApprovals };
+    });
+  }
+
   async replaceDocument(input: {
     draftId: string;
     customerId: string;

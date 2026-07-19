@@ -267,7 +267,7 @@ Status: the customer wizard through final review and the guarded `DRAFT` to `PEN
 
 Goal: give authorized sales staff a protected queue and an auditable way to begin reviewing submitted requests without confirming a booking.
 
-Status: the queue, protected review detail, atomic claim, staff decisions, customer follow-up, and alternative-offer slice were completed locally on 2026-07-19. Automated expiry, deposit/contract recording, and confirmation remain pending.
+Status: the queue, protected review detail, atomic claim, staff decisions, customer follow-up, alternative offers, and automated review-window expiry were completed locally on 2026-07-19. Deposit/contract recording and confirmation remain pending.
 
 ### Completed scope
 
@@ -289,12 +289,13 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - The assigned reviewer can create a 48-hour alternative vehicle/date offer after branch, driver-policy, minimum-duration, vehicle-state, block, and confirmed-booking checks.
 - Alternatives snapshot the proposed vehicle, dates, daily rate, and estimated EGP total while leaving the existing reservation values unchanged until customer acceptance.
 - The owning customer can accept or decline a pending offer. Both responses return the request to `UNDER_REVIEW`; acceptance applies the snapshots but never creates a booking.
+- A non-overlapping API worker sweeps once per minute: expired alternatives return to `UNDER_REVIEW`, while expired pre-approvals move to `EXPIRED`.
+- Expiry writes reservation events, bilingual in-app notifications, and privacy-minimized outbox events; alternative expiry also notifies the assigned reviewer.
 
 ### Remaining scope
 
 - Permission-granular actions beyond the initial system-role boundary.
 - Protected document view/sign-url flow with access reason, explicit permission, and access audit.
-- Automated alternative/pre-approval expiry handling.
 - Branch deposit receipt and signed-contract recording.
 - Final transactional availability check and separate `Booking` creation only after all branch requirements are complete.
 
@@ -310,6 +311,7 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - Customers can answer only their own `MORE_INFORMATION_REQUIRED` request; the response returns it to review without creating or confirming a booking.
 - Only the assigned reviewer or administrator override can create an alternative, and only the request owner can respond before expiry.
 - Alternative creation and acceptance both recheck conflicts and never create a `Booking` or imply final confirmation.
+- Expiry processing is conditional and idempotent, does not overlap itself, and stops its timer during application shutdown.
 
 ### Tests
 
@@ -319,6 +321,7 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - Static coverage for all three decision controls and the separate customer-message write.
 - API integration and static UI coverage for customer ownership, safe detail metadata, bounded replies, role rejection, and the `MORE_INFORMATION_REQUIRED` to `UNDER_REVIEW` transition.
 - API integration and static coverage for alternative creation, safe customer detail, acceptance back to review, conflict checks, and non-confirmation language.
+- Unit and static coverage for worker registration, overlap prevention, alternative expiry, pre-approval expiry, notifications, and continued absence of booking creation.
 
 ## Decisions not blocking Milestone 1
 

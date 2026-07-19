@@ -135,6 +135,8 @@ The customer request boundary is separately owner-authorized and exposes submitt
 
 Alternative offers are separate persisted records rather than destructive edits to the original request. Creation is limited to the assigned reviewer or administrator override from `UNDER_REVIEW`, validates the same branch and operational availability, snapshots EGP pricing, expires after 48 hours, and moves the request to `ALTERNATIVE_OFFERED`. Owner acceptance rechecks blocks and confirmed/active booking overlap before applying the proposed snapshots and returning to `UNDER_REVIEW`; decline also returns to review without changing the original selection. Neither response creates a `Booking`.
 
+Review-window expiry runs as a small non-overlapping worker inside the API process once per minute and on startup. Conditional updates make repeated sweeps idempotent. Expired alternative offers return their reservation to `UNDER_REVIEW` and notify the customer and assigned reviewer; expired pre-approvals move to `EXPIRED` and notify the customer. Every expiry writes its event and outbox record in the same transaction, and the interval is unreferenced and cleared on application shutdown. A separately deployed worker can replace this process-local scheduler when horizontal API scaling is introduced.
+
 ## Notification architecture
 
 Use an outbox pattern:
