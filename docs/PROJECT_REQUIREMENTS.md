@@ -115,6 +115,8 @@ Authorized sales staff may list active review requests and claim an unassigned `
 
 The assigned reviewer may move an `UNDER_REVIEW` request to `MORE_INFORMATION_REQUIRED`, `PRE_APPROVED`, or `REJECTED` with a validated customer-visible message. A pre-approval expires after 48 hours and remains conditional on branch attendance, deposit recording, signed documents, and final availability. These decisions write their event, message, notification, and outbox record atomically but never create a `Booking`.
 
+Customers may list and inspect only their own submitted requests. The customer view exposes request metadata, safe document status, and customer-visible messages without document locations or identity numbers. When a request is `MORE_INFORMATION_REQUIRED`, its owner may send a 10–500 character response that returns the request to `UNDER_REVIEW`, preserves its sales assignment, and notifies the assigned reviewer. This response never confirms a booking.
+
 ## Security and privacy requirements
 
 - Email and phone verification are both required before reservation submission.

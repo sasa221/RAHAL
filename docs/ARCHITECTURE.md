@@ -131,6 +131,8 @@ The first sales boundary exposes only the active review queue. Sales employees c
 
 Sales decisions are allowed only from `UNDER_REVIEW` for the assigned employee, with an explicit administrator override boundary. Request-information, rejection, and 48-hour pre-approval each update the reservation and write the event, customer-visible message, notification, and outbox record in one transaction. The free-form customer message stays out of the outbox payload. Pre-approval expiry is stored on the reservation but does not create a booking, deposit, or confirmation.
 
+The customer request boundary is separately owner-authorized and exposes submitted request summaries, safe document type/status metadata, and customer-visible messages only. When the assigned reviewer requests more information, the owning customer may send one bounded response. The transaction conditionally moves only `MORE_INFORMATION_REQUIRED` to `UNDER_REVIEW`, preserves the reviewer assignment, and writes the customer message, reservation event, staff in-app notification, and minimal outbox event together. It never exposes document bytes or creates a booking.
+
 ## Notification architecture
 
 Use an outbox pattern:

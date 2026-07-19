@@ -7,6 +7,10 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type {
+  CustomerInformationResponse,
+  CustomerReservationDetail,
+  CustomerReservationStatus,
+  CustomerReservationSummary,
   ReservationConsentBundle,
   ReservationConsents,
   ReservationCustomerDetails,
@@ -24,6 +28,7 @@ import { basename } from "node:path";
 import { AuthService } from "../auth/auth.service";
 import { PrivateDocumentStorage } from "./private-document-storage";
 import type {
+  CustomerInformationResponseDto,
   SaveReservationCustomerDetailsDto,
   SaveReservationConsentsDto,
   SaveReservationDraftDto,
@@ -559,6 +564,59 @@ export class ReservationsService {
     return result.data;
   }
 
+  async getCustomerRequests(token: string | undefined): Promise<CustomerReservationSummary[]> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const records = await this.reservations.findCustomerRequests(session.user.id);
+    return records.map((record) => toCustomerRequestSummary(record, session.user.preferredLocale));
+  }
+
+  async getCustomerRequest(
+    token: string | undefined,
+    reservationId: string,
+  ): Promise<CustomerReservationDetail> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const record = await this.reservations.findCustomerRequest(reservationId, session.user.id);
+    if (!record) throw new NotFoundException("The reservation request was not found.");
+    return {
+      ...toCustomerRequestSummary(record, session.user.preferredLocale),
+      documents: record.documents.map((document) => ({
+        type: document.type as ReservationDocumentType,
+        status: document.status as
+          "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED",
+      })),
+      messages: record.customerMessages.map((message) => ({
+        id: message.id,
+        sender: message.sender.systemRole === "CUSTOMER" ? "CUSTOMER" : "RAHAL",
+        body: message.body,
+        createdAt: message.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async respondToInformationRequest(
+    token: string | undefined,
+    reservationId: string,
+    input: CustomerInformationResponseDto,
+  ): Promise<CustomerInformationResponse> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const result = await this.reservations.respondToInformationRequest({
+      reservationId,
+      customerId: session.user.id,
+      locale: session.user.preferredLocale,
+      message: input.message.trim(),
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("An information request awaiting your response was not found.");
+    }
+    if (result.kind === "INVALID_STATUS") {
+      throw new ConflictException("The reservation request no longer accepts this response.");
+    }
+    return result.data;
+  }
+
   private async getDocumentContext(token: string | undefined, draftId: string) {
     const session = await this.auth.getSession(token);
     if (session.user.role !== "CUSTOMER") {
@@ -629,6 +687,12 @@ function assertSalesAccess(role: string) {
   }
 }
 
+function assertCustomerAccess(role: string) {
+  if (role !== "CUSTOMER") {
+    throw new ForbiddenException("A customer account is required.");
+  }
+}
+
 function toSalesQueueItem(
   record: {
     id: string;
@@ -673,5 +737,44 @@ function toSalesQueueItem(
       phoneMasked: maskPhone(record.customerPhoneSnapshot ?? "+20000000000"),
     },
     assignedToCurrentUser: record.assignedSalesId === actorId,
+  };
+}
+
+function toCustomerRequestSummary(
+  record: {
+    id: string;
+    reference: string;
+    status: string;
+    submittedAt: Date | null;
+    createdAt: Date;
+    pickupAt: Date;
+    returnAt: Date;
+    driverRequested: boolean;
+    estimatedTotal: { toNumber(): number };
+    preApprovalExpiresAt: Date | null;
+    vehicle: { id: string; nameAr: string; nameEn: string };
+    branch: { id: string; nameAr: string; nameEn: string };
+  },
+  locale: "ar" | "en",
+): CustomerReservationSummary {
+  return {
+    id: record.id,
+    reference: record.reference,
+    status: record.status as CustomerReservationStatus,
+    submittedAt: (record.submittedAt ?? record.createdAt).toISOString(),
+    pickupAt: record.pickupAt.toISOString(),
+    returnAt: record.returnAt.toISOString(),
+    driverRequested: record.driverRequested,
+    estimate: { currency: "EGP", total: record.estimatedTotal.toNumber() },
+    vehicle: {
+      id: record.vehicle.id,
+      name: locale === "ar" ? record.vehicle.nameAr : record.vehicle.nameEn,
+    },
+    branch: {
+      id: record.branch.id,
+      name: locale === "ar" ? record.branch.nameAr : record.branch.nameEn,
+    },
+    needsResponse: record.status === "MORE_INFORMATION_REQUIRED",
+    preApprovalExpiresAt: record.preApprovalExpiresAt?.toISOString() ?? null,
   };
 }

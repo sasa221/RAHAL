@@ -211,6 +211,55 @@ export type SalesReservationDecisionResult = {
   expiresAt: string | null;
 };
 
+export type CustomerReservationStatus =
+  | "PENDING_REVIEW"
+  | "UNDER_REVIEW"
+  | "MORE_INFORMATION_REQUIRED"
+  | "PRE_APPROVED"
+  | "ALTERNATIVE_OFFERED"
+  | "REJECTED"
+  | "EXPIRED"
+  | "CONFIRMED"
+  | "ACTIVE"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW";
+
+export type CustomerReservationSummary = {
+  id: string;
+  reference: string;
+  status: CustomerReservationStatus;
+  submittedAt: string;
+  pickupAt: string;
+  returnAt: string;
+  driverRequested: boolean;
+  estimate: { currency: "EGP"; total: number };
+  vehicle: { id: string; name: string };
+  branch: { id: string; name: string };
+  needsResponse: boolean;
+  preApprovalExpiresAt: string | null;
+};
+
+export type CustomerReservationDetail = CustomerReservationSummary & {
+  documents: Array<{
+    type: ReservationDocumentType;
+    status: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED";
+  }>;
+  messages: Array<{
+    id: string;
+    sender: "CUSTOMER" | "RAHAL";
+    body: string;
+    createdAt: string;
+  }>;
+};
+
+export type CustomerInformationResponse = {
+  id: string;
+  reference: string;
+  status: "UNDER_REVIEW";
+  respondedAt: string;
+};
+
 export type ReservationConsentBundle = {
   version: string;
   developmentOnly: boolean;

@@ -68,3 +68,9 @@ export class SalesReservationDecisionDto {
   @Length(10, 500)
   note!: string;
 }
+
+export class CustomerInformationResponseDto {
+  @IsString()
+  @Length(10, 500)
+  message!: string;
+}

@@ -267,7 +267,7 @@ Status: the customer wizard through final review and the guarded `DRAFT` to `PEN
 
 Goal: give authorized sales staff a protected queue and an auditable way to begin reviewing submitted requests without confirming a booking.
 
-Status: the queue, protected review detail, and atomic claim slice was completed locally on 2026-07-19. Decision actions, alternatives, deposit/contract recording, and confirmation remain pending.
+Status: the queue, protected review detail, atomic claim, staff decisions, and customer follow-up slice were completed locally on 2026-07-19. Alternatives, deposit/contract recording, and confirmation remain pending.
 
 ### Completed scope
 
@@ -283,12 +283,14 @@ Status: the queue, protected review detail, and atomic claim slice was completed
 - Decision messages are validated from 10 to 500 characters and stored in the separate customer conversation, not internal notes.
 - Every decision uses a conditional `UNDER_REVIEW` transaction and writes the status event, customer message, in-app notification, and privacy-minimized outbox event together.
 - Pre-approval sets `preApprovalExpiresAt` and remains explicitly separate from `CONFIRMED` and `Booking` creation.
+- Authenticated customers can list and inspect only their own submitted requests through shared responsive `/account/requests` and `/en/account/requests` routes.
+- Customer detail responses contain safe document type/status metadata and the customer-visible conversation, never private object keys or identity numbers.
+- A validated customer reply moves only `MORE_INFORMATION_REQUIRED` back to `UNDER_REVIEW` and atomically writes the message, event, assigned-sales notification, and privacy-minimized outbox record.
 
 ### Remaining scope
 
 - Permission-granular actions beyond the initial system-role boundary.
 - Protected document view/sign-url flow with access reason, explicit permission, and access audit.
-- Customer response workflow after a request for more information.
 - Alternative vehicle/date offers and automated pre-approval expiry handling.
 - Branch deposit receipt and signed-contract recording.
 - Final transactional availability check and separate `Booking` creation only after all branch requirements are complete.
@@ -302,6 +304,7 @@ Status: the queue, protected review detail, and atomic claim slice was completed
 - Only the assigned employee, or an administrator override, can record a decision on an `UNDER_REVIEW` request.
 - Request-information, pre-approval, and rejection create customer-visible messages and status-specific notifications without putting free-form notes in the outbox payload.
 - Arabic and English share the same responsive component and show loading, empty, unauthorized, forbidden, detail, and claim states.
+- Customers can answer only their own `MORE_INFORMATION_REQUIRED` request; the response returns it to review without creating or confirming a booking.
 
 ### Tests
 
@@ -309,6 +312,7 @@ Status: the queue, protected review detail, and atomic claim slice was completed
 - Static route/UI tests for bilingual sharing, protected fields, staff endpoints, and non-confirmation language.
 - API integration coverage for validated pre-approval, expiry output, short-message rejection, and continued non-confirmation.
 - Static coverage for all three decision controls and the separate customer-message write.
+- API integration and static UI coverage for customer ownership, safe detail metadata, bounded replies, role rejection, and the `MORE_INFORMATION_REQUIRED` to `UNDER_REVIEW` transition.
 
 ## Decisions not blocking Milestone 1
 

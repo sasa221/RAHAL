@@ -12,6 +12,9 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import type {
   ApiSuccess,
+  CustomerInformationResponse,
+  CustomerReservationDetail,
+  CustomerReservationSummary,
   ReservationConsentBundle,
   ReservationConsents,
   ReservationCustomerDetails,
@@ -26,6 +29,7 @@ import type {
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
 import {
+  CustomerInformationResponseDto,
   SaveReservationConsentsDto,
   SaveReservationCustomerDetailsDto,
   SaveReservationDraftDto,
@@ -150,6 +154,32 @@ export class ReservationsController {
   ): Promise<ApiSuccess<SalesReservationDecisionResult>> {
     return {
       data: await this.reservations.decideSalesReview(readAuthCookie(request), id, input),
+    };
+  }
+
+  @Get("customer/requests")
+  async customerRequests(
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerReservationSummary[]>> {
+    return { data: await this.reservations.getCustomerRequests(readAuthCookie(request)) };
+  }
+
+  @Get("customer/requests/:id")
+  async customerRequest(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerReservationDetail>> {
+    return { data: await this.reservations.getCustomerRequest(readAuthCookie(request), id) };
+  }
+
+  @Post("customer/requests/:id/respond")
+  async respondToInformationRequest(
+    @Param("id") id: string,
+    @Body() input: CustomerInformationResponseDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerInformationResponse>> {
+    return {
+      data: await this.reservations.respondToInformationRequest(readAuthCookie(request), id, input),
     };
   }
 }

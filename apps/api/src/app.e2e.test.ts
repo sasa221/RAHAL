@@ -48,6 +48,7 @@ describe("RAHAL API", () => {
   let storedSessionUser: typeof authUser | typeof salesUser;
   let documentCookie = "";
   let salesAssigned = false;
+  let customerResponded = false;
   let uploadedDocuments: Array<{
     id: string;
     type: "NATIONAL_ID_FRONT";
@@ -89,6 +90,7 @@ describe("RAHAL API", () => {
     reference: "RHL-2026-123456",
     status: salesAssigned ? "UNDER_REVIEW" : "PENDING_REVIEW",
     submittedAt: new Date("2026-07-19T18:00:00.000Z"),
+    preApprovalExpiresAt: null,
     createdAt: new Date("2026-07-19T17:00:00.000Z"),
     pickupAt: new Date("2026-08-01T12:00:00.000Z"),
     returnAt: new Date("2026-08-04T12:00:00.000Z"),
@@ -132,6 +134,31 @@ describe("RAHAL API", () => {
         note: "Customer submitted the reservation request for sales review.",
         createdAt: new Date("2026-07-19T18:00:00.000Z"),
       },
+    ],
+  });
+
+  const customerRequestRecord = () => ({
+    ...salesReviewRecord(),
+    status: customerResponded ? "UNDER_REVIEW" : "MORE_INFORMATION_REQUIRED",
+    assignedSalesId: salesUser.id,
+    documents: [{ type: "NATIONAL_ID_FRONT", status: "UPLOADED" }],
+    customerMessages: [
+      {
+        id: "sales-message-e2e",
+        body: "Please confirm the emergency contact relationship.",
+        createdAt: new Date("2026-07-19T20:00:00.000Z"),
+        sender: { systemRole: "SALES" },
+      },
+      ...(customerResponded
+        ? [
+            {
+              id: "customer-message-e2e",
+              body: "The emergency contact is my brother.",
+              createdAt: new Date("2026-07-19T20:05:00.000Z"),
+              sender: { systemRole: "CUSTOMER" },
+            },
+          ]
+        : []),
     ],
   });
 
@@ -317,6 +344,32 @@ describe("RAHAL API", () => {
                 },
               }
             : { kind: "NOT_ASSIGNED" },
+        findCustomerRequests: async (customerId: string) =>
+          customerId === authUser.id ? [customerRequestRecord()] : [],
+        findCustomerRequest: async (id: string, customerId: string) =>
+          id === "reservation-draft-e2e" && customerId === authUser.id
+            ? customerRequestRecord()
+            : null,
+        respondToInformationRequest: async (input: {
+          reservationId: string;
+          customerId: string;
+          message: string;
+        }) => {
+          if (input.reservationId !== "reservation-draft-e2e" || input.customerId !== authUser.id) {
+            return { kind: "NOT_FOUND" };
+          }
+          if (customerResponded) return { kind: "INVALID_STATUS" };
+          customerResponded = true;
+          return {
+            kind: "RESPONDED",
+            data: {
+              id: input.reservationId,
+              reference: "RHL-2026-123456",
+              status: "UNDER_REVIEW",
+              respondedAt: "2026-07-19T20:05:00.000Z",
+            },
+          };
+        },
         saveCustomerDetails: async (input: {
           draftId: string;
           reference: string;
@@ -694,6 +747,81 @@ describe("RAHAL API", () => {
 
     await request(app.getHttpServer())
       .get("/api/reservations/sales/queue")
+      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .expect(403);
+  });
+
+  it("returns only the signed-in customer's safe submitted request details", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+
+    const queue = await request(app.getHttpServer())
+      .get("/api/reservations/customer/requests")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(queue.body.data[0]).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "MORE_INFORMATION_REQUIRED",
+      needsResponse: true,
+    });
+
+    const detail = await request(app.getHttpServer())
+      .get("/api/reservations/customer/requests/reservation-draft-e2e")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(detail.body.data.messages[0]).toMatchObject({
+      sender: "RAHAL",
+      body: "Please confirm the emergency contact relationship.",
+    });
+    expect(detail.body.data.documents[0]).toEqual({
+      type: "NATIONAL_ID_FRONT",
+      status: "UPLOADED",
+    });
+    expect(JSON.stringify(detail.body)).not.toContain("storageKey");
+    expect(JSON.stringify(detail.body)).not.toContain("identityNumber");
+
+    await request(app.getHttpServer())
+      .get("/api/reservations/customer/requests/not-owned")
+      .set("Cookie", cookie)
+      .expect(404);
+  });
+
+  it("lets the customer answer a request for information without confirming a booking", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+
+    await request(app.getHttpServer())
+      .post("/api/reservations/customer/requests/reservation-draft-e2e/respond")
+      .set("Cookie", cookie)
+      .send({ message: "Too short" })
+      .expect(400);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/customer/requests/reservation-draft-e2e/respond")
+      .set("Cookie", cookie)
+      .send({ message: "The emergency contact is my brother." })
+      .expect(201);
+    expect(response.body.data).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "UNDER_REVIEW",
+    });
+    expect(response.body.data.status).not.toBe("CONFIRMED");
+  });
+
+  it("rejects sales access to customer-owned request routes", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: salesUser.email, password: "correct-customer-password" })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get("/api/reservations/customer/requests")
       .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
       .expect(403);
   });

@@ -763,6 +763,130 @@ export class ReservationsRepository {
     });
   }
 
+  findCustomerRequests(customerId: string) {
+    return this.prisma.client.reservation.findMany({
+      where: { customerId, submittedAt: { not: null }, status: { not: "DRAFT" } },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      take: 50,
+      select: customerRequestSummarySelect,
+    });
+  }
+
+  findCustomerRequest(id: string, customerId: string) {
+    return this.prisma.client.reservation.findFirst({
+      where: { id, customerId, submittedAt: { not: null }, status: { not: "DRAFT" } },
+      select: {
+        ...customerRequestSummarySelect,
+        documents: {
+          where: { deletedAt: null, status: { notIn: ["UPLOADING", "DELETED"] } },
+          orderBy: { createdAt: "asc" },
+          select: { type: true, status: true },
+        },
+        customerMessages: {
+          orderBy: { createdAt: "asc" },
+          take: 100,
+          select: {
+            id: true,
+            body: true,
+            createdAt: true,
+            sender: { select: { systemRole: true } },
+          },
+        },
+      },
+    });
+  }
+
+  async respondToInformationRequest(input: {
+    reservationId: string;
+    customerId: string;
+    locale: "ar" | "en";
+    message: string;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: {
+          id: input.reservationId,
+          customerId: input.customerId,
+          status: "MORE_INFORMATION_REQUIRED",
+        },
+        select: {
+          id: true,
+          reference: true,
+          assignedSalesId: true,
+        },
+      });
+      if (!reservation) return { kind: "NOT_FOUND" as const };
+
+      const respondedAt = new Date();
+      const updated = await transaction.reservation.updateMany({
+        where: {
+          id: reservation.id,
+          customerId: input.customerId,
+          status: "MORE_INFORMATION_REQUIRED",
+        },
+        data: { status: "UNDER_REVIEW" },
+      });
+      if (!updated.count) return { kind: "INVALID_STATUS" as const };
+
+      await transaction.customerMessage.create({
+        data: {
+          reservationId: reservation.id,
+          senderId: input.customerId,
+          body: input.message,
+        },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: reservation.id,
+          fromStatus: "MORE_INFORMATION_REQUIRED",
+          toStatus: "UNDER_REVIEW",
+          actorId: input.customerId,
+          note: "Customer supplied the requested additional information.",
+        },
+      });
+
+      if (reservation.assignedSalesId) {
+        await transaction.notification.create({
+          data: {
+            userId: reservation.assignedSalesId,
+            reservationId: reservation.id,
+            eventKey: "RESERVATION_CUSTOMER_RESPONDED",
+            titleAr: "رد العميل على طلب المعلومات",
+            titleEn: "Customer responded to the information request",
+            bodyAr: `أرسل العميل ردًا جديدًا على طلب ${reservation.reference}.`,
+            bodyEn: `The customer sent a new response for request ${reservation.reference}.`,
+            important: true,
+          },
+        });
+      }
+      await transaction.notificationEvent.create({
+        data: {
+          eventKey: "RESERVATION_CUSTOMER_RESPONDED",
+          aggregateType: "RESERVATION",
+          aggregateId: reservation.id,
+          payload: {
+            reservationId: reservation.id,
+            reference: reservation.reference,
+            customerId: input.customerId,
+            assignedSalesId: reservation.assignedSalesId,
+            locale: input.locale,
+            status: "UNDER_REVIEW",
+          },
+        },
+      });
+
+      return {
+        kind: "RESPONDED" as const,
+        data: {
+          id: reservation.id,
+          reference: reservation.reference,
+          status: "UNDER_REVIEW" as const,
+          respondedAt: respondedAt.toISOString(),
+        },
+      };
+    });
+  }
+
   async replaceDocument(input: {
     draftId: string;
     customerId: string;
@@ -900,6 +1024,21 @@ const salesQueueSelect = {
   customerNameSnapshot: true,
   customerEmailSnapshot: true,
   customerPhoneSnapshot: true,
+  vehicle: { select: { id: true, nameAr: true, nameEn: true } },
+  branch: { select: { id: true, nameAr: true, nameEn: true } },
+} as const;
+
+const customerRequestSummarySelect = {
+  id: true,
+  reference: true,
+  status: true,
+  submittedAt: true,
+  createdAt: true,
+  pickupAt: true,
+  returnAt: true,
+  driverRequested: true,
+  estimatedTotal: true,
+  preApprovalExpiresAt: true,
   vehicle: { select: { id: true, nameAr: true, nameEn: true } },
   branch: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
