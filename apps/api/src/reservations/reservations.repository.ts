@@ -523,7 +523,14 @@ export class ReservationsRepository {
   findSalesQueue(actorId: string, canSeeAll: boolean) {
     return this.prisma.client.reservation.findMany({
       where: {
-        status: { in: ["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"] },
+        status: {
+          in: [
+            "PENDING_REVIEW",
+            "UNDER_REVIEW",
+            "MORE_INFORMATION_REQUIRED",
+            "ALTERNATIVE_OFFERED",
+          ],
+        },
         ...(canSeeAll
           ? {}
           : {
@@ -543,7 +550,14 @@ export class ReservationsRepository {
     return this.prisma.client.reservation.findFirst({
       where: {
         id,
-        status: { in: ["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"] },
+        status: {
+          in: [
+            "PENDING_REVIEW",
+            "UNDER_REVIEW",
+            "MORE_INFORMATION_REQUIRED",
+            "ALTERNATIVE_OFFERED",
+          ],
+        },
       },
       select: {
         ...salesQueueSelect,
@@ -579,6 +593,11 @@ export class ReservationsRepository {
             note: true,
             createdAt: true,
           },
+        },
+        alternativeOffers: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: alternativeOfferSelect,
         },
       },
     });
@@ -763,6 +782,164 @@ export class ReservationsRepository {
     });
   }
 
+  async createAlternativeOffer(input: {
+    reservationId: string;
+    actorId: string;
+    canOverrideAssignment: boolean;
+    locale: "ar" | "en";
+    vehicleId: string;
+    pickupAt: Date;
+    returnAt: Date;
+    note: string;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: { id: input.reservationId, status: "UNDER_REVIEW" },
+        select: {
+          id: true,
+          reference: true,
+          customerId: true,
+          branchId: true,
+          assignedSalesId: true,
+          driverRequested: true,
+        },
+      });
+      if (!reservation) return { kind: "NOT_FOUND" as const };
+      if (!input.canOverrideAssignment && reservation.assignedSalesId !== input.actorId) {
+        return { kind: "NOT_ASSIGNED" as const };
+      }
+
+      const vehicle = await transaction.vehicle.findFirst({
+        where: {
+          id: input.vehicleId,
+          branchId: reservation.branchId,
+          active: true,
+          archivedAt: null,
+          status: "AVAILABLE",
+        },
+        select: {
+          id: true,
+          dailyRate: true,
+          driverCharge: true,
+          driverPolicy: true,
+          minimumRentalDays: true,
+        },
+      });
+      if (!vehicle) return { kind: "VEHICLE_UNAVAILABLE" as const };
+      const rentalDays = Math.ceil(
+        (input.returnAt.getTime() - input.pickupAt.getTime()) / 86400000,
+      );
+      if (rentalDays < vehicle.minimumRentalDays) return { kind: "INVALID_DATES" as const };
+      if (reservation.driverRequested && vehicle.driverPolicy === "UNAVAILABLE") {
+        return { kind: "DRIVER_UNAVAILABLE" as const };
+      }
+
+      const [block, booking] = await Promise.all([
+        transaction.vehicleBlock.findFirst({
+          where: {
+            vehicleId: vehicle.id,
+            startsAt: { lt: input.returnAt },
+            endsAt: { gt: input.pickupAt },
+          },
+          select: { id: true },
+        }),
+        transaction.booking.findFirst({
+          where: {
+            vehicleId: vehicle.id,
+            status: { in: ["CONFIRMED", "ACTIVE"] },
+            pickupAt: { lt: input.returnAt },
+            returnAt: { gt: input.pickupAt },
+          },
+          select: { id: true },
+        }),
+      ]);
+      if (block || booking) return { kind: "VEHICLE_UNAVAILABLE" as const };
+
+      const dailyRate = vehicle.dailyRate.toNumber();
+      const driverRate = reservation.driverRequested ? (vehicle.driverCharge?.toNumber() ?? 0) : 0;
+      const estimatedTotal = (dailyRate + driverRate) * rentalDays;
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const updated = await transaction.reservation.updateMany({
+        where: {
+          id: reservation.id,
+          status: "UNDER_REVIEW",
+          ...(input.canOverrideAssignment ? {} : { assignedSalesId: input.actorId }),
+        },
+        data: { status: "ALTERNATIVE_OFFERED" },
+      });
+      if (!updated.count) return { kind: "NOT_ASSIGNED" as const };
+
+      await transaction.alternativeOffer.updateMany({
+        where: { reservationId: reservation.id, status: "PENDING" },
+        data: { status: "WITHDRAWN" },
+      });
+      const offer = await transaction.alternativeOffer.create({
+        data: {
+          reservationId: reservation.id,
+          vehicleId: vehicle.id,
+          createdById: input.actorId,
+          proposedPickupAt: input.pickupAt,
+          proposedReturnAt: input.returnAt,
+          dailyRateSnapshot: dailyRate,
+          driverRateSnapshot: reservation.driverRequested ? driverRate : null,
+          estimatedTotal,
+          note: input.note,
+          expiresAt,
+        },
+        select: { id: true },
+      });
+      await transaction.customerMessage.create({
+        data: { reservationId: reservation.id, senderId: input.actorId, body: input.note },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: reservation.id,
+          fromStatus: "UNDER_REVIEW",
+          toStatus: "ALTERNATIVE_OFFERED",
+          actorId: input.actorId,
+          note: "Sales proposed an alternative vehicle or date range.",
+          metadata: { offerId: offer.id, expiresAt: expiresAt.toISOString() },
+        },
+      });
+      await transaction.notification.create({
+        data: {
+          userId: reservation.customerId,
+          reservationId: reservation.id,
+          eventKey: "RESERVATION_ALTERNATIVE_OFFERED",
+          titleAr: "عرض بديل لطلبك",
+          titleEn: "An alternative is available",
+          bodyAr: `أرسل فريق رحال عرضًا بديلًا للطلب ${reservation.reference}. راجعه خلال 48 ساعة.`,
+          bodyEn: `Rahal sent an alternative for request ${reservation.reference}. Review it within 48 hours.`,
+          important: true,
+        },
+      });
+      await transaction.notificationEvent.create({
+        data: {
+          eventKey: "RESERVATION_ALTERNATIVE_OFFERED",
+          aggregateType: "RESERVATION",
+          aggregateId: reservation.id,
+          payload: {
+            reservationId: reservation.id,
+            offerId: offer.id,
+            customerId: reservation.customerId,
+            locale: input.locale,
+            status: "ALTERNATIVE_OFFERED",
+            expiresAt: expiresAt.toISOString(),
+          },
+        },
+      });
+      return {
+        kind: "OFFERED" as const,
+        data: {
+          id: offer.id,
+          reservationId: reservation.id,
+          reservationStatus: "ALTERNATIVE_OFFERED" as const,
+          expiresAt: expiresAt.toISOString(),
+        },
+      };
+    });
+  }
+
   findCustomerRequests(customerId: string) {
     return this.prisma.client.reservation.findMany({
       where: { customerId, submittedAt: { not: null }, status: { not: "DRAFT" } },
@@ -791,6 +968,11 @@ export class ReservationsRepository {
             createdAt: true,
             sender: { select: { systemRole: true } },
           },
+        },
+        alternativeOffers: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: alternativeOfferSelect,
         },
       },
     });
@@ -885,6 +1067,165 @@ export class ReservationsRepository {
         },
       };
     });
+  }
+
+  async respondToAlternativeOffer(input: {
+    reservationId: string;
+    customerId: string;
+    locale: "ar" | "en";
+    action: "ACCEPT" | "DECLINE";
+  }) {
+    try {
+      return await this.prisma.client.$transaction(async (transaction) => {
+        const reservation = await transaction.reservation.findFirst({
+          where: {
+            id: input.reservationId,
+            customerId: input.customerId,
+            status: "ALTERNATIVE_OFFERED",
+          },
+          select: {
+            id: true,
+            reference: true,
+            assignedSalesId: true,
+            driverRequested: true,
+            alternativeOffers: {
+              where: { status: "PENDING" },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: {
+                id: true,
+                vehicleId: true,
+                proposedPickupAt: true,
+                proposedReturnAt: true,
+                dailyRateSnapshot: true,
+                driverRateSnapshot: true,
+                estimatedTotal: true,
+                expiresAt: true,
+              },
+            },
+          },
+        });
+        const offer = reservation?.alternativeOffers[0];
+        if (!reservation || !offer) return { kind: "NOT_FOUND" as const };
+        const respondedAt = new Date();
+        if (offer.expiresAt <= respondedAt) {
+          await transaction.alternativeOffer.updateMany({
+            where: { id: offer.id, status: "PENDING" },
+            data: { status: "EXPIRED" },
+          });
+          await transaction.reservation.updateMany({
+            where: { id: reservation.id, status: "ALTERNATIVE_OFFERED" },
+            data: { status: "UNDER_REVIEW" },
+          });
+          return { kind: "EXPIRED" as const };
+        }
+
+        if (input.action === "ACCEPT") {
+          const [block, booking] = await Promise.all([
+            transaction.vehicleBlock.findFirst({
+              where: {
+                vehicleId: offer.vehicleId,
+                startsAt: { lt: offer.proposedReturnAt },
+                endsAt: { gt: offer.proposedPickupAt },
+              },
+              select: { id: true },
+            }),
+            transaction.booking.findFirst({
+              where: {
+                vehicleId: offer.vehicleId,
+                status: { in: ["CONFIRMED", "ACTIVE"] },
+                pickupAt: { lt: offer.proposedReturnAt },
+                returnAt: { gt: offer.proposedPickupAt },
+              },
+              select: { id: true },
+            }),
+          ]);
+          if (block || booking) return { kind: "VEHICLE_UNAVAILABLE" as const };
+        }
+
+        const offerStatus =
+          input.action === "ACCEPT" ? ("ACCEPTED" as const) : ("DECLINED" as const);
+        const offerUpdated = await transaction.alternativeOffer.updateMany({
+          where: { id: offer.id, status: "PENDING", expiresAt: { gt: respondedAt } },
+          data: { status: offerStatus, respondedAt },
+        });
+        if (!offerUpdated.count) throw new AlternativeOfferRaceError();
+        const reservationUpdated = await transaction.reservation.updateMany({
+          where: {
+            id: reservation.id,
+            customerId: input.customerId,
+            status: "ALTERNATIVE_OFFERED",
+          },
+          data:
+            input.action === "ACCEPT"
+              ? {
+                  status: "UNDER_REVIEW",
+                  vehicleId: offer.vehicleId,
+                  pickupAt: offer.proposedPickupAt,
+                  returnAt: offer.proposedReturnAt,
+                  vehicleRateSnapshot: offer.dailyRateSnapshot,
+                  driverRateSnapshot: offer.driverRateSnapshot,
+                  estimatedTotal: offer.estimatedTotal,
+                }
+              : { status: "UNDER_REVIEW" },
+        });
+        if (!reservationUpdated.count) throw new AlternativeOfferRaceError();
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: reservation.id,
+            fromStatus: "ALTERNATIVE_OFFERED",
+            toStatus: "UNDER_REVIEW",
+            actorId: input.customerId,
+            note: `Customer ${offerStatus.toLowerCase()} the alternative offer.`,
+            metadata: { offerId: offer.id, response: offerStatus },
+          },
+        });
+        if (reservation.assignedSalesId) {
+          await transaction.notification.create({
+            data: {
+              userId: reservation.assignedSalesId,
+              reservationId: reservation.id,
+              eventKey: "RESERVATION_ALTERNATIVE_RESPONDED",
+              titleAr: "رد العميل على العرض البديل",
+              titleEn: "Customer responded to the alternative",
+              bodyAr: `رد العميل على العرض البديل للطلب ${reservation.reference}.`,
+              bodyEn: `The customer responded to the alternative for request ${reservation.reference}.`,
+              important: true,
+            },
+          });
+        }
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: "RESERVATION_ALTERNATIVE_RESPONDED",
+            aggregateType: "RESERVATION",
+            aggregateId: reservation.id,
+            payload: {
+              reservationId: reservation.id,
+              offerId: offer.id,
+              assignedSalesId: reservation.assignedSalesId,
+              locale: input.locale,
+              response: offerStatus,
+              status: "UNDER_REVIEW",
+            },
+          },
+        });
+        return {
+          kind: "RESPONDED" as const,
+          data: {
+            id: offer.id,
+            reservationId: reservation.id,
+            offerStatus,
+            reservationStatus: "UNDER_REVIEW" as const,
+            respondedAt: respondedAt.toISOString(),
+          },
+        };
+      });
+    } catch (error) {
+      if (error instanceof AlternativeOfferRaceError) {
+        return { kind: "INVALID_STATUS" as const };
+      }
+      throw error;
+    }
   }
 
   async replaceDocument(input: {
@@ -1042,6 +1383,22 @@ const customerRequestSummarySelect = {
   vehicle: { select: { id: true, nameAr: true, nameEn: true } },
   branch: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
+
+const alternativeOfferSelect = {
+  id: true,
+  status: true,
+  proposedPickupAt: true,
+  proposedReturnAt: true,
+  dailyRateSnapshot: true,
+  driverRateSnapshot: true,
+  estimatedTotal: true,
+  note: true,
+  expiresAt: true,
+  respondedAt: true,
+  vehicle: { select: { id: true, nameAr: true, nameEn: true } },
+} as const;
+
+class AlternativeOfferRaceError extends Error {}
 
 function salesDecisionNotification(
   action: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT",

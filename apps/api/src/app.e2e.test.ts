@@ -49,6 +49,8 @@ describe("RAHAL API", () => {
   let documentCookie = "";
   let salesAssigned = false;
   let customerResponded = false;
+  let alternativeOffered = false;
+  let alternativeResponded = false;
   let uploadedDocuments: Array<{
     id: string;
     type: "NATIONAL_ID_FRONT";
@@ -88,7 +90,12 @@ describe("RAHAL API", () => {
   const salesReviewRecord = () => ({
     id: "reservation-draft-e2e",
     reference: "RHL-2026-123456",
-    status: salesAssigned ? "UNDER_REVIEW" : "PENDING_REVIEW",
+    status:
+      alternativeOffered && !alternativeResponded
+        ? "ALTERNATIVE_OFFERED"
+        : salesAssigned
+          ? "UNDER_REVIEW"
+          : "PENDING_REVIEW",
     submittedAt: new Date("2026-07-19T18:00:00.000Z"),
     preApprovalExpiresAt: null,
     createdAt: new Date("2026-07-19T17:00:00.000Z"),
@@ -135,11 +142,36 @@ describe("RAHAL API", () => {
         createdAt: new Date("2026-07-19T18:00:00.000Z"),
       },
     ],
+    alternativeOffers: alternativeOffered
+      ? [
+          {
+            id: "alternative-e2e",
+            status: alternativeResponded ? "ACCEPTED" : "PENDING",
+            proposedPickupAt: new Date("2026-08-06T12:00:00.000Z"),
+            proposedReturnAt: new Date("2026-08-09T12:00:00.000Z"),
+            dailyRateSnapshot: { toNumber: () => 5800 },
+            estimatedTotal: { toNumber: () => 17_400 },
+            note: "We can offer the family SUV for these alternative dates.",
+            expiresAt: new Date("2026-08-03T12:00:00.000Z"),
+            respondedAt: alternativeResponded ? new Date("2026-08-01T12:15:00.000Z") : null,
+            vehicle: {
+              id: "graphite-suv",
+              nameAr: "دفع رباعي جرافيت",
+              nameEn: "Graphite Family SUV",
+            },
+          },
+        ]
+      : [],
   });
 
   const customerRequestRecord = () => ({
     ...salesReviewRecord(),
-    status: customerResponded ? "UNDER_REVIEW" : "MORE_INFORMATION_REQUIRED",
+    status:
+      alternativeOffered && !alternativeResponded
+        ? "ALTERNATIVE_OFFERED"
+        : customerResponded
+          ? "UNDER_REVIEW"
+          : "MORE_INFORMATION_REQUIRED",
     assignedSalesId: salesUser.id,
     documents: [{ type: "NATIONAL_ID_FRONT", status: "UPLOADED" }],
     customerMessages: [
@@ -160,6 +192,7 @@ describe("RAHAL API", () => {
           ]
         : []),
     ],
+    alternativeOffers: salesReviewRecord().alternativeOffers,
   });
 
   beforeAll(async () => {
@@ -344,6 +377,21 @@ describe("RAHAL API", () => {
                 },
               }
             : { kind: "NOT_ASSIGNED" },
+        createAlternativeOffer: async (input: { reservationId: string; actorId: string }) => {
+          if (input.reservationId !== "reservation-draft-e2e") return { kind: "NOT_FOUND" };
+          if (input.actorId !== salesUser.id) return { kind: "NOT_ASSIGNED" };
+          alternativeOffered = true;
+          alternativeResponded = false;
+          return {
+            kind: "OFFERED",
+            data: {
+              id: "alternative-e2e",
+              reservationId: input.reservationId,
+              reservationStatus: "ALTERNATIVE_OFFERED",
+              expiresAt: "2026-08-03T12:00:00.000Z",
+            },
+          };
+        },
         findCustomerRequests: async (customerId: string) =>
           customerId === authUser.id ? [customerRequestRecord()] : [],
         findCustomerRequest: async (id: string, customerId: string) =>
@@ -367,6 +415,30 @@ describe("RAHAL API", () => {
               reference: "RHL-2026-123456",
               status: "UNDER_REVIEW",
               respondedAt: "2026-07-19T20:05:00.000Z",
+            },
+          };
+        },
+        respondToAlternativeOffer: async (input: {
+          reservationId: string;
+          customerId: string;
+          action: "ACCEPT" | "DECLINE";
+        }) => {
+          if (
+            input.reservationId !== "reservation-draft-e2e" ||
+            input.customerId !== authUser.id ||
+            !alternativeOffered
+          ) {
+            return { kind: "NOT_FOUND" };
+          }
+          alternativeResponded = true;
+          return {
+            kind: "RESPONDED",
+            data: {
+              id: "alternative-e2e",
+              reservationId: input.reservationId,
+              offerStatus: input.action === "ACCEPT" ? "ACCEPTED" : "DECLINED",
+              reservationStatus: "UNDER_REVIEW",
+              respondedAt: "2026-08-01T12:15:00.000Z",
             },
           };
         },
@@ -863,6 +935,65 @@ describe("RAHAL API", () => {
       assignedToCurrentUser: true,
     });
     expect(claimed.body.data.status).not.toBe("CONFIRMED");
+  });
+
+  it("lets the assigned reviewer offer an available alternative without booking it", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: salesUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const pickup = new Date();
+    pickup.setUTCDate(pickup.getUTCDate() + 3);
+    const returnDate = new Date(pickup);
+    returnDate.setUTCDate(returnDate.getUTCDate() + 3);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/sales/reservation-draft-e2e/alternative-offers")
+      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .send({
+        vehicleId: "graphite-suv",
+        pickupDate: pickup.toISOString().slice(0, 10),
+        returnDate: returnDate.toISOString().slice(0, 10),
+        note: "We can offer the family SUV for these alternative dates.",
+      })
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({
+      id: "alternative-e2e",
+      reservationStatus: "ALTERNATIVE_OFFERED",
+    });
+    expect(response.body.data.reservationStatus).not.toBe("CONFIRMED");
+  });
+
+  it("lets the owning customer accept an alternative back into review without confirmation", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+
+    const detail = await request(app.getHttpServer())
+      .get("/api/reservations/customer/requests/reservation-draft-e2e")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(detail.body.data.alternativeOffer).toMatchObject({
+      id: "alternative-e2e",
+      status: "PENDING",
+      vehicle: { name: "Graphite Family SUV" },
+      estimate: { currency: "EGP", total: 17_400 },
+    });
+    expect(detail.body.data.needsResponse).toBe(true);
+
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/customer/requests/reservation-draft-e2e/alternative-offer")
+      .set("Cookie", cookie)
+      .send({ action: "ACCEPT" })
+      .expect(201);
+    expect(response.body.data).toMatchObject({
+      offerStatus: "ACCEPTED",
+      reservationStatus: "UNDER_REVIEW",
+    });
+    expect(response.body.data.reservationStatus).not.toBe("CONFIRMED");
   });
 
   it("records a validated pre-approval without creating a confirmed booking", async () => {

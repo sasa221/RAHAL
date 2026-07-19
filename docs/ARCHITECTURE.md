@@ -133,6 +133,8 @@ Sales decisions are allowed only from `UNDER_REVIEW` for the assigned employee, 
 
 The customer request boundary is separately owner-authorized and exposes submitted request summaries, safe document type/status metadata, and customer-visible messages only. When the assigned reviewer requests more information, the owning customer may send one bounded response. The transaction conditionally moves only `MORE_INFORMATION_REQUIRED` to `UNDER_REVIEW`, preserves the reviewer assignment, and writes the customer message, reservation event, staff in-app notification, and minimal outbox event together. It never exposes document bytes or creates a booking.
 
+Alternative offers are separate persisted records rather than destructive edits to the original request. Creation is limited to the assigned reviewer or administrator override from `UNDER_REVIEW`, validates the same branch and operational availability, snapshots EGP pricing, expires after 48 hours, and moves the request to `ALTERNATIVE_OFFERED`. Owner acceptance rechecks blocks and confirmed/active booking overlap before applying the proposed snapshots and returning to `UNDER_REVIEW`; decline also returns to review without changing the original selection. Neither response creates a `Booking`.
+
 ## Notification architecture
 
 Use an outbox pattern:

@@ -74,3 +74,24 @@ export class CustomerInformationResponseDto {
   @Length(10, 500)
   message!: string;
 }
+
+export class SalesAlternativeOfferDto {
+  @IsString()
+  @MaxLength(100)
+  vehicleId!: string;
+
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  pickupDate!: string;
+
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  returnDate!: string;
+
+  @IsString()
+  @Length(10, 500)
+  note!: string;
+}
+
+export class CustomerAlternativeOfferDecisionDto {
+  @IsIn(["ACCEPT", "DECLINE"])
+  action!: "ACCEPT" | "DECLINE";
+}

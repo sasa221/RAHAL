@@ -501,6 +501,7 @@ model AlternativeOffer {
   proposedPickupAt  DateTime
   proposedReturnAt  DateTime
   dailyRateSnapshot Decimal                @db.Decimal(12, 2)
+  driverRateSnapshot Decimal?              @db.Decimal(12, 2)
   estimatedTotal    Decimal                @db.Decimal(12, 2)
   note              String?
   expiresAt         DateTime

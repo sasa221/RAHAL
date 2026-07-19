@@ -117,6 +117,8 @@ The assigned reviewer may move an `UNDER_REVIEW` request to `MORE_INFORMATION_RE
 
 Customers may list and inspect only their own submitted requests. The customer view exposes request metadata, safe document status, and customer-visible messages without document locations or identity numbers. When a request is `MORE_INFORMATION_REQUIRED`, its owner may send a 10–500 character response that returns the request to `UNDER_REVIEW`, preserves its sales assignment, and notifies the assigned reviewer. This response never confirms a booking.
 
+The assigned reviewer may propose a 48-hour alternative vehicle and/or date range from `UNDER_REVIEW`. The API must validate the branch, vehicle state, driver policy, minimum duration, operational blocks, and confirmed/active overlap and store immutable EGP rate/total snapshots. The customer may accept or decline only their own pending offer. Acceptance applies the proposed snapshots only after another conflict check and returns the request to `UNDER_REVIEW`; it is not confirmation and does not create a booking.
+
 ## Security and privacy requirements
 
 - Email and phone verification are both required before reservation submission.

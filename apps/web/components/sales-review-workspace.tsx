@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatEgp, localizedPath, type PublicLocale } from "../lib/public-content";
 
-type QueueStatus = "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED";
+type QueueStatus =
+  "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED" | "ALTERNATIVE_OFFERED";
 
 type QueueItem = {
   id: string;
@@ -37,6 +38,24 @@ type Review = QueueItem & {
     note: string | null;
     createdAt: string;
   }>;
+  alternativeOffer: {
+    id: string;
+    status: "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "WITHDRAWN";
+    proposedPickupAt: string;
+    proposedReturnAt: string;
+    estimate: { currency: "EGP"; total: number; dailyRate: number };
+    vehicle: { id: string; name: string };
+    note: string | null;
+    expiresAt: string;
+    respondedAt: string | null;
+  } | null;
+};
+
+type OfferVehicle = {
+  id: string;
+  name: { ar: string; en: string };
+  dailyRateEgp: number;
+  status: "available" | "review";
 };
 
 type DecisionResult = {
@@ -60,6 +79,7 @@ const copy = {
     pending: "بانتظار المراجعة",
     reviewing: "قيد المراجعة",
     moreInfo: "معلومات إضافية مطلوبة",
+    alternativeStatus: "عرض بديل مرسل",
     loading: "جارٍ تحميل طلبات المبيعات...",
     empty: "لا توجد طلبات في هذه القائمة الآن.",
     signIn: "سجّل الدخول بحساب موظف المبيعات",
@@ -113,6 +133,19 @@ const copy = {
     rejectedStatus: "مرفوض",
     driver: "مع سائق",
     selfDrive: "بدون سائق",
+    alternativeTitle: "اقترح بديلًا",
+    alternativeCopy: "اختر سيارة ومواعيد مناسبة. العرض صالح 48 ساعة ولا يؤكد الحجز.",
+    alternativeVehicle: "السيارة البديلة",
+    alternativePickup: "موعد الاستلام المقترح",
+    alternativeReturn: "موعد الإرجاع المقترح",
+    alternativeNote: "رسالة العرض للعميل",
+    alternativePlaceholder: "اشرح سبب العرض وما الذي تغير بوضوح",
+    sendAlternative: "إرسال العرض البديل",
+    sendingAlternative: "جاري إرسال العرض...",
+    alternativeSent: "تم إرسال العرض البديل للعميل لمدة 48 ساعة.",
+    alternativeFailed: "تعذر إرسال العرض. راجع السيارة والمواعيد والرسالة.",
+    currentAlternative: "العرض البديل الحالي",
+    offerExpires: "ينتهي",
   },
   en: {
     brand: "RAHAL / SALES",
@@ -127,6 +160,7 @@ const copy = {
     pending: "Pending review",
     reviewing: "Under review",
     moreInfo: "More information required",
+    alternativeStatus: "Alternative offered",
     loading: "Loading sales requests...",
     empty: "There are no requests in this queue right now.",
     signIn: "Sign in with a sales employee account",
@@ -182,6 +216,20 @@ const copy = {
     rejectedStatus: "Rejected",
     driver: "With driver",
     selfDrive: "Self-drive",
+    alternativeTitle: "Propose an alternative",
+    alternativeCopy:
+      "Choose a suitable vehicle and dates. The offer lasts 48 hours and never confirms a booking.",
+    alternativeVehicle: "Alternative vehicle",
+    alternativePickup: "Proposed pickup",
+    alternativeReturn: "Proposed return",
+    alternativeNote: "Offer message to customer",
+    alternativePlaceholder: "Clearly explain why this alternative is being offered",
+    sendAlternative: "Send alternative offer",
+    sendingAlternative: "Sending offer...",
+    alternativeSent: "The 48-hour alternative offer was sent to the customer.",
+    alternativeFailed: "The offer could not be sent. Check the vehicle, dates, and message.",
+    currentAlternative: "Current alternative offer",
+    offerExpires: "Expires",
   },
 } as const;
 
@@ -204,6 +252,7 @@ function statusLabel(status: QueueStatus, locale: PublicLocale) {
   const labels = copy[locale];
   if (status === "UNDER_REVIEW") return labels.reviewing;
   if (status === "MORE_INFORMATION_REQUIRED") return labels.moreInfo;
+  if (status === "ALTERNATIVE_OFFERED") return labels.alternativeStatus;
   return labels.pending;
 }
 
@@ -221,6 +270,13 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   const [decisionResult, setDecisionResult] = useState<DecisionResult | null>(null);
   const [error, setError] = useState<"AUTH" | "FORBIDDEN" | "GENERAL" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [fleet, setFleet] = useState<OfferVehicle[]>([]);
+  const [offerVehicleId, setOfferVehicleId] = useState("");
+  const [offerPickup, setOfferPickup] = useState("");
+  const [offerReturn, setOfferReturn] = useState("");
+  const [offerNote, setOfferNote] = useState("");
+  const [offering, setOffering] = useState(false);
+  const [offerCreatedExpires, setOfferCreatedExpires] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -243,6 +299,17 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    fetch("/api/vehicles", { credentials: "include" })
+      .then(async (response) =>
+        response.ok ? ((await response.json()) as { data?: OfferVehicle[] }) : {},
+      )
+      .then((payload) =>
+        setFleet(payload.data?.filter((vehicle) => vehicle.status === "available") ?? []),
+      )
+      .catch(() => setFleet([]));
+  }, []);
+
   const filteredQueue = useMemo(
     () => queue.filter((item) => filter === "ALL" || item.status === filter),
     [filter, queue],
@@ -255,6 +322,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     setDecisionResult(null);
     setReviewLoading(true);
     setActionError(null);
+    setOfferCreatedExpires(null);
     try {
       const response = await fetch(`/api/reservations/sales/${encodeURIComponent(id)}`, {
         credentials: "include",
@@ -262,6 +330,9 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       const payload = (await response.json()) as { data?: Review };
       if (!response.ok || !payload.data) throw new Error("review unavailable");
       setReview(payload.data);
+      setOfferVehicleId(payload.data.vehicle.id);
+      setOfferPickup(payload.data.pickupAt.slice(0, 10));
+      setOfferReturn(payload.data.returnAt.slice(0, 10));
     } catch {
       setActionError(text.unavailable);
     } finally {
@@ -340,6 +411,50 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     }
   }
 
+  async function submitAlternativeOffer() {
+    if (
+      !review ||
+      !offerVehicleId ||
+      !offerPickup ||
+      !offerReturn ||
+      offerNote.trim().length < 10
+    ) {
+      setActionError(text.alternativeFailed);
+      return;
+    }
+    setOffering(true);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/alternative-offers`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            vehicleId: offerVehicleId,
+            pickupDate: offerPickup,
+            returnDate: offerReturn,
+            note: offerNote.trim(),
+          }),
+        },
+      );
+      const payload = (await response.json()) as { data?: { expiresAt: string } };
+      if (!response.ok || !payload.data) throw new Error("offer unavailable");
+      setOfferCreatedExpires(payload.data.expiresAt);
+      setReview((current) => (current ? { ...current, status: "ALTERNATIVE_OFFERED" } : current));
+      setQueue((current) =>
+        current.map((item) =>
+          item.id === review.id ? { ...item, status: "ALTERNATIVE_OFFERED" } : item,
+        ),
+      );
+    } catch {
+      setActionError(text.alternativeFailed);
+    } finally {
+      setOffering(false);
+    }
+  }
+
   return (
     <div className="sales-workspace" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
       <header className="sales-topbar">
@@ -395,6 +510,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                     ["PENDING_REVIEW", text.pending],
                     ["UNDER_REVIEW", text.reviewing],
                     ["MORE_INFORMATION_REQUIRED", text.moreInfo],
+                    ["ALTERNATIVE_OFFERED", text.alternativeStatus],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -505,6 +621,31 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                     </dl>
                   </section>
 
+                  {review.alternativeOffer ? (
+                    <section className="sales-alternative-summary">
+                      <h3>{text.currentAlternative}</h3>
+                      <strong>{review.alternativeOffer.vehicle.name}</strong>
+                      <dl className="sales-detail-list">
+                        <div>
+                          <dt>{text.alternativePickup}</dt>
+                          <dd>{formatDate(review.alternativeOffer.proposedPickupAt, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.alternativeReturn}</dt>
+                          <dd>{formatDate(review.alternativeOffer.proposedReturnAt, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.estimate}</dt>
+                          <dd>{formatEgp(review.alternativeOffer.estimate.total, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.offerExpires}</dt>
+                          <dd>{formatDate(review.alternativeOffer.expiresAt, locale)}</dd>
+                        </div>
+                      </dl>
+                    </section>
+                  ) : null}
+
                   <section>
                     <h3>{text.verification}</h3>
                     <div className="sales-verification-grid">
@@ -582,53 +723,124 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                           ) : null}
                         </div>
                       ) : review.status === "UNDER_REVIEW" ? (
-                        <section className="sales-decision-panel">
-                          <h3>{text.decisionTitle}</h3>
-                          <p>{text.decisionCopy}</p>
-                          <label>
-                            <span>{text.decisionNote}</span>
-                            <textarea
-                              maxLength={500}
-                              minLength={10}
-                              onChange={(event) => {
-                                setDecisionNote(event.target.value);
-                                setActionError(null);
-                              }}
-                              placeholder={text.decisionPlaceholder}
-                              rows={5}
-                              value={decisionNote}
-                            />
-                            <small>
-                              {text.decisionHint} · {decisionNote.length}/500
-                            </small>
-                          </label>
-                          <div className="sales-decision-actions">
+                        <>
+                          <section className="sales-decision-panel">
+                            <h3>{text.decisionTitle}</h3>
+                            <p>{text.decisionCopy}</p>
+                            <label>
+                              <span>{text.decisionNote}</span>
+                              <textarea
+                                maxLength={500}
+                                minLength={10}
+                                onChange={(event) => {
+                                  setDecisionNote(event.target.value);
+                                  setActionError(null);
+                                }}
+                                placeholder={text.decisionPlaceholder}
+                                rows={5}
+                                value={decisionNote}
+                              />
+                              <small>
+                                {text.decisionHint} · {decisionNote.length}/500
+                              </small>
+                            </label>
+                            <div className="sales-decision-actions">
+                              <button
+                                disabled={
+                                  decidingAction !== null || decisionNote.trim().length < 10
+                                }
+                                onClick={() => void submitDecision("REQUEST_INFORMATION")}
+                                type="button"
+                              >
+                                {decidingAction === "REQUEST_INFORMATION"
+                                  ? text.deciding
+                                  : text.requestInfo}
+                              </button>
+                              <button
+                                disabled={
+                                  decidingAction !== null || decisionNote.trim().length < 10
+                                }
+                                onClick={() => void submitDecision("PRE_APPROVE")}
+                                type="button"
+                              >
+                                {decidingAction === "PRE_APPROVE" ? text.deciding : text.preApprove}
+                              </button>
+                              <button
+                                className="is-danger"
+                                disabled={
+                                  decidingAction !== null || decisionNote.trim().length < 10
+                                }
+                                onClick={() => void submitDecision("REJECT")}
+                                type="button"
+                              >
+                                {decidingAction === "REJECT" ? text.deciding : text.reject}
+                              </button>
+                            </div>
+                          </section>
+                          <section className="sales-decision-panel sales-alternative-panel">
+                            <h3>{text.alternativeTitle}</h3>
+                            <p>{text.alternativeCopy}</p>
+                            <div className="sales-alternative-fields">
+                              <label>
+                                <span>{text.alternativeVehicle}</span>
+                                <select
+                                  value={offerVehicleId}
+                                  onChange={(event) => setOfferVehicleId(event.target.value)}
+                                >
+                                  {fleet.map((vehicle) => (
+                                    <option key={vehicle.id} value={vehicle.id}>
+                                      {vehicle.name[locale]} ·{" "}
+                                      {formatEgp(vehicle.dailyRateEgp, locale)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                <span>{text.alternativePickup}</span>
+                                <input
+                                  type="date"
+                                  value={offerPickup}
+                                  onChange={(event) => setOfferPickup(event.target.value)}
+                                />
+                              </label>
+                              <label>
+                                <span>{text.alternativeReturn}</span>
+                                <input
+                                  type="date"
+                                  value={offerReturn}
+                                  onChange={(event) => setOfferReturn(event.target.value)}
+                                />
+                              </label>
+                            </div>
+                            <label>
+                              <span>{text.alternativeNote}</span>
+                              <textarea
+                                maxLength={500}
+                                minLength={10}
+                                value={offerNote}
+                                onChange={(event) => setOfferNote(event.target.value)}
+                                placeholder={text.alternativePlaceholder}
+                              />
+                            </label>
                             <button
-                              disabled={decidingAction !== null || decisionNote.trim().length < 10}
-                              onClick={() => void submitDecision("REQUEST_INFORMATION")}
+                              className="sales-action sales-action--claim"
+                              disabled={offering || offerNote.trim().length < 10 || !offerVehicleId}
+                              onClick={() => void submitAlternativeOffer()}
                               type="button"
                             >
-                              {decidingAction === "REQUEST_INFORMATION"
-                                ? text.deciding
-                                : text.requestInfo}
+                              {offering ? text.sendingAlternative : text.sendAlternative}
+                              <span>→</span>
                             </button>
-                            <button
-                              disabled={decidingAction !== null || decisionNote.trim().length < 10}
-                              onClick={() => void submitDecision("PRE_APPROVE")}
-                              type="button"
-                            >
-                              {decidingAction === "PRE_APPROVE" ? text.deciding : text.preApprove}
-                            </button>
-                            <button
-                              className="is-danger"
-                              disabled={decidingAction !== null || decisionNote.trim().length < 10}
-                              onClick={() => void submitDecision("REJECT")}
-                              type="button"
-                            >
-                              {decidingAction === "REJECT" ? text.deciding : text.reject}
-                            </button>
-                          </div>
-                        </section>
+                          </section>
+                        </>
+                      ) : null}
+                      {offerCreatedExpires ? (
+                        <div className="sales-decision-success">
+                          <h3>{text.alternativeSent}</h3>
+                          <small>
+                            {text.offerExpires}: {formatDate(offerCreatedExpires, locale)}
+                          </small>
+                        </div>
                       ) : null}
                     </>
                   ) : (

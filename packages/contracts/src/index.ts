@@ -168,7 +168,7 @@ export type SubmittedReservation = {
 export type SalesReservationQueueItem = {
   id: string;
   reference: string;
-  status: "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED";
+  status: "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED" | "ALTERNATIVE_OFFERED";
   submittedAt: string;
   pickupAt: string;
   returnAt: string;
@@ -201,6 +201,7 @@ export type SalesReservationReview = SalesReservationQueueItem & {
     note: string | null;
     createdAt: string;
   }>;
+  alternativeOffer: ReservationAlternativeOffer | null;
 };
 
 export type SalesReservationDecisionResult = {
@@ -251,6 +252,34 @@ export type CustomerReservationDetail = CustomerReservationSummary & {
     body: string;
     createdAt: string;
   }>;
+  alternativeOffer: ReservationAlternativeOffer | null;
+};
+
+export type ReservationAlternativeOffer = {
+  id: string;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "WITHDRAWN";
+  proposedPickupAt: string;
+  proposedReturnAt: string;
+  estimate: { currency: "EGP"; total: number; dailyRate: number };
+  vehicle: { id: string; name: string };
+  note: string | null;
+  expiresAt: string;
+  respondedAt: string | null;
+};
+
+export type SalesAlternativeOfferResult = {
+  id: string;
+  reservationId: string;
+  reservationStatus: "ALTERNATIVE_OFFERED";
+  expiresAt: string;
+};
+
+export type CustomerAlternativeOfferResponse = {
+  id: string;
+  reservationId: string;
+  offerStatus: "ACCEPTED" | "DECLINED";
+  reservationStatus: "UNDER_REVIEW";
+  respondedAt: string;
 };
 
 export type CustomerInformationResponse = {

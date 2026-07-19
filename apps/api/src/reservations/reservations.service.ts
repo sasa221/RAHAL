@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type {
+  CustomerAlternativeOfferResponse,
   CustomerInformationResponse,
   CustomerReservationDetail,
   CustomerReservationStatus,
@@ -18,7 +19,9 @@ import type {
   ReservationDocumentType,
   ReservationDraft,
   ReservationReview,
+  ReservationAlternativeOffer,
   ReservationSubmissionBlocker,
+  SalesAlternativeOfferResult,
   SalesReservationQueueItem,
   SalesReservationDecisionResult,
   SalesReservationReview,
@@ -28,10 +31,12 @@ import { basename } from "node:path";
 import { AuthService } from "../auth/auth.service";
 import { PrivateDocumentStorage } from "./private-document-storage";
 import type {
+  CustomerAlternativeOfferDecisionDto,
   CustomerInformationResponseDto,
   SaveReservationCustomerDetailsDto,
   SaveReservationConsentsDto,
   SaveReservationDraftDto,
+  SalesAlternativeOfferDto,
   SalesReservationDecisionDto,
 } from "./reservations.dto";
 import { ReservationsRepository } from "./reservations.repository";
@@ -517,6 +522,10 @@ export class ReservationsService {
         note: event.note,
         createdAt: event.createdAt.toISOString(),
       })),
+      alternativeOffer: toAlternativeOffer(
+        record.alternativeOffers[0] ?? null,
+        session.user.preferredLocale,
+      ),
     };
   }
 
@@ -564,6 +573,46 @@ export class ReservationsService {
     return result.data;
   }
 
+  async createAlternativeOffer(
+    token: string | undefined,
+    reservationId: string,
+    input: SalesAlternativeOfferDto,
+  ): Promise<SalesAlternativeOfferResult> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const pickupAt = parseDate(input.pickupDate);
+    const returnAt = parseDate(input.returnDate);
+    if (pickupAt.getTime() <= Date.now() || returnAt <= pickupAt) {
+      throw new BadRequestException("Alternative dates must be a valid future range.");
+    }
+    const result = await this.reservations.createAlternativeOffer({
+      reservationId,
+      actorId: session.user.id,
+      canOverrideAssignment: ["ADMIN", "SUPER_ADMIN"].includes(session.user.role),
+      locale: session.user.preferredLocale,
+      vehicleId: input.vehicleId,
+      pickupAt,
+      returnAt,
+      note: input.note.trim(),
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("An under-review reservation request was not found.");
+    }
+    if (result.kind === "NOT_ASSIGNED") {
+      throw new ForbiddenException("Only the assigned sales employee can offer an alternative.");
+    }
+    if (result.kind === "VEHICLE_UNAVAILABLE") {
+      throw new ConflictException("The alternative vehicle is unavailable for these dates.");
+    }
+    if (result.kind === "DRIVER_UNAVAILABLE") {
+      throw new ConflictException("The alternative vehicle does not support the requested driver.");
+    }
+    if (result.kind === "INVALID_DATES") {
+      throw new BadRequestException("The alternative does not meet the minimum rental duration.");
+    }
+    return result.data;
+  }
+
   async getCustomerRequests(token: string | undefined): Promise<CustomerReservationSummary[]> {
     const session = await this.auth.getSession(token);
     assertCustomerAccess(session.user.role);
@@ -592,6 +641,10 @@ export class ReservationsService {
         body: message.body,
         createdAt: message.createdAt.toISOString(),
       })),
+      alternativeOffer: toAlternativeOffer(
+        record.alternativeOffers[0] ?? null,
+        session.user.preferredLocale,
+      ),
     };
   }
 
@@ -613,6 +666,34 @@ export class ReservationsService {
     }
     if (result.kind === "INVALID_STATUS") {
       throw new ConflictException("The reservation request no longer accepts this response.");
+    }
+    return result.data;
+  }
+
+  async respondToAlternativeOffer(
+    token: string | undefined,
+    reservationId: string,
+    input: CustomerAlternativeOfferDecisionDto,
+  ): Promise<CustomerAlternativeOfferResponse> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const result = await this.reservations.respondToAlternativeOffer({
+      reservationId,
+      customerId: session.user.id,
+      locale: session.user.preferredLocale,
+      action: input.action,
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("A pending alternative offer was not found.");
+    }
+    if (result.kind === "EXPIRED") {
+      throw new ConflictException("The alternative offer has expired and returned to review.");
+    }
+    if (result.kind === "VEHICLE_UNAVAILABLE") {
+      throw new ConflictException("The alternative is no longer available. Sales will review it.");
+    }
+    if (result.kind === "INVALID_STATUS") {
+      throw new ConflictException("The alternative offer no longer accepts a response.");
     }
     return result.data;
   }
@@ -774,7 +855,43 @@ function toCustomerRequestSummary(
       id: record.branch.id,
       name: locale === "ar" ? record.branch.nameAr : record.branch.nameEn,
     },
-    needsResponse: record.status === "MORE_INFORMATION_REQUIRED",
+    needsResponse: ["MORE_INFORMATION_REQUIRED", "ALTERNATIVE_OFFERED"].includes(record.status),
     preApprovalExpiresAt: record.preApprovalExpiresAt?.toISOString() ?? null,
+  };
+}
+
+function toAlternativeOffer(
+  offer: {
+    id: string;
+    status: string;
+    proposedPickupAt: Date;
+    proposedReturnAt: Date;
+    dailyRateSnapshot: { toNumber(): number };
+    estimatedTotal: { toNumber(): number };
+    note: string | null;
+    expiresAt: Date;
+    respondedAt: Date | null;
+    vehicle: { id: string; nameAr: string; nameEn: string };
+  } | null,
+  locale: "ar" | "en",
+): ReservationAlternativeOffer | null {
+  if (!offer) return null;
+  return {
+    id: offer.id,
+    status: offer.status as ReservationAlternativeOffer["status"],
+    proposedPickupAt: offer.proposedPickupAt.toISOString(),
+    proposedReturnAt: offer.proposedReturnAt.toISOString(),
+    estimate: {
+      currency: "EGP",
+      dailyRate: offer.dailyRateSnapshot.toNumber(),
+      total: offer.estimatedTotal.toNumber(),
+    },
+    vehicle: {
+      id: offer.vehicle.id,
+      name: locale === "ar" ? offer.vehicle.nameAr : offer.vehicle.nameEn,
+    },
+    note: offer.note,
+    expiresAt: offer.expiresAt.toISOString(),
+    respondedAt: offer.respondedAt?.toISOString() ?? null,
   };
 }

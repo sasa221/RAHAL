@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CustomerAlternativeOfferResponse,
   CustomerInformationResponse,
   CustomerReservationDetail,
   CustomerReservationStatus,
@@ -58,6 +59,17 @@ const copy = {
     safety:
       "لا تظهر صور المستندات أو أرقام الهوية هنا. التأكيد النهائي يتطلب الحضور للفرع، دفع العربون وتوقيع مستندات الإيجار.",
     expires: "تنتهي الموافقة المبدئية",
+    alternativeTitle: "عرض بديل من رحال",
+    alternativeCopy: "راجع السيارة والمواعيد والسعر التقديري قبل الرد. قبول العرض لا يؤكد الحجز.",
+    alternativePickup: "الاستلام المقترح",
+    alternativeReturn: "الإرجاع المقترح",
+    alternativeExpires: "ينتهي العرض",
+    acceptAlternative: "قبول وإعادته للمراجعة",
+    declineAlternative: "رفض العرض",
+    respondingAlternative: "جاري تسجيل ردك...",
+    alternativeAccepted: "تم قبول العرض وعاد الطلب إلى مراجعة فريق رحال.",
+    alternativeDeclined: "تم رفض العرض وعاد الطلب إلى فريق رحال.",
+    alternativeFailed: "تعذر تسجيل ردك. ربما انتهت صلاحية العرض أو تغير التوافر.",
     status: {
       PENDING_REVIEW: "بانتظار المراجعة",
       UNDER_REVIEW: "قيد المراجعة",
@@ -121,6 +133,19 @@ const copy = {
     safety:
       "Document images and identity numbers never appear here. Final confirmation requires branch attendance, deposit payment, and signed rental documents.",
     expires: "Pre-approval expires",
+    alternativeTitle: "An alternative from Rahal",
+    alternativeCopy:
+      "Review the vehicle, dates, and estimate before responding. Accepting never confirms a booking.",
+    alternativePickup: "Proposed pickup",
+    alternativeReturn: "Proposed return",
+    alternativeExpires: "Offer expires",
+    acceptAlternative: "Accept and return to review",
+    declineAlternative: "Decline offer",
+    respondingAlternative: "Recording your response...",
+    alternativeAccepted: "The alternative was accepted and returned to Rahal review.",
+    alternativeDeclined: "The alternative was declined and returned to the Rahal team.",
+    alternativeFailed:
+      "Your response could not be recorded. The offer may have expired or changed.",
     status: {
       PENDING_REVIEW: "Pending review",
       UNDER_REVIEW: "Under review",
@@ -177,6 +202,10 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(false);
   const [sent, setSent] = useState(false);
+  const [offerAction, setOfferAction] = useState<"ACCEPT" | "DECLINE" | null>(null);
+  const [offerFeedback, setOfferFeedback] = useState<"ACCEPTED" | "DECLINED" | "ERROR" | null>(
+    null,
+  );
 
   useEffect(() => {
     void loadRequests();
@@ -207,6 +236,7 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
     setDetailLoading(true);
     setSent(false);
     setSendError(false);
+    setOfferFeedback(null);
     try {
       const response = await fetch(`/api/reservations/customer/requests/${id}`, {
         credentials: "include",
@@ -267,6 +297,50 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
       setSendError(true);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function respondToAlternative(action: "ACCEPT" | "DECLINE") {
+    if (!detail?.alternativeOffer) return;
+    setOfferAction(action);
+    setOfferFeedback(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/customer/requests/${detail.id}/alternative-offer`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+      const payload = (await response.json()) as { data?: CustomerAlternativeOfferResponse };
+      if (!response.ok || !payload.data) throw new Error("ALTERNATIVE_RESPONSE_FAILED");
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === detail.id
+            ? { ...request, status: "UNDER_REVIEW", needsResponse: false }
+            : request,
+        ),
+      );
+      setDetail((current) =>
+        current?.alternativeOffer
+          ? {
+              ...current,
+              status: "UNDER_REVIEW",
+              alternativeOffer: {
+                ...current.alternativeOffer,
+                status: payload.data!.offerStatus,
+                respondedAt: payload.data!.respondedAt,
+              },
+            }
+          : current,
+      );
+      setOfferFeedback(payload.data.offerStatus);
+    } catch {
+      setOfferFeedback("ERROR");
+    } finally {
+      setOfferAction(null);
     }
   }
 
@@ -480,6 +554,68 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                       </ol>
                     )}
                   </section>
+                  {detail.alternativeOffer && (
+                    <section className="customer-alternative-offer">
+                      <h3>{text.alternativeTitle}</h3>
+                      <p>{text.alternativeCopy}</p>
+                      <strong>{detail.alternativeOffer.vehicle.name}</strong>
+                      <dl className="sales-detail-list">
+                        <div>
+                          <dt>{text.alternativePickup}</dt>
+                          <dd>{formatDate(detail.alternativeOffer.proposedPickupAt, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.alternativeReturn}</dt>
+                          <dd>{formatDate(detail.alternativeOffer.proposedReturnAt, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.estimate}</dt>
+                          <dd>{formatEgp(detail.alternativeOffer.estimate.total, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.alternativeExpires}</dt>
+                          <dd>{formatDate(detail.alternativeOffer.expiresAt, locale)}</dd>
+                        </div>
+                      </dl>
+                      {detail.alternativeOffer.note && (
+                        <blockquote>{detail.alternativeOffer.note}</blockquote>
+                      )}
+                      {detail.alternativeOffer.status === "PENDING" &&
+                        detail.status === "ALTERNATIVE_OFFERED" && (
+                          <div className="customer-alternative-actions">
+                            <button
+                              disabled={offerAction !== null}
+                              type="button"
+                              onClick={() => void respondToAlternative("ACCEPT")}
+                            >
+                              {offerAction === "ACCEPT"
+                                ? text.respondingAlternative
+                                : text.acceptAlternative}
+                            </button>
+                            <button
+                              disabled={offerAction !== null}
+                              type="button"
+                              onClick={() => void respondToAlternative("DECLINE")}
+                            >
+                              {offerAction === "DECLINE"
+                                ? text.respondingAlternative
+                                : text.declineAlternative}
+                            </button>
+                          </div>
+                        )}
+                      {offerFeedback && (
+                        <p
+                          className={`customer-offer-feedback${offerFeedback === "ERROR" ? " is-error" : ""}`}
+                        >
+                          {offerFeedback === "ACCEPTED"
+                            ? text.alternativeAccepted
+                            : offerFeedback === "DECLINED"
+                              ? text.alternativeDeclined
+                              : text.alternativeFailed}
+                        </p>
+                      )}
+                    </section>
+                  )}
                   {detail.needsResponse && (
                     <section className="customer-reply-panel">
                       <h3>{text.replyTitle}</h3>

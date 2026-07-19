@@ -125,6 +125,8 @@ Vehicle operational states should include:
 
 State changes must happen through backend services that validate actor permissions, required fields, allowed transitions, side effects, and audit events.
 
+`AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
+
 ## Constraints and indexes
 
 Required constraints:

@@ -13,6 +13,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import type {
   ApiSuccess,
   CustomerInformationResponse,
+  CustomerAlternativeOfferResponse,
   CustomerReservationDetail,
   CustomerReservationSummary,
   ReservationConsentBundle,
@@ -21,6 +22,7 @@ import type {
   ReservationDocumentChecklist,
   ReservationReview,
   SalesReservationDecisionResult,
+  SalesAlternativeOfferResult,
   SalesReservationQueueItem,
   SalesReservationReview,
   SubmittedReservation,
@@ -29,11 +31,13 @@ import type {
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
 import {
+  CustomerAlternativeOfferDecisionDto,
   CustomerInformationResponseDto,
   SaveReservationConsentsDto,
   SaveReservationCustomerDetailsDto,
   SaveReservationDraftDto,
   SalesReservationDecisionDto,
+  SalesAlternativeOfferDto,
 } from "./reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
@@ -157,6 +161,17 @@ export class ReservationsController {
     };
   }
 
+  @Post("sales/:id/alternative-offers")
+  async createAlternativeOffer(
+    @Param("id") id: string,
+    @Body() input: SalesAlternativeOfferDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesAlternativeOfferResult>> {
+    return {
+      data: await this.reservations.createAlternativeOffer(readAuthCookie(request), id, input),
+    };
+  }
+
   @Get("customer/requests")
   async customerRequests(
     @Req() request: Request,
@@ -180,6 +195,17 @@ export class ReservationsController {
   ): Promise<ApiSuccess<CustomerInformationResponse>> {
     return {
       data: await this.reservations.respondToInformationRequest(readAuthCookie(request), id, input),
+    };
+  }
+
+  @Post("customer/requests/:id/alternative-offer")
+  async respondToAlternativeOffer(
+    @Param("id") id: string,
+    @Body() input: CustomerAlternativeOfferDecisionDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerAlternativeOfferResponse>> {
+    return {
+      data: await this.reservations.respondToAlternativeOffer(readAuthCookie(request), id, input),
     };
   }
 }
