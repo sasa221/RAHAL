@@ -33,6 +33,14 @@ describe("public multi-page experience", () => {
     expect(fleet).toContain("requestedCategory");
     expect(fleet).toContain("requestedDriver");
     expect(fleet).toContain("detailsQuery");
+    expect(fleet).toContain("FleetListingCard");
+    expect(fleet).toContain("aria-pressed={category === value}");
+    expect(fleet).toContain("filtersOpen");
+    expect(fleet).toContain("Pickup and return at the Rahal branch only");
+    expect(fleet).toContain("Every request is reviewed by sales");
+    expect(fleet).toContain("Egyptian pounds");
+    expect(fleet).not.toContain("Book now");
+    expect(fleet).not.toContain("online payment");
   });
 
   it("creates localized detail routes for every typed demo vehicle", () => {

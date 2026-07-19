@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
   formatEgp,
@@ -7,8 +8,9 @@ import {
   localizedPath,
   publicVehicles,
   type PublicLocale,
+  type PublicVehicle,
 } from "../lib/public-content";
-import { Footer, Header, Icon, VehicleCard } from "./public-home";
+import { Footer, Header, Icon } from "./public-home";
 
 type PublicFleetProps = {
   locale: PublicLocale;
@@ -20,11 +22,14 @@ type PublicFleetProps = {
 
 const fleetCopy = {
   ar: {
-    eyebrow: "أسطول رحال التجريبي",
-    title: "اختار العربية المناسبة لرحلتك",
-    copy: "فلتر حسب احتياجك، راجع السعر التقديري، وافتح تفاصيل العربية وتقويم التوافر.",
-    demo: "السيارات والأسعار المعروضة بيانات تجريبية لحين إضافة أسطول رحال الفعلي.",
-    filters: "تصفية النتائج",
+    eyebrow: "أسطول رحال",
+    title: "اختيار يليق بكل مشوار.",
+    copy: "قارن المساحة والسعر ونظام السائق، ثم افتح تفاصيل العربية قبل إرسال طلبك للمراجعة.",
+    demo: "الأسطول والأسعار الحالية بيانات عرض مؤقتة لحين إضافة سيارات رحال الفعلية.",
+    filters: "فلتر الأسطول",
+    filterHint: "ضيّق الاختيارات حسب احتياج رحلتك",
+    showFilters: "عرض الفلاتر",
+    hideFilters: "إخفاء الفلاتر",
     category: "الفئة",
     allCategories: "كل الفئات",
     economy: "اقتصادية",
@@ -42,19 +47,29 @@ const fleetCopy = {
     recommended: "الموصى بها",
     lowPrice: "السعر: الأقل أولًا",
     highPrice: "السعر: الأعلى أولًا",
-    results: "سيارات مطابقة",
-    clear: "مسح الفلاتر",
-    emptyTitle: "لا توجد سيارات مطابقة",
-    emptyCopy: "جرّب تغيير الفئة أو السعر أو نظام السائق.",
+    results: "سيارات مناسبة لاختيارك",
+    clear: "مسح الاختيارات",
+    emptyTitle: "مفيش عربية مطابقة للاختيارات دي",
+    emptyCopy: "جرّب تغيّر الفئة أو السعر أو نظام السائق.",
     selectedDates: "الفترة المختارة",
     branchOnly: "الاستلام والإرجاع من فرع رحال فقط",
+    currency: "كل الأسعار بالجنيه المصري",
+    requestOnly: "الطلب يخضع لمراجعة المبيعات",
+    from: "من",
+    bags: "حقائب",
+    minimum: "أقل مدة",
+    days: "أيام",
+    compareNote: "السعر تقديري لليوم ولا يشمل عربون الفرع.",
   },
   en: {
-    eyebrow: "Rahal demo fleet",
-    title: "Choose the right car for your journey",
-    copy: "Filter by what matters, review the estimate, then open vehicle details and availability.",
-    demo: "Vehicles and prices are fictional demo data until the real Rahal fleet is added.",
-    filters: "Filter results",
+    eyebrow: "THE RAHAL FLEET",
+    title: "A considered car for every journey.",
+    copy: "Compare space, price, and driver policy, then explore the full vehicle details before submitting a request for review.",
+    demo: "The current fleet and prices are temporary display data until Rahal's real vehicles are added.",
+    filters: "Filter the fleet",
+    filterHint: "Narrow the selection around your journey",
+    showFilters: "Show filters",
+    hideFilters: "Hide filters",
     category: "Category",
     allCategories: "All categories",
     economy: "Economy",
@@ -72,12 +87,19 @@ const fleetCopy = {
     recommended: "Recommended",
     lowPrice: "Price: low to high",
     highPrice: "Price: high to low",
-    results: "matching vehicles",
-    clear: "Clear filters",
-    emptyTitle: "No matching vehicles",
-    emptyCopy: "Try changing the category, price, or driver policy.",
+    results: "vehicles selected for you",
+    clear: "Clear selections",
+    emptyTitle: "No vehicle matches these selections",
+    emptyCopy: "Try changing the category, rate, or driver policy.",
     selectedDates: "Selected dates",
     branchOnly: "Pickup and return at the Rahal branch only",
+    currency: "Every rate is shown in Egyptian pounds",
+    requestOnly: "Every request is reviewed by sales",
+    from: "From",
+    bags: "bags",
+    minimum: "Minimum",
+    days: "days",
+    compareNote: "The daily estimate excludes the branch deposit.",
   },
 } as const;
 
@@ -93,6 +115,88 @@ function formatSelectedDate(value: string | undefined, locale: PublicLocale) {
 }
 
 const validCategories = new Set(["economy", "sedan", "suv"]);
+
+function FleetListingCard({
+  detailsQuery,
+  locale,
+  vehicle,
+}: {
+  detailsQuery: string;
+  locale: PublicLocale;
+  vehicle: PublicVehicle;
+}) {
+  const content = getPublicContent(locale);
+  const copy = fleetCopy[locale];
+  const detailsHref = `${localizedPath(locale, `/cars/${vehicle.id}`)}${
+    detailsQuery ? `?${detailsQuery}` : ""
+  }`;
+
+  return (
+    <article className="fleet-listing-card">
+      <a className="fleet-listing-card__visual" href={detailsHref} tabIndex={-1}>
+        <Image
+          alt={vehicle.imageAlt[locale]}
+          fill
+          sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 40vw"
+          src={vehicle.image}
+        />
+        <span
+          className={`fleet-listing-card__status fleet-listing-card__status--${vehicle.status}`}
+        >
+          {vehicle.status === "available" ? content.available : content.review}
+        </span>
+        <span className="fleet-listing-card__index" aria-hidden="true">
+          {vehicle.categoryKey === "economy" ? "01" : vehicle.categoryKey === "sedan" ? "02" : "03"}
+        </span>
+      </a>
+
+      <div className="fleet-listing-card__body">
+        <div className="fleet-listing-card__heading">
+          <div>
+            <span>{vehicle.category[locale]}</span>
+            <h2>{vehicle.name[locale]}</h2>
+          </div>
+          <p className="fleet-listing-card__rate">
+            <small>{copy.from}</small>
+            <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
+            <span>/ {content.perDay}</span>
+          </p>
+        </div>
+
+        <div
+          className="fleet-listing-card__specs"
+          aria-label={locale === "ar" ? "مواصفات العربية" : "Vehicle specifications"}
+        >
+          <span>
+            <Icon name="users" size={17} />
+            {vehicle.seats} {content.seats}
+          </span>
+          <span>
+            <Icon name="car" size={17} />
+            {vehicle.bags} {copy.bags}
+          </span>
+          <span>
+            <Icon name="check" size={17} />
+            {vehicle.transmission[locale]}
+          </span>
+        </div>
+
+        <div className="fleet-listing-card__footer">
+          <div>
+            <strong>{vehicle.driverPolicy[locale]}</strong>
+            <small>
+              {copy.minimum} {vehicle.minimumDays} {copy.days} · {copy.compareNote}
+            </small>
+          </div>
+          <a className="fleet-listing-card__link" href={detailsHref}>
+            {content.viewDetails}
+            <Icon name="arrow" size={18} />
+          </a>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function PublicFleet({
   locale,
@@ -116,6 +220,7 @@ export function PublicFleet({
   );
   const [maxPrice, setMaxPrice] = useState("all");
   const [sort, setSort] = useState("recommended");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const vehicles = useMemo(() => {
     const filtered = publicVehicles.filter((vehicle) => {
@@ -141,6 +246,13 @@ export function PublicFleet({
     ),
   ).toString();
 
+  const categories = [
+    ["all", copy.allCategories],
+    ["economy", copy.economy],
+    ["sedan", copy.sedan],
+    ["suv", copy.suv],
+  ] as const;
+
   function clearFilters() {
     setCategory("all");
     setSeats("all");
@@ -150,7 +262,11 @@ export function PublicFleet({
   }
 
   return (
-    <div className="public-site public-inner-page" dir={content.dir} lang={content.htmlLang}>
+    <div
+      className="public-site public-inner-page fleet-page"
+      dir={content.dir}
+      lang={content.htmlLang}
+    >
       <a className="skip-link" href="#fleet-results">
         {content.skip}
       </a>
@@ -160,32 +276,74 @@ export function PublicFleet({
       />
 
       <main>
-        <section className="inner-hero">
-          <div className="container inner-hero__content">
-            <span className="eyebrow">{copy.eyebrow}</span>
-            <h1>{copy.title}</h1>
-            <p>{copy.copy}</p>
-            <div className="inner-hero__notes">
-              <span>
-                <Icon name="pin" size={17} />
-                {copy.branchOnly}
-              </span>
-              <span>
-                <Icon name="shield" size={17} />
-                {copy.demo}
-              </span>
+        <section className="fleet-page-hero">
+          <div className="container fleet-page-hero__grid">
+            <div className="fleet-page-hero__content">
+              <span className="eyebrow">{copy.eyebrow}</span>
+              <h1>{copy.title}</h1>
+              <p>{copy.copy}</p>
+              <div className="fleet-page-hero__facts">
+                <span>
+                  <Icon name="pin" size={18} />
+                  {copy.branchOnly}
+                </span>
+                <span>
+                  <Icon name="shield" size={18} />
+                  {copy.requestOnly}
+                </span>
+              </div>
             </div>
+            <div className="fleet-page-hero__visual" aria-hidden="true">
+              <Image
+                alt=""
+                fill
+                priority
+                sizes="(max-width: 800px) 100vw, 46vw"
+                src="/images/black-suv.jpg"
+              />
+              <span>RAHAL / 01</span>
+            </div>
+          </div>
+          <div className="fleet-page-hero__ticker" aria-hidden="true">
+            <span>EGP</span>
+            <span>EGYPT</span>
+            <span>BRANCH PICKUP</span>
+            <span>SALES REVIEW</span>
           </div>
         </section>
 
-        <section className="fleet-browser section" id="fleet-results">
-          <div className="container fleet-browser__layout">
-            <aside className="fleet-filters" aria-label={copy.filters}>
-              <div className="fleet-filters__heading">
-                <Icon name="car" />
-                <h2>{copy.filters}</h2>
-              </div>
+        <section className="fleet-browser" id="fleet-results">
+          <div className="container">
+            <div className="fleet-category-chips" aria-label={copy.category}>
+              {categories.map(([value, label]) => (
+                <button
+                  aria-pressed={category === value}
+                  key={value}
+                  onClick={() => setCategory(value)}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
+            <div className="fleet-filter-heading">
+              <div>
+                <span>{copy.filters}</span>
+                <small>{copy.filterHint}</small>
+              </div>
+              <button
+                aria-expanded={filtersOpen}
+                className="fleet-filter-toggle"
+                onClick={() => setFiltersOpen((current) => !current)}
+                type="button"
+              >
+                <Icon name="car" size={19} />
+                {filtersOpen ? copy.hideFilters : copy.showFilters}
+              </button>
+            </div>
+
+            <div className={`fleet-filter-panel${filtersOpen ? " fleet-filter-panel--open" : ""}`}>
               <label className="field">
                 <span>{copy.category}</span>
                 <select value={category} onChange={(event) => setCategory(event.target.value)}>
@@ -226,57 +384,61 @@ export function PublicFleet({
                 </select>
               </label>
 
-              <button
-                className="button button--outline fleet-filters__clear"
-                onClick={clearFilters}
-                type="button"
-              >
+              <button className="fleet-filter-panel__clear" onClick={clearFilters} type="button">
                 {copy.clear}
               </button>
-            </aside>
-
-            <div className="fleet-results">
-              <div className="fleet-results__toolbar">
-                <div>
-                  <strong>{vehicles.length}</strong> {copy.results}
-                  {selectedPickup && selectedReturn ? (
-                    <small>
-                      {copy.selectedDates}: {selectedPickup} — {selectedReturn}
-                    </small>
-                  ) : null}
-                </div>
-                <label>
-                  <span>{copy.sort}</span>
-                  <select value={sort} onChange={(event) => setSort(event.target.value)}>
-                    <option value="recommended">{copy.recommended}</option>
-                    <option value="price-low">{copy.lowPrice}</option>
-                    <option value="price-high">{copy.highPrice}</option>
-                  </select>
-                </label>
-              </div>
-
-              {vehicles.length ? (
-                <div className="vehicle-grid vehicle-grid--listing">
-                  {vehicles.map((vehicle) => (
-                    <VehicleCard
-                      detailsQuery={detailsQuery}
-                      key={vehicle.id}
-                      locale={locale}
-                      vehicle={vehicle}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="fleet-empty">
-                  <Icon name="car" size={32} />
-                  <h2>{copy.emptyTitle}</h2>
-                  <p>{copy.emptyCopy}</p>
-                  <button className="button button--dark" onClick={clearFilters} type="button">
-                    {copy.clear}
-                  </button>
-                </div>
-              )}
             </div>
+
+            <div className="fleet-results__toolbar">
+              <div>
+                <p>
+                  <strong>{String(vehicles.length).padStart(2, "0")}</strong>
+                  <span>{copy.results}</span>
+                </p>
+                {selectedPickup && selectedReturn ? (
+                  <small>
+                    {copy.selectedDates}: {selectedPickup} — {selectedReturn}
+                  </small>
+                ) : (
+                  <small>{copy.currency}</small>
+                )}
+              </div>
+              <label>
+                <span>{copy.sort}</span>
+                <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                  <option value="recommended">{copy.recommended}</option>
+                  <option value="price-low">{copy.lowPrice}</option>
+                  <option value="price-high">{copy.highPrice}</option>
+                </select>
+              </label>
+            </div>
+
+            {vehicles.length ? (
+              <div className="fleet-listing-grid">
+                {vehicles.map((vehicle) => (
+                  <FleetListingCard
+                    detailsQuery={detailsQuery}
+                    key={vehicle.id}
+                    locale={locale}
+                    vehicle={vehicle}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="fleet-empty">
+                <Icon name="car" size={32} />
+                <h2>{copy.emptyTitle}</h2>
+                <p>{copy.emptyCopy}</p>
+                <button className="button button--dark" onClick={clearFilters} type="button">
+                  {copy.clear}
+                </button>
+              </div>
+            )}
+
+            <p className="fleet-browser__disclaimer">
+              <Icon name="shield" size={17} />
+              {copy.demo}
+            </p>
           </div>
         </section>
       </main>
