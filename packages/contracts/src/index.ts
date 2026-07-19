@@ -43,3 +43,20 @@ export type BranchSummary = {
   addressEn: string | null;
   active: boolean;
 };
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  phone: string;
+  fullName: string;
+  preferredLocale: Locale;
+  role: "CUSTOMER" | "SALES" | "ADMIN" | "SUPER_ADMIN";
+  status: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "BLOCKED" | "ARCHIVED";
+  emailVerified: boolean;
+  phoneVerified: boolean;
+};
+
+export type AuthSession = {
+  user: AuthUser;
+  expiresAt: string;
+};

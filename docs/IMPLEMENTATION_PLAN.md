@@ -152,6 +152,50 @@ Status: completed locally on 2026-07-18. The baseline migration and relative dem
 - Seed smoke test against local PostgreSQL.
 - API integration tests for vehicles and branch settings.
 
+## Milestone 4: Authentication and session security
+
+Goal: establish secure customer identity and browser sessions before reservation drafts can be persisted.
+
+Status: foundation slice completed locally on 2026-07-19. Registration, login, current-session lookup, logout, password hashing, opaque session cookies, basic rate limiting, and authentication audit writes are implemented. Verification and recovery remain pending.
+
+### Completed foundation scope
+
+- Customer registration with normalized email/phone and pending-verification status.
+- Login by email or international-format phone number.
+- Memory-hard scrypt password hashing with a random salt.
+- Opaque 256-bit session tokens stored only as SHA-256 hashes.
+- HTTP-only, same-site browser cookie restricted to `/api`.
+- Session expiry, lookup, last-seen update, and revocation.
+- Blocking of suspended, blocked, and archived accounts.
+- In-process authentication throttling as a local baseline; production must use the approved shared Redis-compatible limiter.
+- Redacted shared authentication contracts and structured 401/403/409/429 errors.
+- Authentication success/failure audit records without password or raw token data.
+
+### Remaining scope
+
+- Phone OTP issue, resend, attempt limits, verification, and expiry.
+- Email verification issue and completion flow.
+- Password reset and reset-session revocation.
+- Session/device listing and individual/all-device revocation.
+- Customer-facing bilingual register, sign-in, verification, and recovery screens.
+- Shared production rate-limit storage and operational monitoring.
+
+### Acceptance criteria
+
+- Passwords and raw session tokens never appear in API responses, audit data, or stored session records.
+- Authentication cookies are HTTP-only and same-site, and require `Secure` in production.
+- Registration does not create an already verified customer.
+- Suspended, blocked, and archived accounts cannot create or continue sessions.
+- Reservation submission remains unavailable until both phone and email are verified.
+- Authentication endpoints are rate-limited and produce consistent API errors.
+
+### Tests
+
+- Password hash/verify, random-salt, wrong-password, and invalid-format unit tests.
+- Authentication service tests for redaction, generic invalid credentials, session hashing, and blocked account states.
+- API integration tests for cookie flags, secret-free responses, session lookup, and payload validation.
+- Future verification/recovery tests must include expiry, reuse, resend, attempt limits, and session revocation.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

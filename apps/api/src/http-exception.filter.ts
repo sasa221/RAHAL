@@ -8,6 +8,14 @@ function errorCodeFromStatus(statusCode: number) {
       return "BAD_REQUEST";
     case HttpStatus.NOT_FOUND:
       return "NOT_FOUND";
+    case HttpStatus.UNAUTHORIZED:
+      return "UNAUTHORIZED";
+    case HttpStatus.FORBIDDEN:
+      return "FORBIDDEN";
+    case HttpStatus.CONFLICT:
+      return "CONFLICT";
+    case HttpStatus.TOO_MANY_REQUESTS:
+      return "RATE_LIMITED";
     default:
       return "INTERNAL_SERVER_ERROR";
   }

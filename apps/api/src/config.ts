@@ -2,6 +2,8 @@ type ApiConfig = {
   port: number;
   webUrl: string;
   databaseUrl: string;
+  authSecret: string;
+  production: boolean;
 };
 
 function readPort(value: string | undefined) {
@@ -38,9 +40,20 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     throw new Error("DATABASE_URL must use the PostgreSQL protocol.");
   }
 
+  const production = env.NODE_ENV === "production";
+  const authSecret = env.AUTH_SECRET ?? "rahal-local-development-auth-secret-change-me";
+  if (authSecret.length < 32) {
+    throw new Error("AUTH_SECRET must contain at least 32 characters.");
+  }
+  if (production && !env.AUTH_SECRET) {
+    throw new Error("AUTH_SECRET is required in production.");
+  }
+
   return {
     port: readPort(env.PORT),
     webUrl: readUrl("WEB_URL", env.WEB_URL, "http://localhost:3000"),
     databaseUrl,
+    authSecret,
+    production,
   };
 }
