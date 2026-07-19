@@ -20,6 +20,7 @@ import type {
   RequestVerificationDto,
 } from "./auth.dto";
 import { PasswordService } from "./password.service";
+import { buildVerificationEmail } from "./verification-email.template";
 
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 const verificationLifetimeMs = 10 * 60 * 1000;
@@ -340,11 +341,7 @@ export class AuthService {
   }) {
     const delivery = this.config.verificationEmail;
     if (!delivery) return;
-    const arabic = input.locale !== "en";
-    const subject = arabic ? "رمز التحقق من حساب رحال" : "Verify your Rahal account";
-    const text = arabic
-      ? `رمز التحقق الخاص بك هو: ${input.code}. ينتهي خلال 10 دقائق. لا تشارك هذا الرمز مع أي شخص.`
-      : `Your Rahal verification code is ${input.code}. It expires in 10 minutes. Never share this code.`;
+    const email = buildVerificationEmail(input);
 
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -358,8 +355,9 @@ export class AuthService {
         body: JSON.stringify({
           from: delivery.from,
           to: [input.destination],
-          subject,
-          text,
+          subject: email.subject,
+          text: email.text,
+          html: email.html,
           tags: [{ name: "category", value: "account_verification" }],
         }),
       });
