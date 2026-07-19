@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type {
   ReservationConsents,
   ReservationCustomerDetails,
+  ReservationDocumentType,
   ReservationDraft,
 } from "@rahal/contracts";
 import type { DriverPolicy } from "@rahal/database";
@@ -34,6 +35,7 @@ type SaveCustomerDetailsInput = {
   email: string;
   phone: string;
   nationality: string;
+  customerCategory: "EGYPTIAN" | "FOREIGN";
   address: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
@@ -125,7 +127,14 @@ export class ReservationsRepository {
   findOwnedDraft(id: string, customerId: string) {
     return this.prisma.client.reservation.findFirst({
       where: { id, customerId, status: "DRAFT" },
-      select: { id: true, reference: true, customerDetailsCompletedAt: true },
+      select: {
+        id: true,
+        reference: true,
+        driverRequested: true,
+        customerCategorySnapshot: true,
+        customerDetailsCompletedAt: true,
+        documentConsentAt: true,
+      },
     });
   }
 
@@ -157,6 +166,7 @@ export class ReservationsRepository {
           customerEmailSnapshot: input.email,
           customerPhoneSnapshot: input.phone,
           nationalitySnapshot: input.nationality,
+          customerCategorySnapshot: input.customerCategory,
           addressSnapshot: input.address,
           emergencyContactNameSnapshot: input.emergencyContactName,
           emergencyContactPhoneSnapshot: input.emergencyContactPhone,
@@ -194,6 +204,7 @@ export class ReservationsRepository {
       emailMasked: maskEmail(input.email),
       phoneMasked: maskPhone(input.phone),
       nationality: input.nationality,
+      customerCategory: input.customerCategory,
       address: input.address,
       emergencyContactName: input.emergencyContactName,
       emergencyContactPhoneMasked: maskPhone(input.emergencyContactPhone),
@@ -246,6 +257,150 @@ export class ReservationsRepository {
       requiredAcceptedAt: acceptedAt.toISOString(),
       marketingAccepted: input.marketingAccepted,
     };
+  }
+
+  findDocumentRequirementRules(customerCategory: "EGYPTIAN" | "FOREIGN") {
+    return this.prisma.client.documentRequirementRule.findMany({
+      where: { customerCategory, active: true },
+      orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
+      select: {
+        key: true,
+        documentType: true,
+        requiresSelfDrive: true,
+        labelAr: true,
+        labelEn: true,
+        allowedMimeTypes: true,
+        maxSizeBytes: true,
+      },
+    });
+  }
+
+  findActiveDocuments(draftId: string) {
+    return this.prisma.client.reservationDocument.findMany({
+      where: { reservationId: draftId, status: { not: "DELETED" }, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        storageKey: true,
+        originalName: true,
+        mimeType: true,
+        sizeBytes: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async replaceDocument(input: {
+    draftId: string;
+    customerId: string;
+    type: ReservationDocumentType;
+    storageKey: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const owned = await transaction.reservation.findFirst({
+        where: { id: input.draftId, customerId: input.customerId, status: "DRAFT" },
+        select: { id: true },
+      });
+      if (!owned) return null;
+
+      const replaced = await transaction.reservationDocument.findMany({
+        where: { reservationId: input.draftId, type: input.type, deletedAt: null },
+        select: { storageKey: true },
+      });
+      await transaction.reservationDocument.updateMany({
+        where: { reservationId: input.draftId, type: input.type, deletedAt: null },
+        data: { status: "DELETED", deletedAt: new Date() },
+      });
+      const document = await transaction.reservationDocument.create({
+        data: {
+          reservationId: input.draftId,
+          type: input.type,
+          status: "UPLOADED",
+          storageKey: input.storageKey,
+          originalName: input.originalName,
+          mimeType: input.mimeType,
+          sizeBytes: input.sizeBytes,
+        },
+        select: { id: true },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: input.draftId,
+          fromStatus: "DRAFT",
+          toStatus: "DRAFT",
+          actorId: input.customerId,
+          note: "Customer uploaded a required private document.",
+          metadata: { documentType: input.type, replacement: replaced.length > 0 },
+        },
+      });
+      return {
+        documentId: document.id,
+        replacedStorageKeys: replaced.map((item) => item.storageKey),
+      };
+    });
+  }
+
+  async deleteOwnedDocument(draftId: string, documentId: string, customerId: string) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const document = await transaction.reservationDocument.findFirst({
+        where: {
+          id: documentId,
+          reservationId: draftId,
+          deletedAt: null,
+          reservation: { customerId, status: "DRAFT" },
+        },
+        select: { storageKey: true, type: true },
+      });
+      if (!document) return null;
+      await transaction.reservationDocument.update({
+        where: { id: documentId },
+        data: { status: "DELETED", deletedAt: new Date() },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: draftId,
+          fromStatus: "DRAFT",
+          toStatus: "DRAFT",
+          actorId: customerId,
+          note: "Customer removed a private document from the draft.",
+          metadata: { documentType: document.type },
+        },
+      });
+      return document;
+    });
+  }
+
+  async deleteAllDraftDocuments(draftId: string, customerId: string) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const documents = await transaction.reservationDocument.findMany({
+        where: {
+          reservationId: draftId,
+          deletedAt: null,
+          reservation: { customerId, status: "DRAFT" },
+        },
+        select: { storageKey: true },
+      });
+      if (!documents.length) return [];
+      await transaction.reservationDocument.updateMany({
+        where: { reservationId: draftId, deletedAt: null },
+        data: { status: "DELETED", deletedAt: new Date() },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: draftId,
+          fromStatus: "DRAFT",
+          toStatus: "DRAFT",
+          actorId: customerId,
+          note: "Private documents were cleared after the customer category changed.",
+        },
+      });
+      return documents.map((document) => document.storageKey);
+    });
   }
 }
 

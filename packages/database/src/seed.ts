@@ -1,4 +1,11 @@
-import { createPrismaClient, DriverChargeType, DriverPolicy, VehicleStatus } from "./index.js";
+import {
+  createPrismaClient,
+  CustomerCategory,
+  DocumentType,
+  DriverChargeType,
+  DriverPolicy,
+  VehicleStatus,
+} from "./index.js";
 
 const prisma = createPrismaClient(
   process.env.DATABASE_URL ??
@@ -7,6 +14,65 @@ const prisma = createPrismaClient(
 
 const branchId = "demo-branch-cairo";
 const consentVersion = "DEV-2026-07-19";
+
+const documentRequirements = [
+  [
+    "egyptian-id-front",
+    CustomerCategory.EGYPTIAN,
+    DocumentType.NATIONAL_ID_FRONT,
+    false,
+    "وجه بطاقة الرقم القومي",
+    "National ID front",
+  ],
+  [
+    "egyptian-id-back",
+    CustomerCategory.EGYPTIAN,
+    DocumentType.NATIONAL_ID_BACK,
+    false,
+    "ظهر بطاقة الرقم القومي",
+    "National ID back",
+  ],
+  [
+    "egyptian-license-front",
+    CustomerCategory.EGYPTIAN,
+    DocumentType.DRIVING_LICENSE_FRONT,
+    true,
+    "وجه رخصة القيادة",
+    "Driving licence front",
+  ],
+  [
+    "egyptian-license-back",
+    CustomerCategory.EGYPTIAN,
+    DocumentType.DRIVING_LICENSE_BACK,
+    true,
+    "ظهر رخصة القيادة",
+    "Driving licence back",
+  ],
+  [
+    "foreign-passport",
+    CustomerCategory.FOREIGN,
+    DocumentType.PASSPORT,
+    false,
+    "جواز السفر",
+    "Passport",
+  ],
+  [
+    "foreign-license-front",
+    CustomerCategory.FOREIGN,
+    DocumentType.DRIVING_LICENSE_FRONT,
+    true,
+    "وجه رخصة القيادة",
+    "Driving licence front",
+  ],
+  [
+    "foreign-license-back",
+    CustomerCategory.FOREIGN,
+    DocumentType.DRIVING_LICENSE_BACK,
+    true,
+    "ظهر رخصة القيادة",
+    "Driving licence back",
+  ],
+] as const;
 
 const consentPolicies = [
   {
@@ -154,6 +220,41 @@ const vehicles = [
 ] as const;
 
 async function main() {
+  for (const [
+    key,
+    customerCategory,
+    documentType,
+    requiresSelfDrive,
+    labelAr,
+    labelEn,
+  ] of documentRequirements) {
+    await prisma.documentRequirementRule.upsert({
+      where: { key },
+      update: {
+        customerCategory,
+        documentType,
+        requiresSelfDrive,
+        labelAr,
+        labelEn,
+        allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"],
+        maxSizeBytes: 8 * 1024 * 1024,
+        active: true,
+      },
+      create: {
+        key,
+        customerCategory,
+        documentType,
+        requiresSelfDrive,
+        labelAr,
+        labelEn,
+        allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"],
+        maxSizeBytes: 8 * 1024 * 1024,
+        active: true,
+        sortOrder: documentRequirements.findIndex((rule) => rule[0] === key),
+      },
+    });
+  }
+
   for (const policy of consentPolicies) {
     for (const locale of ["ar", "en"] as const) {
       await prisma.policyVersion.upsert({

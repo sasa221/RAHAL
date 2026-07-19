@@ -77,6 +77,22 @@ const requestCopy = {
     formTitle: "حدد تفاصيل رحلتك",
     formCopy: "اختار المواعيد ونظام السائق، وبعدها راجع كل اختيار قبل استكمال الطلب.",
     reviewReady: "اختياراتك جاهزة للمراجعة",
+    customerCategory: "نوع العميل",
+    egyptianCustomer: "عميل مصري",
+    foreignCustomer: "عميل أجنبي",
+    documentsStep: "الخطوة 4 من 6: المستندات الخاصة",
+    documentsTitle: "ارفع المستندات المطلوبة بأمان",
+    documentsCopy: "تُحفظ الملفات في مساحة خاصة ولا يظهر منها رابط دائم أو رقم هوية في الموقع.",
+    developmentRules: "قواعد مستندات تطويرية قابلة للتعديل من الإدارة قبل الإطلاق.",
+    chooseFile: "اختر ملفًا خاصًا",
+    replaceFile: "استبدل الملف",
+    removeFile: "احذف الملف",
+    uploadedFile: "تم الرفع بأمان",
+    uploadFailed: "تعذر رفع المستند. تأكد من النوع والحجم وحاول مرة أخرى.",
+    removeFailed: "تعذر حذف المستند الآن.",
+    uploadingFile: "جارٍ الرفع الآمن...",
+    documentFormats: "JPEG أو PNG أو PDF — بحد أقصى",
+    documentsComplete: "اكتملت المستندات المطلوبة. الخطوة التالية هي المراجعة النهائية.",
   },
   en: {
     saveDraft: "Save draft securely",
@@ -116,6 +132,24 @@ const requestCopy = {
     policiesLoading: "Loading policies...",
     policiesFailed: "The current policy bundle could not be loaded.",
     documentsNext: "Private documents are next. The draft has not been sent to sales yet.",
+    customerCategory: "Customer type",
+    egyptianCustomer: "Egyptian customer",
+    foreignCustomer: "Foreign customer",
+    documentsStep: "Step 4 of 6: private documents",
+    documentsTitle: "Upload the required documents securely",
+    documentsCopy:
+      "Files stay in private storage. No permanent URL or identity number is exposed in the site.",
+    developmentRules:
+      "Development document rules; administrators can configure the final rules before launch.",
+    chooseFile: "Choose private file",
+    replaceFile: "Replace file",
+    removeFile: "Remove file",
+    uploadedFile: "Uploaded securely",
+    uploadFailed: "The document could not be uploaded. Check its type and size, then try again.",
+    removeFailed: "The document could not be removed right now.",
+    uploadingFile: "Uploading securely...",
+    documentFormats: "JPEG, PNG, or PDF — maximum",
+    documentsComplete: "All required documents are complete. Final review is next.",
     title: "Start reservation request",
     copy: "Review the selected vehicle, dates, and driver option, then securely save this first step to your account.",
     step: "Step 1 of 6: rental dates",
@@ -211,6 +245,7 @@ export function ReservationStart({
     estimatedTotalEgp: number;
   } | null>(null);
   const [nationality, setNationality] = useState("");
+  const [customerCategory, setCustomerCategory] = useState<"EGYPTIAN" | "FOREIGN">("EGYPTIAN");
   const [address, setAddress] = useState("");
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
@@ -235,6 +270,26 @@ export function ReservationStart({
     policyVersion: string;
     marketingAccepted: boolean;
   } | null>(null);
+  const [documentChecklist, setDocumentChecklist] = useState<{
+    developmentRules: boolean;
+    complete: boolean;
+    requirements: Array<{
+      key: string;
+      type: string;
+      label: string;
+      allowedMimeTypes: string[];
+      maxSizeBytes: number;
+      uploaded: boolean;
+      document?: {
+        id: string;
+        originalName: string;
+        sizeBytes: number;
+        status: string;
+      };
+    }>;
+  } | null>(null);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
   const selectionParams = new URLSearchParams({
     vehicle: vehicle.id,
     pickup,
@@ -270,11 +325,52 @@ export function ReservationStart({
     return () => controller.abort();
   }, [copy.policiesFailed, locale, savedDetails]);
 
+  useEffect(() => {
+    if (!savedDraft || !savedConsents) return;
+    const controller = new AbortController();
+    setDocumentError(null);
+    fetch(`/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/documents`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as { data?: typeof documentChecklist };
+        if (!response.ok || !payload.data) throw new Error("document checklist unavailable");
+        setDocumentChecklist(payload.data);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDocumentError(copy.uploadFailed);
+      });
+    return () => controller.abort();
+  }, [copy.uploadFailed, savedConsents, savedDraft]);
+
   function resetSavedDraft() {
     setReviewing(false);
     setSavedDraft(null);
+    setSavedDetails(null);
+    setSavedConsents(null);
+    setDocumentChecklist(null);
+    setConsentBundle(null);
+    setAcceptedPolicies({});
     setSaveError(null);
     setAuthRequired(false);
+  }
+
+  function invalidateCustomerDetails() {
+    setSavedDetails(null);
+    setSavedConsents(null);
+    setDocumentChecklist(null);
+    setConsentBundle(null);
+    setAcceptedPolicies({});
+    setConsentError(null);
+    setDocumentError(null);
+  }
+
+  function invalidateConsents() {
+    setSavedConsents(null);
+    setDocumentChecklist(null);
+    setDocumentError(null);
   }
 
   async function saveDraft() {
@@ -330,6 +426,7 @@ export function ReservationStart({
           credentials: "include",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            customerCategory,
             nationality,
             address,
             emergencyContactName,
@@ -396,6 +493,52 @@ export function ReservationStart({
     }
   }
 
+  async function uploadPrivateDocument(type: string, file: File | undefined) {
+    if (!savedDraft || !file) return;
+    setUploadingType(type);
+    setDocumentError(null);
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const response = await fetch(
+        `/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/documents/${encodeURIComponent(type)}`,
+        { method: "POST", credentials: "include", body },
+      );
+      const payload = (await response.json()) as {
+        data?: NonNullable<typeof documentChecklist>;
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.data) {
+        setDocumentError(payload.error?.message ?? copy.uploadFailed);
+        return;
+      }
+      setDocumentChecklist(payload.data);
+    } catch {
+      setDocumentError(copy.uploadFailed);
+    } finally {
+      setUploadingType(null);
+    }
+  }
+
+  async function removePrivateDocument(documentId: string) {
+    if (!savedDraft) return;
+    setDocumentError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/documents/${encodeURIComponent(documentId)}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      const payload = (await response.json()) as { data?: NonNullable<typeof documentChecklist> };
+      if (!response.ok || !payload.data) {
+        setDocumentError(copy.removeFailed);
+        return;
+      }
+      setDocumentChecklist(payload.data);
+    } catch {
+      setDocumentError(copy.removeFailed);
+    }
+  }
+
   return (
     <div
       className="public-site public-inner-page reservation-experience-page"
@@ -450,14 +593,33 @@ export function ReservationStart({
           <div className="reservation-stage__workspace">
             <header className="reservation-page__intro" data-reveal>
               <span className="eyebrow">
-                {savedDetails ? copy.stepThree : savedDraft ? copy.stepTwo : copy.step}
+                {savedConsents
+                  ? copy.documentsStep
+                  : savedDetails
+                    ? copy.stepThree
+                    : savedDraft
+                      ? copy.stepTwo
+                      : copy.step}
               </span>
               <h1>{copy.title}</h1>
               <p>{copy.copy}</p>
               <div className="reservation-progress" aria-label={copy.step}>
                 {Array.from({ length: 6 }, (_, index) => (
                   <span
-                    className={index <= (savedDetails ? 2 : savedDraft ? 1 : 0) ? "is-active" : ""}
+                    className={
+                      index <=
+                      (documentChecklist?.complete
+                        ? 4
+                        : savedConsents
+                          ? 3
+                          : savedDetails
+                            ? 2
+                            : savedDraft
+                              ? 1
+                              : 0)
+                        ? "is-active"
+                        : ""
+                    }
                     key={index}
                   >
                     <b>{String(index + 1).padStart(2, "0")}</b>
@@ -638,13 +800,26 @@ export function ReservationStart({
                         </div>
                       </div>
                       <label className="field">
+                        <span>{copy.customerCategory}</span>
+                        <select
+                          onChange={(event) => {
+                            setCustomerCategory(event.target.value as "EGYPTIAN" | "FOREIGN");
+                            invalidateCustomerDetails();
+                          }}
+                          value={customerCategory}
+                        >
+                          <option value="EGYPTIAN">{copy.egyptianCustomer}</option>
+                          <option value="FOREIGN">{copy.foreignCustomer}</option>
+                        </select>
+                      </label>
+                      <label className="field">
                         <span>{copy.nationality}</span>
                         <input
                           autoComplete="country-name"
                           minLength={2}
                           onChange={(event) => {
                             setNationality(event.target.value);
-                            setSavedDetails(null);
+                            invalidateCustomerDetails();
                           }}
                           required
                           value={nationality}
@@ -657,7 +832,7 @@ export function ReservationStart({
                           minLength={5}
                           onChange={(event) => {
                             setAddress(event.target.value);
-                            setSavedDetails(null);
+                            invalidateCustomerDetails();
                           }}
                           required
                           value={address}
@@ -670,7 +845,7 @@ export function ReservationStart({
                           minLength={2}
                           onChange={(event) => {
                             setEmergencyContactName(event.target.value);
-                            setSavedDetails(null);
+                            invalidateCustomerDetails();
                           }}
                           required
                           value={emergencyContactName}
@@ -683,7 +858,7 @@ export function ReservationStart({
                           inputMode="tel"
                           onChange={(event) => {
                             setEmergencyContactPhone(event.target.value);
-                            setSavedDetails(null);
+                            invalidateCustomerDetails();
                           }}
                           pattern="\+?[1-9][0-9]{7,14}"
                           required
@@ -741,7 +916,7 @@ export function ReservationStart({
                                       ...current,
                                       [policy.key]: event.target.checked,
                                     }));
-                                    setSavedConsents(null);
+                                    invalidateConsents();
                                   }}
                                   required
                                   type="checkbox"
@@ -755,7 +930,7 @@ export function ReservationStart({
                               checked={marketingAccepted}
                               onChange={(event) => {
                                 setMarketingAccepted(event.target.checked);
-                                setSavedConsents(null);
+                                invalidateConsents();
                               }}
                               type="checkbox"
                             />{" "}
@@ -781,6 +956,76 @@ export function ReservationStart({
                       ) : null}
                       {consentError ? <p>{consentError}</p> : null}
                     </form>
+                  ) : null}
+                  {savedConsents && documentChecklist ? (
+                    <section className="reservation-form reservation-documents">
+                      <div className="reservation-form-heading">
+                        <span>04</span>
+                        <div>
+                          <h2>{copy.documentsTitle}</h2>
+                          <p>{copy.documentsCopy}</p>
+                        </div>
+                      </div>
+                      {documentChecklist.developmentRules ? (
+                        <div className="reservation-assurance__notice">{copy.developmentRules}</div>
+                      ) : null}
+                      <div className="reservation-document-list">
+                        {documentChecklist.requirements.map((requirement) => (
+                          <article className="reservation-document" key={requirement.key}>
+                            <div>
+                              <strong>{requirement.label}</strong>
+                              <small>
+                                {copy.documentFormats}{" "}
+                                {Math.round(requirement.maxSizeBytes / 1024 / 1024)} MB
+                              </small>
+                              {requirement.document ? (
+                                <p>
+                                  {copy.uploadedFile}: {requirement.document.originalName} ·{" "}
+                                  {Math.max(1, Math.round(requirement.document.sizeBytes / 1024))}{" "}
+                                  KB
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="reservation-document__actions">
+                              <label className="button button--dark">
+                                {uploadingType === requirement.type
+                                  ? copy.uploadingFile
+                                  : requirement.uploaded
+                                    ? copy.replaceFile
+                                    : copy.chooseFile}
+                                <input
+                                  accept={requirement.allowedMimeTypes.join(",")}
+                                  disabled={uploadingType !== null}
+                                  onChange={(event) => {
+                                    const file = event.currentTarget.files?.[0];
+                                    void uploadPrivateDocument(requirement.type, file);
+                                    event.currentTarget.value = "";
+                                  }}
+                                  type="file"
+                                />
+                              </label>
+                              {requirement.document ? (
+                                <button
+                                  className="button button--outline"
+                                  onClick={() =>
+                                    void removePrivateDocument(requirement.document!.id)
+                                  }
+                                  type="button"
+                                >
+                                  {copy.removeFile}
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                      {documentChecklist.complete ? (
+                        <div className="reservation-assurance__notice">
+                          <strong>{copy.documentsComplete}</strong>
+                        </div>
+                      ) : null}
+                      {documentError ? <p>{documentError}</p> : null}
+                    </section>
                   ) : null}
                 </div>
               ) : null}

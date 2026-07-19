@@ -204,7 +204,7 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 
 Goal: persist the customer's first vehicle/date/driver selection safely without presenting it as a submitted request or confirmed booking.
 
-Status: first-step draft, secure customer-details, and versioned-consent slices completed locally on 2026-07-19. Protected documents, review, and verified submission steps are pending.
+Status: first-step draft, secure customer-details, versioned-consent, and protected-document slices completed locally on 2026-07-19. Final review and verified submission steps are pending.
 
 ### Completed first-step scope
 
@@ -225,11 +225,15 @@ Status: first-step draft, secure customer-details, and versioned-consent slices 
 - Marketing consent is separate, optional, false by default, and never required to continue.
 - Stale or incomplete policy bundles fail closed instead of recording ambiguous consent.
 - The seeded policy bundle is explicitly development-only and must be replaced by approved legal copy before production submission is enabled.
+- Egyptian/foreign and self-drive document requirements are selected from seeded database rules.
+- Owner-authorized JPEG, PNG, and PDF uploads validate configured size, MIME type, and file signatures.
+- Private storage keys stay server-side; replacements and removals soft-delete metadata and remove local development objects.
+- The bilingual responsive document step reports progress without asking for or displaying identity numbers.
 
 ### Remaining scope
 
 - Verified contact review before final submission.
-- Configurable required-document rules and private document upload flow.
+- Administrator management screens for required-document rules and the approved production private-storage adapter.
 - Approved production legal copy to replace the development-only consent bundle.
 - Final review and verified transition from `DRAFT` to `PENDING_REVIEW`.
 - Availability recheck, notification outbox events, customer draft listing, and expiry/abandonment handling.
@@ -241,6 +245,9 @@ Status: first-step draft, secure customer-details, and versioned-consent slices 
 - Saving a draft never changes vehicle availability or creates a confirmed booking.
 - Stored estimates use rate snapshots and EGP only.
 - Final submission remains unavailable until verification, documents, and consent are complete.
+- Required documents come from database-backed Egyptian/foreign and self-drive rules.
+- Private object keys never appear in browser responses, and replacement/removal remains limited to the authenticated draft owner.
+- Local document bytes stay in an ignored private path during development; production upload remains unavailable until approved private object storage is configured.
 
 ### Tests
 
@@ -249,6 +256,7 @@ Status: first-step draft, secure customer-details, and versioned-consent slices 
 - API integration coverage for session-cookie authorization, `DRAFT` status, masked customer details, and missing ownership.
 - Consent bundle/version tests, stale-version rejection, required-consent validation, and optional-marketing coverage.
 - Static bilingual UI coverage for draft/not-confirmed copy, customer fields, separate consent controls, privacy exclusions, and same-origin API calls.
+- API integration coverage for valid private upload, file-signature rejection, and storage-key redaction.
 
 ## Decisions not blocking Milestone 1
 

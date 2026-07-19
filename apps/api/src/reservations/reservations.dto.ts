@@ -1,4 +1,4 @@
-import { Equals, IsBoolean, IsString, Length, Matches, MaxLength } from "class-validator";
+import { Equals, IsBoolean, IsIn, IsString, Length, Matches, MaxLength } from "class-validator";
 
 export class SaveReservationDraftDto {
   @IsString()
@@ -18,6 +18,9 @@ export class SaveReservationDraftDto {
 const phonePattern = /^\+?[1-9]\d{7,14}$/;
 
 export class SaveReservationCustomerDetailsDto {
+  @IsIn(["EGYPTIAN", "FOREIGN"])
+  customerCategory!: "EGYPTIAN" | "FOREIGN";
+
   @IsString()
   @Length(2, 80)
   nationality!: string;

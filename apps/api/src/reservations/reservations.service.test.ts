@@ -141,6 +141,7 @@ describe("reservation draft service", () => {
     );
 
     await service.saveCustomerDetails("session-token", "draft-1", {
+      customerCategory: "EGYPTIAN",
       nationality: "Egyptian",
       address: "Fictional Cairo address",
       emergencyContactName: "Emergency Contact",
@@ -169,6 +170,7 @@ describe("reservation draft service", () => {
 
     await expect(
       service.saveCustomerDetails("session-token", "another-customer-draft", {
+        customerCategory: "EGYPTIAN",
         nationality: "Egyptian",
         address: "Fictional Cairo address",
         emergencyContactName: "Emergency Contact",
@@ -238,5 +240,75 @@ describe("reservation draft service", () => {
         marketingAccepted: false,
       }),
     ).rejects.toThrow("The policy version changed.");
+  });
+
+  it("selects required documents from customer category and driver rules", async () => {
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER", preferredLocale: "en" },
+        }),
+      } as never,
+      {
+        findOwnedDraft: vi.fn().mockResolvedValue({
+          id: "draft-1",
+          reference: "RHL-2026-123456",
+          driverRequested: true,
+          customerCategorySnapshot: "EGYPTIAN",
+          customerDetailsCompletedAt: new Date(),
+          documentConsentAt: new Date(),
+        }),
+        findDocumentRequirementRules: vi.fn().mockResolvedValue([
+          {
+            key: "id-front",
+            documentType: "NATIONAL_ID_FRONT",
+            requiresSelfDrive: false,
+            labelAr: "هوية",
+            labelEn: "National ID front",
+            allowedMimeTypes: ["image/png"],
+            maxSizeBytes: 1024,
+          },
+          {
+            key: "licence-front",
+            documentType: "DRIVING_LICENSE_FRONT",
+            requiresSelfDrive: true,
+            labelAr: "رخصة",
+            labelEn: "Driving licence front",
+            allowedMimeTypes: ["image/png"],
+            maxSizeBytes: 1024,
+          },
+        ]),
+        findActiveDocuments: vi.fn().mockResolvedValue([]),
+      } as never,
+    );
+
+    await expect(service.getDocumentChecklist("session-token", "draft-1")).resolves.toMatchObject({
+      complete: false,
+      requirements: [{ type: "NATIONAL_ID_FRONT", label: "National ID front" }],
+    });
+  });
+
+  it("blocks document access until document-processing consent is stored", async () => {
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER", preferredLocale: "en" },
+        }),
+      } as never,
+      {
+        findOwnedDraft: vi.fn().mockResolvedValue({
+          id: "draft-1",
+          reference: "RHL-2026-123456",
+          driverRequested: false,
+          customerCategorySnapshot: "EGYPTIAN",
+          customerDetailsCompletedAt: new Date(),
+          documentConsentAt: null,
+        }),
+      } as never,
+    );
+
+    await expect(service.getDocumentChecklist("session-token", "draft-1")).rejects.toThrow(
+      "Document processing consent is required before upload.",
+    );
   });
 });

@@ -26,7 +26,7 @@ pnpm dev
 - API health: http://localhost:4000/api/health
 - PostgreSQL: `127.0.0.1:5433` (the container uses `5432` internally)
 
-The public UI currently uses fictional local content, while the API reads a fictional eight-vehicle fleet and branch from PostgreSQL. Production integrations for private documents, email, push notifications, and WhatsApp are intentionally not configured yet.
+The public UI currently uses fictional local content, while the API reads a fictional eight-vehicle fleet and branch from PostgreSQL. Reservation drafts now support private document uploads through a development-only local adapter configured by `PRIVATE_DOCUMENT_STORAGE_PATH`; production must use approved private S3-compatible storage before uploads are enabled. Production integrations for email, push notifications, and WhatsApp are intentionally not configured yet.
 
 ## Authentication foundation
 

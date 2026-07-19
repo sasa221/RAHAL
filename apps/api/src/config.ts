@@ -4,6 +4,7 @@ type ApiConfig = {
   databaseUrl: string;
   authSecret: string;
   production: boolean;
+  privateDocumentStoragePath?: string;
   verificationDelivery?: {
     url: string;
     secret: string;
@@ -135,6 +136,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     databaseUrl,
     authSecret,
     production,
+    privateDocumentStoragePath:
+      env.PRIVATE_DOCUMENT_STORAGE_PATH?.trim() || (production ? undefined : ".private-storage"),
     verificationDelivery,
     verificationEmail,
     verificationGmail,

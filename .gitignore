@@ -11,6 +11,7 @@ PROJECT_CONTEXT.md.utf8-backup
 .env.local
 .env.*.local
 coverage
+.private-storage
 *.tsbuildinfo
 *.log
 .DS_Store

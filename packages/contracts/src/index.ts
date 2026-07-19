@@ -74,10 +74,44 @@ export type ReservationCustomerDetails = {
   emailMasked: string;
   phoneMasked: string;
   nationality: string;
+  customerCategory: "EGYPTIAN" | "FOREIGN";
   address: string;
   emergencyContactName: string;
   emergencyContactPhoneMasked: string;
   completedAt: string;
+};
+
+export type ReservationDocumentType =
+  | "NATIONAL_ID_FRONT"
+  | "NATIONAL_ID_BACK"
+  | "DRIVING_LICENSE_FRONT"
+  | "DRIVING_LICENSE_BACK"
+  | "PASSPORT";
+
+export type ReservationDocumentRequirement = {
+  key: string;
+  type: ReservationDocumentType;
+  label: string;
+  allowedMimeTypes: string[];
+  maxSizeBytes: number;
+  uploaded: boolean;
+  document?: {
+    id: string;
+    type: ReservationDocumentType;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+    status: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
+    uploadedAt: string;
+  };
+};
+
+export type ReservationDocumentChecklist = {
+  draftId: string;
+  reference: string;
+  developmentRules: boolean;
+  requirements: ReservationDocumentRequirement[];
+  complete: boolean;
 };
 
 export type ReservationConsentBundle = {

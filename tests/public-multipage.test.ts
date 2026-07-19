@@ -96,7 +96,9 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("This is only a draft");
     expect(reservation).toContain("It is not a submitted request or a confirmed booking");
     expect(reservation).toContain("deposit recording");
-    expect(reservation).not.toContain('type="file"');
+    expect(reservation).toContain('type="file"');
+    expect(reservation).toContain("allowedMimeTypes");
+    expect(reservation).toContain("No permanent URL or identity number");
     expect(reservation).not.toContain("identityNumber");
     expect(reservation).not.toContain("passportNumber");
     expect(reservation).toContain("emailMasked");

@@ -73,6 +73,8 @@ The current `Reservation` model now stores optional name, email, phone, national
 
 The existing consent timestamps now record required terms, privacy, document-processing, and operational consent together with `termsVersion`. `marketingConsentAt` remains nullable and independent. Active bilingual consent text is selected from `PolicyVersion`; the current seed is development-only rather than approved production legal copy.
 
+The protected-document slice now records an explicit Egyptian/foreign customer category snapshot and database-backed `DocumentRequirementRule` records. Rules select document type, localized label, self-drive condition, allowed MIME types, and maximum size. `ReservationDocument` stores only private object keys and metadata; replacement and removal soft-delete prior metadata, while no storage key is returned to the browser.
+
 ## Notifications
 
 - `notifications`: in-app notification records.

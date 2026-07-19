@@ -143,6 +143,9 @@ Use an outbox pattern:
 - View/download endpoints generate short-lived signed URLs after checking permissions.
 - Every access attempt is logged.
 - Downloads remain disabled by default unless the actor has explicit permission.
+- The development adapter writes opaque object keys under the ignored `PRIVATE_DOCUMENT_STORAGE_PATH`; it is disabled by default in production.
+- Uploads validate configured MIME allowlists, file size, and file signatures before metadata is committed. API responses never return storage keys.
+- Production document upload remains gated on an approved private S3-compatible adapter, malware scanning, and an approved retention schedule.
 
 ## Architecture decisions needed later
 

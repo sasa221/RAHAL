@@ -9,6 +9,7 @@ import { AuthRepository } from "./auth/auth.repository";
 import { PasswordService } from "./auth/password.service";
 import { hashSessionToken } from "./auth/auth.service";
 import { ReservationsRepository } from "./reservations/reservations.repository";
+import { PrivateDocumentStorage } from "./reservations/private-document-storage";
 
 const fakeVehicles = [
   {
@@ -43,6 +44,17 @@ const fakeVehicles = [
 describe("RAHAL API", () => {
   let app: INestApplication;
   let storedSessionHash = "";
+  let documentCookie = "";
+  let uploadedDocuments: Array<{
+    id: string;
+    type: "NATIONAL_ID_FRONT";
+    status: "UPLOADED";
+    storageKey: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: Date;
+  }> = [];
 
   const authUser = {
     id: "customer-e2e",
@@ -135,7 +147,10 @@ describe("RAHAL API", () => {
             ? {
                 id,
                 reference: "RHL-2026-123456",
+                driverRequested: false,
+                customerCategorySnapshot: "EGYPTIAN",
                 customerDetailsCompletedAt: new Date(),
+                documentConsentAt: new Date(),
               }
             : null,
         saveCustomerDetails: async (input: {
@@ -181,6 +196,49 @@ describe("RAHAL API", () => {
           requiredAcceptedAt: new Date().toISOString(),
           marketingAccepted: input.marketingAccepted,
         }),
+        findDocumentRequirementRules: async () => [
+          {
+            key: "egyptian-id-front",
+            documentType: "NATIONAL_ID_FRONT",
+            requiresSelfDrive: false,
+            labelAr: "وجه بطاقة الرقم القومي",
+            labelEn: "National ID front",
+            allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"],
+            maxSizeBytes: 8 * 1024 * 1024,
+          },
+        ],
+        findActiveDocuments: async () => uploadedDocuments,
+        replaceDocument: async (input: {
+          type: "NATIONAL_ID_FRONT";
+          storageKey: string;
+          originalName: string;
+          mimeType: string;
+          sizeBytes: number;
+        }) => {
+          uploadedDocuments = [
+            {
+              id: "document-e2e",
+              type: input.type,
+              status: "UPLOADED",
+              storageKey: input.storageKey,
+              originalName: input.originalName,
+              mimeType: input.mimeType,
+              sizeBytes: input.sizeBytes,
+              createdAt: new Date(),
+            },
+          ];
+          return { documentId: "document-e2e", replacedStorageKeys: [] };
+        },
+        deleteOwnedDocument: async () => {
+          const document = uploadedDocuments[0];
+          uploadedDocuments = [];
+          return document ?? null;
+        },
+      })
+      .overrideProvider(PrivateDocumentStorage)
+      .useValue({
+        put: async () => "reservations/reservation-draft-e2e/private-document.png",
+        remove: async () => undefined,
       })
       .compile();
 
@@ -336,6 +394,7 @@ describe("RAHAL API", () => {
       .post("/api/reservations/drafts/reservation-draft-e2e/customer-details")
       .set("Cookie", cookie)
       .send({
+        customerCategory: "EGYPTIAN",
         nationality: "Egyptian",
         address: "Fictional Cairo address",
         emergencyContactName: "Emergency Contact",
@@ -355,6 +414,7 @@ describe("RAHAL API", () => {
       .post("/api/reservations/drafts/another-customer-draft/customer-details")
       .set("Cookie", cookie)
       .send({
+        customerCategory: "EGYPTIAN",
         nationality: "Egyptian",
         address: "Fictional Cairo address",
         emergencyContactName: "Emergency Contact",
@@ -394,5 +454,38 @@ describe("RAHAL API", () => {
       policyVersion: "DEV-2026-07-19",
       marketingAccepted: false,
     });
+  });
+
+  it("uploads a required document without exposing its private storage key", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    documentCookie = login.headers["set-cookie"]?.[0] ?? "";
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/drafts/reservation-draft-e2e/documents/NATIONAL_ID_FRONT")
+      .set("Cookie", documentCookie)
+      .attach("file", png, { filename: "identity-front.png", contentType: "image/png" })
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({ complete: true });
+    expect(response.body.data.requirements[0].document).toMatchObject({
+      originalName: "identity-front.png",
+      status: "UPLOADED",
+    });
+    expect(JSON.stringify(response.body)).not.toContain("storageKey");
+    expect(JSON.stringify(response.body)).not.toContain("private-document.png");
+  });
+
+  it("rejects a file whose bytes do not match its claimed document type", async () => {
+    await request(app.getHttpServer())
+      .post("/api/reservations/drafts/reservation-draft-e2e/documents/NATIONAL_ID_FRONT")
+      .set("Cookie", documentCookie)
+      .attach("file", Buffer.from("not an image"), {
+        filename: "fake.png",
+        contentType: "image/png",
+      })
+      .expect(400);
   });
 });

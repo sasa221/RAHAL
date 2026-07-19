@@ -130,6 +130,11 @@ enum DocumentStatus {
   DELETED
 }
 
+enum CustomerCategory {
+  EGYPTIAN
+  FOREIGN
+}
+
 enum VehicleBlockType {
   MAINTENANCE
   MANUAL_BLOCK
@@ -447,6 +452,7 @@ model Reservation {
   customerEmailSnapshot         String?
   customerPhoneSnapshot         String?
   nationalitySnapshot           String?
+  customerCategorySnapshot      CustomerCategory?
   addressSnapshot               String?
   emergencyContactNameSnapshot  String?
   emergencyContactPhoneSnapshot String?
@@ -580,6 +586,24 @@ model ReservationDocument {
   accessLogs      DocumentAccessLog[]
 
   @@index([reservationId, type, status])
+}
+
+model DocumentRequirementRule {
+  id                String           @id @default(cuid())
+  key               String           @unique
+  customerCategory  CustomerCategory
+  documentType      DocumentType
+  requiresSelfDrive Boolean          @default(false)
+  labelAr           String
+  labelEn           String
+  allowedMimeTypes  String[]
+  maxSizeBytes      Int              @default(8388608)
+  active            Boolean          @default(true)
+  sortOrder         Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([customerCategory, active, sortOrder])
 }
 
 model DocumentAccessLog {

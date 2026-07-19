@@ -9,7 +9,7 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 - The repository is a pnpm monorepo with `apps/web`, `apps/api`, and `packages/database`.
 - Git is initialized and the Milestone 1 and public-web baselines are committed.
 - The web app has bilingual home, database-backed fleet, vehicle-detail, availability, and authenticated reservation-draft routes using Next.js 16 and React 19.
-- The API has health, database-backed vehicle, active-branch, authentication, verification, and reservation-draft endpoints.
+- The API has health, database-backed vehicle, active-branch, authentication, verification, reservation-draft, and owner-authorized private-document endpoints.
 - The Prisma 7 package contains the Milestone 3 domain baseline, a reviewed SQL migration, and a repeatable fictional seed.
 - Docker Compose provides PostgreSQL on host port `5433` to avoid collisions with a workstation PostgreSQL service on `5432`.
 - Generated clients, build output, dependencies, logs, and large Stitch ZIP exports remain ignored artifacts.
@@ -25,7 +25,7 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 - The schema now includes sessions/devices, explicit bookings and EGP price snapshots, alternative offers, document access logs, contracts, separate notes/messages, notification outbox/templates, branch settings, content/vehicle translations, rate rules, and database-level overlap protection for confirmed/active bookings.
 - `VehicleStatus` now includes `OVERDUE` and `ARCHIVED`.
 
-Remaining configuration work includes maximum rental duration, configurable required-document rules, and final production media metadata.
+Remaining configuration work includes maximum rental duration and final production media metadata. Required-document rules are now database-backed with separate Egyptian/foreign and self-drive conditions; an administrator UI for those rules remains pending.
 
 ## Product scope
 
