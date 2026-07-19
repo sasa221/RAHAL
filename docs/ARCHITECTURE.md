@@ -127,6 +127,8 @@ PostgreSQL exclusion constraints are the preferred final enforcement mechanism f
 
 Customer submission is a separate transactional boundary from booking confirmation. The review endpoint is read-only and returns masked contacts and safe document states. The submit transaction rereads verification, consent version, document rules, vehicle state, operational blocks, and confirmed/active booking overlap before conditionally moving only a `DRAFT` to `PENDING_REVIEW`. The same transaction records `submittedAt`, a reservation event, an in-app customer notification, and a minimal notification outbox payload. It never creates a booking or records a deposit.
 
+The first sales boundary exposes only the active review queue. Sales employees can read unassigned pending work and their own assignments; administrators can read the full active queue. A claim uses a conditional transactional update so only one employee can move an unassigned `PENDING_REVIEW` request to `UNDER_REVIEW`. Staff detail responses remain metadata-only: masked contacts, safe document type/status, consent state, and a bounded event timeline. Private document access requires a later explicit permission and audited short-lived URL flow.
+
 ## Notification architecture
 
 Use an outbox pattern:

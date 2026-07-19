@@ -17,6 +17,8 @@ import type {
   ReservationCustomerDetails,
   ReservationDocumentChecklist,
   ReservationReview,
+  SalesReservationQueueItem,
+  SalesReservationReview,
   SubmittedReservation,
   ReservationDraft,
 } from "@rahal/contracts";
@@ -115,5 +117,26 @@ export class ReservationsController {
     @Req() request: Request,
   ): Promise<ApiSuccess<SubmittedReservation>> {
     return { data: await this.reservations.submitReservation(readAuthCookie(request), id) };
+  }
+
+  @Get("sales/queue")
+  async salesQueue(@Req() request: Request): Promise<ApiSuccess<SalesReservationQueueItem[]>> {
+    return { data: await this.reservations.getSalesQueue(readAuthCookie(request)) };
+  }
+
+  @Get("sales/:id")
+  async salesReview(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesReservationReview>> {
+    return { data: await this.reservations.getSalesReview(readAuthCookie(request), id) };
+  }
+
+  @Post("sales/:id/claim")
+  async claimForSalesReview(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesReservationReview>> {
+    return { data: await this.reservations.claimSalesReview(readAuthCookie(request), id) };
   }
 }

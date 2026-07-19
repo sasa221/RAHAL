@@ -10,6 +10,7 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 - Git is initialized and the Milestone 1 and public-web baselines are committed.
 - The web app has bilingual home, database-backed fleet, vehicle-detail, availability, and authenticated reservation-draft routes using Next.js 16 and React 19.
 - The API has health, database-backed vehicle, active-branch, authentication, verification, reservation-draft, and owner-authorized private-document endpoints.
+- The API and web now include the first role-gated sales review queue, protected request detail, and atomic request-claim workflow.
 - The Prisma 7 package contains the Milestone 3 domain baseline, a reviewed SQL migration, and a repeatable fictional seed.
 - Docker Compose provides PostgreSQL on host port `5433` to avoid collisions with a workstation PostgreSQL service on `5432`.
 - Generated clients, build output, dependencies, logs, and large Stitch ZIP exports remain ignored artifacts.
@@ -109,6 +110,8 @@ After submission:
 - Notify customer and relevant staff.
 - Store price snapshots so future rule changes do not rewrite historical estimates.
 - Recheck availability inside a transaction before confirmation.
+
+Authorized sales staff may list active review requests and claim an unassigned `PENDING_REVIEW` request. Claiming changes the request only to `UNDER_REVIEW`, records the employee assignment and event, and notifies the customer that review started. It must not create a booking, accept a deposit, or imply confirmation. Staff detail views use masked contacts and document metadata only; document bytes require a separate permission-checked and audited access flow.
 
 ## Security and privacy requirements
 

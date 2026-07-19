@@ -15,6 +15,8 @@ import type {
   ReservationDraft,
   ReservationReview,
   ReservationSubmissionBlocker,
+  SalesReservationQueueItem,
+  SalesReservationReview,
   SubmittedReservation,
 } from "@rahal/contracts";
 import { basename } from "node:path";
@@ -445,6 +447,92 @@ export class ReservationsService {
     throw new ConflictException("Complete verification and every required step before submission.");
   }
 
+  async getSalesQueue(token: string | undefined): Promise<SalesReservationQueueItem[]> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const canSeeAll = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
+    const records = await this.reservations.findSalesQueue(session.user.id, canSeeAll);
+    return records.map((record) =>
+      toSalesQueueItem(record, session.user.id, session.user.preferredLocale),
+    );
+  }
+
+  async getSalesReview(
+    token: string | undefined,
+    reservationId: string,
+  ): Promise<SalesReservationReview> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const record = await this.reservations.findSalesReview(reservationId);
+    if (!record) throw new NotFoundException("The reservation request was not found.");
+    if (
+      session.user.role === "SALES" &&
+      record.assignedSalesId &&
+      record.assignedSalesId !== session.user.id
+    ) {
+      throw new ForbiddenException("This request is assigned to another sales employee.");
+    }
+    const requiredAccepted = Boolean(
+      record.termsVersion &&
+      record.termsAcceptedAt &&
+      record.privacyConsentAt &&
+      record.documentConsentAt &&
+      record.operationalConsentAt,
+    );
+    return {
+      ...toSalesQueueItem(record, session.user.id, session.user.preferredLocale),
+      customer: {
+        name: record.customerNameSnapshot ?? "Customer",
+        emailMasked: maskEmail(record.customerEmailSnapshot ?? record.customer.email),
+        phoneMasked: maskPhone(record.customerPhoneSnapshot ?? record.customer.phone),
+        nationality: record.nationalitySnapshot,
+        customerCategory: record.customerCategorySnapshot,
+        addressMasked: maskText(record.addressSnapshot),
+        emergencyContactNameMasked: maskName(record.emergencyContactNameSnapshot),
+        emergencyContactPhoneMasked: record.emergencyContactPhoneSnapshot
+          ? maskPhone(record.emergencyContactPhoneSnapshot)
+          : null,
+      },
+      verification: {
+        email: Boolean(record.customer.emailVerifiedAt),
+        phone: Boolean(record.customer.phoneVerifiedAt),
+      },
+      consents: { policyVersion: record.termsVersion, requiredAccepted },
+      documents: record.documents.map((document) => ({
+        type: document.type as ReservationDocumentType,
+        status: document.status as
+          "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED",
+        uploadedAt: document.createdAt.toISOString(),
+      })),
+      timeline: record.events.map((event) => ({
+        fromStatus: event.fromStatus,
+        toStatus: event.toStatus,
+        note: event.note,
+        createdAt: event.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async claimSalesReview(
+    token: string | undefined,
+    reservationId: string,
+  ): Promise<SalesReservationReview> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const result = await this.reservations.claimSalesReview({
+      reservationId,
+      actorId: session.user.id,
+      locale: session.user.preferredLocale,
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("The pending reservation request was not found.");
+    }
+    if (result.kind === "ALREADY_ASSIGNED") {
+      throw new ConflictException("Another sales employee already claimed this request.");
+    }
+    return this.getSalesReview(token, reservationId);
+  }
+
   private async getDocumentContext(token: string | undefined, draftId: string) {
     const session = await this.auth.getSession(token);
     if (session.user.role !== "CUSTOMER") {
@@ -507,4 +595,57 @@ function maskText(value: string | null) {
 function maskName(value: string | null) {
   if (!value) return null;
   return `${Array.from(value)[0] ?? "•"}•••`;
+}
+
+function assertSalesAccess(role: string) {
+  if (!["SALES", "ADMIN", "SUPER_ADMIN"].includes(role)) {
+    throw new ForbiddenException("A sales or administrator account is required.");
+  }
+}
+
+function toSalesQueueItem(
+  record: {
+    id: string;
+    reference: string;
+    status: string;
+    submittedAt: Date | null;
+    createdAt: Date;
+    pickupAt: Date;
+    returnAt: Date;
+    driverRequested: boolean;
+    estimatedTotal: { toNumber(): number };
+    assignedSalesId: string | null;
+    customerNameSnapshot: string | null;
+    customerEmailSnapshot: string | null;
+    customerPhoneSnapshot: string | null;
+    vehicle: { id: string; nameAr: string; nameEn: string };
+    branch: { id: string; nameAr: string; nameEn: string };
+  },
+  actorId: string,
+  locale: "ar" | "en",
+): SalesReservationQueueItem {
+  return {
+    id: record.id,
+    reference: record.reference,
+    status: record.status as SalesReservationQueueItem["status"],
+    submittedAt: (record.submittedAt ?? record.createdAt).toISOString(),
+    pickupAt: record.pickupAt.toISOString(),
+    returnAt: record.returnAt.toISOString(),
+    driverRequested: record.driverRequested,
+    estimate: { currency: "EGP", total: record.estimatedTotal.toNumber() },
+    vehicle: {
+      id: record.vehicle.id,
+      name: locale === "ar" ? record.vehicle.nameAr : record.vehicle.nameEn,
+    },
+    branch: {
+      id: record.branch.id,
+      name: locale === "ar" ? record.branch.nameAr : record.branch.nameEn,
+    },
+    customer: {
+      name: record.customerNameSnapshot ?? "Customer",
+      emailMasked: maskEmail(record.customerEmailSnapshot ?? "hidden@rahal.local"),
+      phoneMasked: maskPhone(record.customerPhoneSnapshot ?? "+20000000000"),
+    },
+    assignedToCurrentUser: record.assignedSalesId === actorId,
+  };
 }

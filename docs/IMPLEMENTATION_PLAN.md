@@ -263,6 +263,45 @@ Status: the customer wizard through final review and the guarded `DRAFT` to `PEN
 - API integration coverage for masked review data, development-policy blocking, and `PENDING_REVIEW` submission without confirmation.
 - Static bilingual UI coverage for review/submit routes, readiness blockers, no-online-payment copy, and pending-review success state.
 
+## Milestone 6: Sales review foundation
+
+Goal: give authorized sales staff a protected queue and an auditable way to begin reviewing submitted requests without confirming a booking.
+
+Status: the queue, protected review detail, and atomic claim slice was completed locally on 2026-07-19. Decision actions, alternatives, deposit/contract recording, and confirmation remain pending.
+
+### Completed scope
+
+- Role-gated queue access for `SALES`, `ADMIN`, and `SUPER_ADMIN`; customer accounts receive `403`.
+- Sales employees see unassigned pending requests plus requests assigned to themselves; administrators may see the full active review queue.
+- Review detail returns masked customer contacts and address, safe document metadata, consent/verification status, and a bounded status timeline.
+- Private storage keys, document URLs, and identity numbers are excluded from staff responses and UI.
+- Claiming an unassigned `PENDING_REVIEW` request atomically assigns the employee and moves it to `UNDER_REVIEW`.
+- The claim transaction writes a reservation event, customer in-app notification, and privacy-minimized notification outbox event.
+- Claiming is idempotent for the owning employee and fails with a conflict if another employee won the race.
+- Shared responsive Arabic/English sales routes are available at `/sales` and `/en/sales`.
+
+### Remaining scope
+
+- Permission-granular actions beyond the initial system-role boundary.
+- Protected document view/sign-url flow with access reason, explicit permission, and access audit.
+- Request-more-information action and customer response workflow.
+- Pre-approval, rejection, alternative vehicle/date offers, and expiry handling.
+- Branch deposit receipt and signed-contract recording.
+- Final transactional availability check and separate `Booking` creation only after all branch requirements are complete.
+
+### Acceptance criteria
+
+- Customers cannot list, inspect, or claim sales requests.
+- One unassigned request cannot be claimed by two employees.
+- Staff responses never include storage keys, permanent document URLs, or full sensitive identity/contact data.
+- Claiming produces `UNDER_REVIEW`, never `CONFIRMED`, and never creates a booking.
+- Arabic and English share the same responsive component and show loading, empty, unauthorized, forbidden, detail, and claim states.
+
+### Tests
+
+- API integration tests for customer rejection, sales queue access, masked review detail, storage-key exclusion, and atomic claim response.
+- Static route/UI tests for bilingual sharing, protected fields, staff endpoints, and non-confirmation language.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

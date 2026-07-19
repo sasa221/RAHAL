@@ -165,6 +165,44 @@ export type SubmittedReservation = {
   submittedAt: string;
 };
 
+export type SalesReservationQueueItem = {
+  id: string;
+  reference: string;
+  status: "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED";
+  submittedAt: string;
+  pickupAt: string;
+  returnAt: string;
+  driverRequested: boolean;
+  estimate: { currency: "EGP"; total: number };
+  vehicle: { id: string; name: string };
+  branch: { id: string; name: string };
+  customer: { name: string; emailMasked: string; phoneMasked: string };
+  assignedToCurrentUser: boolean;
+};
+
+export type SalesReservationReview = SalesReservationQueueItem & {
+  customer: SalesReservationQueueItem["customer"] & {
+    nationality: string | null;
+    customerCategory: "EGYPTIAN" | "FOREIGN" | null;
+    addressMasked: string | null;
+    emergencyContactNameMasked: string | null;
+    emergencyContactPhoneMasked: string | null;
+  };
+  verification: { email: boolean; phone: boolean };
+  consents: { policyVersion: string | null; requiredAccepted: boolean };
+  documents: Array<{
+    type: ReservationDocumentType;
+    status: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED";
+    uploadedAt: string;
+  }>;
+  timeline: Array<{
+    fromStatus: string | null;
+    toStatus: string;
+    note: string | null;
+    createdAt: string;
+  }>;
+};
+
 export type ReservationConsentBundle = {
   version: string;
   developmentOnly: boolean;

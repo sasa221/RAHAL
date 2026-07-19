@@ -520,6 +520,142 @@ export class ReservationsRepository {
     });
   }
 
+  findSalesQueue(actorId: string, canSeeAll: boolean) {
+    return this.prisma.client.reservation.findMany({
+      where: {
+        status: { in: ["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"] },
+        ...(canSeeAll
+          ? {}
+          : {
+              OR: [
+                { status: "PENDING_REVIEW", assignedSalesId: null },
+                { assignedSalesId: actorId },
+              ],
+            }),
+      },
+      orderBy: [{ submittedAt: "asc" }, { createdAt: "asc" }],
+      take: 100,
+      select: salesQueueSelect,
+    });
+  }
+
+  findSalesReview(id: string) {
+    return this.prisma.client.reservation.findFirst({
+      where: {
+        id,
+        status: { in: ["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"] },
+      },
+      select: {
+        ...salesQueueSelect,
+        nationalitySnapshot: true,
+        customerCategorySnapshot: true,
+        addressSnapshot: true,
+        emergencyContactNameSnapshot: true,
+        emergencyContactPhoneSnapshot: true,
+        termsVersion: true,
+        termsAcceptedAt: true,
+        privacyConsentAt: true,
+        documentConsentAt: true,
+        operationalConsentAt: true,
+        customer: {
+          select: {
+            email: true,
+            phone: true,
+            emailVerifiedAt: true,
+            phoneVerifiedAt: true,
+          },
+        },
+        documents: {
+          where: { deletedAt: null, status: { notIn: ["UPLOADING", "DELETED"] } },
+          orderBy: { createdAt: "desc" },
+          select: { type: true, status: true, createdAt: true },
+        },
+        events: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: {
+            fromStatus: true,
+            toStatus: true,
+            note: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+  }
+
+  async claimSalesReview(input: { reservationId: string; actorId: string; locale: "ar" | "en" }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: {
+          id: input.reservationId,
+          status: { in: ["PENDING_REVIEW", "UNDER_REVIEW"] },
+        },
+        select: {
+          id: true,
+          reference: true,
+          customerId: true,
+          status: true,
+          assignedSalesId: true,
+        },
+      });
+      if (!reservation) return { kind: "NOT_FOUND" as const };
+      if (reservation.status === "UNDER_REVIEW" && reservation.assignedSalesId === input.actorId) {
+        return { kind: "CLAIMED" as const };
+      }
+      if (reservation.status !== "PENDING_REVIEW" || reservation.assignedSalesId) {
+        return { kind: "ALREADY_ASSIGNED" as const };
+      }
+
+      const updated = await transaction.reservation.updateMany({
+        where: {
+          id: reservation.id,
+          status: "PENDING_REVIEW",
+          assignedSalesId: null,
+        },
+        data: { status: "UNDER_REVIEW", assignedSalesId: input.actorId },
+      });
+      if (!updated.count) return { kind: "ALREADY_ASSIGNED" as const };
+
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: reservation.id,
+          fromStatus: "PENDING_REVIEW",
+          toStatus: "UNDER_REVIEW",
+          actorId: input.actorId,
+          note: "Sales employee claimed the request for review.",
+        },
+      });
+      await transaction.notification.create({
+        data: {
+          userId: reservation.customerId,
+          reservationId: reservation.id,
+          eventKey: "RESERVATION_UNDER_REVIEW",
+          titleAr: "بدأت مراجعة طلبك",
+          titleEn: "Your request is under review",
+          bodyAr: `بدأ فريق المبيعات مراجعة طلب ${reservation.reference}. هذا ليس حجزًا مؤكدًا بعد.`,
+          bodyEn: `Sales started reviewing request ${reservation.reference}. This is not a confirmed booking yet.`,
+          important: true,
+        },
+      });
+      await transaction.notificationEvent.create({
+        data: {
+          eventKey: "RESERVATION_UNDER_REVIEW",
+          aggregateType: "RESERVATION",
+          aggregateId: reservation.id,
+          payload: {
+            reservationId: reservation.id,
+            reference: reservation.reference,
+            customerId: reservation.customerId,
+            locale: input.locale,
+            status: "UNDER_REVIEW",
+          },
+        },
+      });
+      return { kind: "CLAIMED" as const };
+    });
+  }
+
   async replaceDocument(input: {
     draftId: string;
     customerId: string;
@@ -641,6 +777,24 @@ const draftSelect = {
   returnAt: true,
   driverRequested: true,
   estimatedTotal: true,
+} as const;
+
+const salesQueueSelect = {
+  id: true,
+  reference: true,
+  status: true,
+  submittedAt: true,
+  createdAt: true,
+  pickupAt: true,
+  returnAt: true,
+  driverRequested: true,
+  estimatedTotal: true,
+  assignedSalesId: true,
+  customerNameSnapshot: true,
+  customerEmailSnapshot: true,
+  customerPhoneSnapshot: true,
+  vehicle: { select: { id: true, nameAr: true, nameEn: true } },
+  branch: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
 
 function toReservationDraft(record: {

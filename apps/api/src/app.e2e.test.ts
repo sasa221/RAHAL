@@ -8,6 +8,7 @@ import { VehiclesRepository } from "./vehicles/vehicles.repository";
 import { AuthRepository } from "./auth/auth.repository";
 import { PasswordService } from "./auth/password.service";
 import { hashSessionToken } from "./auth/auth.service";
+import { AuthRateLimitService } from "./auth/auth-rate-limit.service";
 import { ReservationsRepository } from "./reservations/reservations.repository";
 import { PrivateDocumentStorage } from "./reservations/private-document-storage";
 
@@ -44,7 +45,9 @@ const fakeVehicles = [
 describe("RAHAL API", () => {
   let app: INestApplication;
   let storedSessionHash = "";
+  let storedSessionUser: typeof authUser | typeof salesUser;
   let documentCookie = "";
+  let salesAssigned = false;
   let uploadedDocuments: Array<{
     id: string;
     type: "NATIONAL_ID_FRONT";
@@ -70,6 +73,68 @@ describe("RAHAL API", () => {
     phoneVerifiedAt: new Date("2026-07-01T00:00:00Z"),
   };
 
+  const salesUser = {
+    ...authUser,
+    id: "sales-e2e",
+    email: "sales@example.com",
+    phone: "+201001115555",
+    fullNameEn: "Rahal Sales Employee",
+    systemRole: "SALES" as const,
+  };
+
+  storedSessionUser = authUser;
+
+  const salesReviewRecord = () => ({
+    id: "reservation-draft-e2e",
+    reference: "RHL-2026-123456",
+    status: salesAssigned ? "UNDER_REVIEW" : "PENDING_REVIEW",
+    submittedAt: new Date("2026-07-19T18:00:00.000Z"),
+    createdAt: new Date("2026-07-19T17:00:00.000Z"),
+    pickupAt: new Date("2026-08-01T12:00:00.000Z"),
+    returnAt: new Date("2026-08-04T12:00:00.000Z"),
+    driverRequested: false,
+    estimatedTotal: { toNumber: () => 13_500 },
+    assignedSalesId: salesAssigned ? salesUser.id : null,
+    customerNameSnapshot: "Rahal Customer",
+    customerEmailSnapshot: "customer@example.com",
+    customerPhoneSnapshot: "+201001112222",
+    nationalitySnapshot: "Egyptian",
+    customerCategorySnapshot: "EGYPTIAN",
+    addressSnapshot: "Fictional Cairo address",
+    emergencyContactNameSnapshot: "Emergency Contact",
+    emergencyContactPhoneSnapshot: "+201009998888",
+    termsVersion: "PROD-2026-01",
+    termsAcceptedAt: new Date(),
+    privacyConsentAt: new Date(),
+    documentConsentAt: new Date(),
+    operationalConsentAt: new Date(),
+    vehicle: {
+      id: "silver-executive",
+      nameAr: "سيدان تنفيذية فضية",
+      nameEn: "Silver Executive Sedan",
+    },
+    branch: {
+      id: "demo-branch-cairo",
+      nameAr: "فرع رحال القاهرة التجريبي",
+      nameEn: "Rahal Cairo Demo Branch",
+    },
+    customer: {
+      email: authUser.email,
+      phone: authUser.phone,
+      emailVerifiedAt: authUser.emailVerifiedAt,
+      phoneVerifiedAt: authUser.phoneVerifiedAt,
+    },
+    documents: [{ type: "NATIONAL_ID_FRONT", status: "UPLOADED", createdAt: new Date() }],
+    events: [
+      {
+        fromStatus: "DRAFT",
+        toStatus: "PENDING_REVIEW",
+        note: "Customer submitted the reservation request for sales review.",
+        createdAt: new Date("2026-07-19T18:00:00.000Z"),
+      },
+    ],
+  });
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(VehiclesRepository)
@@ -93,10 +158,19 @@ describe("RAHAL API", () => {
       .overrideProvider(AuthRepository)
       .useValue({
         findByIdentifier: async (identifier: string) =>
-          [authUser.email, authUser.phone].includes(identifier) ? authUser : null,
+          [authUser.email, authUser.phone].includes(identifier)
+            ? authUser
+            : [salesUser.email, salesUser.phone].includes(identifier)
+              ? salesUser
+              : null,
         createUser: async () => authUser,
-        createSession: async (input: { refreshTokenHash: string; expiresAt: Date }) => {
+        createSession: async (input: {
+          userId: string;
+          refreshTokenHash: string;
+          expiresAt: Date;
+        }) => {
           storedSessionHash = input.refreshTokenHash;
+          storedSessionUser = input.userId === salesUser.id ? salesUser : authUser;
           return { id: "session-e2e", expiresAt: input.expiresAt };
         },
         findSession: async (refreshTokenHash: string) =>
@@ -104,7 +178,7 @@ describe("RAHAL API", () => {
             ? {
                 id: "session-e2e",
                 expiresAt: new Date(Date.now() + 60_000),
-                user: authUser,
+                user: storedSessionUser,
               }
             : null,
         touchSession: async () => undefined,
@@ -116,6 +190,8 @@ describe("RAHAL API", () => {
         hash: async () => "secure-password-hash",
         verify: async (password: string) => password === "correct-customer-password",
       })
+      .overrideProvider(AuthRateLimitService)
+      .useValue({ assertAllowed: () => undefined })
       .overrideProvider(ReservationsRepository)
       .useValue({
         findVehicle: async () => ({
@@ -210,6 +286,15 @@ describe("RAHAL API", () => {
                 },
               }
             : { kind: "NOT_FOUND" },
+        findSalesQueue: async () => [salesReviewRecord()],
+        findSalesReview: async (id: string) =>
+          id === "reservation-draft-e2e" ? salesReviewRecord() : null,
+        claimSalesReview: async (input: { reservationId: string; actorId: string }) => {
+          if (input.reservationId !== "reservation-draft-e2e") return { kind: "NOT_FOUND" };
+          if (input.actorId !== salesUser.id) return { kind: "ALREADY_ASSIGNED" };
+          salesAssigned = true;
+          return { kind: "CLAIMED" };
+        },
         saveCustomerDetails: async (input: {
           draftId: string;
           reference: string;
@@ -577,5 +662,56 @@ describe("RAHAL API", () => {
       status: "PENDING_REVIEW",
     });
     expect(response.body.data.status).not.toBe("CONFIRMED");
+  });
+
+  it("rejects customer access to the sales review queue", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .get("/api/reservations/sales/queue")
+      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .expect(403);
+  });
+
+  it("lets sales inspect masked requests and claim one without confirming it", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: salesUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+
+    const queue = await request(app.getHttpServer())
+      .get("/api/reservations/sales/queue")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(queue.body.data[0]).toMatchObject({
+      reference: "RHL-2026-123456",
+      status: "PENDING_REVIEW",
+      assignedToCurrentUser: false,
+    });
+
+    const review = await request(app.getHttpServer())
+      .get("/api/reservations/sales/reservation-draft-e2e")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(review.body.data.customer).toMatchObject({
+      emailMasked: expect.stringContaining("***"),
+      phoneMasked: expect.stringContaining("••••"),
+      addressMasked: expect.not.stringContaining("Fictional Cairo address"),
+    });
+    expect(JSON.stringify(review.body)).not.toContain("storageKey");
+
+    const claimed = await request(app.getHttpServer())
+      .post("/api/reservations/sales/reservation-draft-e2e/claim")
+      .set("Cookie", cookie)
+      .expect(201);
+    expect(claimed.body.data).toMatchObject({
+      status: "UNDER_REVIEW",
+      assignedToCurrentUser: true,
+    });
+    expect(claimed.body.data.status).not.toBe("CONFIRMED");
   });
 });
