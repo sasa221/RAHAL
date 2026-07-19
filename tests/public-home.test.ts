@@ -57,7 +57,8 @@ describe("Milestone 2 public home", () => {
   });
 
   it("provides dedicated mobile interaction for trust, branch, and footer content", () => {
-    expect(component).toContain('className="trust-card__top"');
+    expect(component).toContain('className="trust-card__visual"');
+    expect(component).toContain('className="trust-card__visual-line"');
     expect(component).toContain('className="branch-facts"');
     expect(component).toContain("footer-statement");
     expect(styles).toContain("scroll-snap-type: inline mandatory");

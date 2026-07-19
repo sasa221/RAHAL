@@ -491,11 +491,13 @@ export function PublicHome({ locale }: PublicHomeProps) {
             <div className="trust-grid">
               {content.trustItems.map(([title, description], index) => (
                 <article data-reveal data-tilt key={title}>
-                  <div className="trust-card__top">
+                  <div className="trust-card__visual" aria-hidden="true">
                     <span className="trust-card__number">0{index + 1}</span>
-                    <span className="trust-icon">
+                    <span className="trust-card__visual-icon">
                       <Icon name={(["document", "users", "shield"] as IconName[])[index]} />
                     </span>
+                    <strong>{(["EGP", "1:1", "••••"] as const)[index]}</strong>
+                    <span className="trust-card__visual-line" />
                   </div>
                   <div>
                     <h3>{title}</h3>
