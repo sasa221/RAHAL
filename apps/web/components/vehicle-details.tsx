@@ -15,6 +15,7 @@ import { Footer, Header, Icon } from "./public-home";
 
 const detailsCopy = {
   ar: {
+    home: "الرئيسية",
     back: "كل السيارات",
     available: "متاحة لتقديم طلب",
     review: "التوافر يحتاج مراجعة",
@@ -24,26 +25,39 @@ const detailsCopy = {
     estimateNote: "تقدير مبدئي قبل مراجعة المبيعات، ولا يشمل أي إضافات يحددها الفرع.",
     request: "ابدأ طلب الحجز",
     requestNotice: "إرسال الطلب لا يعني تأكيد الحجز",
-    requestSteps: "المراجعة، الحضور للفرع، تسجيل العربون وتوقيع المستندات مطلوبة للتأكيد النهائي.",
-    specifications: "مواصفات العربية",
+    requestSteps: "المراجعة والحضور للفرع وتسجيل العربون وتوقيع المستندات مطلوبة للتأكيد النهائي.",
+    specifications: "العربية في أرقام",
+    specificationsCopy: "المواصفات الأساسية اللي تساعدك تقارن اختيارك قبل إرسال الطلب.",
     transmission: "ناقل الحركة",
     seats: "المقاعد",
     bags: "الحقائب",
     model: "الموديل",
-    policies: "سياسات التأجير",
+    policies: "كل التفاصيل قبل الطلب",
+    policiesCopy: "سياسات واضحة من البداية، والتأكيد النهائي يتم مع فريق المبيعات داخل الفرع.",
     driver: "نظام السائق",
     fuel: "سياسة الوقود",
     mileage: "حد الكيلومترات",
     minimum: "أقل مدة حجز",
     days: "أيام",
-    availability: "تقويم التوافر التجريبي",
-    availabilityCopy: "التقويم يوضح الحالة فقط ولا يعرض أي معلومات عن عملاء آخرين.",
+    availability: "نظرة على التوافر",
+    availabilityCopy: "التقويم توضيحي للحالة فقط، ولا يعرض أي معلومات عن عملاء آخرين.",
     open: "متاح",
     unavailable: "غير متاح",
     branch: "الاستلام والإرجاع من فرع رحال فقط",
     private: "لا تظهر بيانات أو مستندات أي عميل داخل صفحة العربية.",
+    salesReview: "فريق المبيعات يراجع كل طلب",
+    egpOnly: "الأسعار بالجنيه المصري فقط",
+    gallery: "صور العربية",
+    showImage: "عرض صورة",
+    selectedImage: "الصورة المختارة",
+    from: "من",
+    perDay: "في اليوم",
+    priceNote: "العربون يسجل داخل الفرع.",
+    clearBefore: "واضحة قبل الطلب",
+    noPersonalData: "بدون بيانات شخصية",
   },
   en: {
+    home: "Home",
     back: "All vehicles",
     available: "Available to request",
     review: "Availability needs review",
@@ -56,24 +70,37 @@ const detailsCopy = {
     requestNotice: "Submitting a request does not confirm a booking",
     requestSteps:
       "Sales review, branch attendance, deposit recording, and signed documents are required for final confirmation.",
-    specifications: "Vehicle specifications",
+    specifications: "The vehicle in numbers",
+    specificationsCopy: "The essentials you need to compare your choice before sending a request.",
     transmission: "Transmission",
     seats: "Seats",
     bags: "Bags",
     model: "Model",
-    policies: "Rental policies",
+    policies: "Every detail before requesting",
+    policiesCopy:
+      "Clear policies from the start, with final confirmation handled by the sales team at the branch.",
     driver: "Driver policy",
     fuel: "Fuel policy",
     mileage: "Mileage allowance",
     minimum: "Minimum rental",
     days: "days",
-    availability: "Demo availability calendar",
+    availability: "A view of availability",
     availabilityCopy:
-      "The calendar shows status only and never exposes information about other customers.",
+      "The calendar illustrates status only and never exposes information about other customers.",
     open: "Available",
     unavailable: "Unavailable",
     branch: "Pickup and return at the Rahal branch only",
     private: "No customer data or documents appear on a public vehicle page.",
+    salesReview: "Every request is reviewed by sales",
+    egpOnly: "Rates are shown in Egyptian pounds only",
+    gallery: "Vehicle gallery",
+    showImage: "Show image",
+    selectedImage: "Selected image",
+    from: "From",
+    perDay: "per day",
+    priceNote: "The deposit is recorded at the branch.",
+    clearBefore: "Clear before requesting",
+    noPersonalData: "No personal data",
   },
 } as const;
 
@@ -122,7 +149,11 @@ export function VehicleDetails({
   const fleetHref = `${localizedPath(locale, "/cars")}${selectionQuery ? `?${selectionQuery}` : ""}`;
 
   return (
-    <div className="public-site public-inner-page" dir={content.dir} lang={content.htmlLang}>
+    <div
+      className="public-site public-inner-page vehicle-detail-page"
+      dir={content.dir}
+      lang={content.htmlLang}
+    >
       <a className="skip-link" href="#vehicle-main">
         {content.skip}
       </a>
@@ -131,26 +162,49 @@ export function VehicleDetails({
       <main className="vehicle-details" id="vehicle-main">
         <div className="container">
           <nav className="breadcrumbs" aria-label={locale === "ar" ? "مسار الصفحة" : "Breadcrumb"}>
-            <a href={localizedPath(locale)}>{locale === "ar" ? "الرئيسية" : "Home"}</a>
+            <a href={localizedPath(locale)}>{copy.home}</a>
             <span aria-hidden="true">/</span>
             <a href={fleetHref}>{copy.back}</a>
             <span aria-hidden="true">/</span>
             <span>{vehicle.name[locale]}</span>
           </nav>
 
-          <div className="vehicle-details__heading">
+          <header className="vehicle-detail-heading">
             <div>
-              <span className="eyebrow">{vehicle.category[locale]}</span>
+              <span className="eyebrow">{vehicle.category[locale]} / RAHAL</span>
               <h1>{vehicle.name[locale]}</h1>
             </div>
-            <span className={`status-badge status-badge--${vehicle.status}`}>
-              <span aria-hidden="true" />
-              {vehicle.status === "available" ? copy.available : copy.review}
-            </span>
-          </div>
+            <div className="vehicle-detail-heading__meta">
+              <span className={`status-badge status-badge--${vehicle.status}`}>
+                <span aria-hidden="true" />
+                {vehicle.status === "available" ? copy.available : copy.review}
+              </span>
+              <p>
+                <small>{copy.from}</small>
+                <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
+                <span>{copy.perDay}</span>
+              </p>
+            </div>
+          </header>
 
           <div className="vehicle-details__layout">
-            <div>
+            <div className="vehicle-gallery-shell">
+              <div className="vehicle-gallery__thumbs" aria-label={copy.gallery}>
+                {gallery.map((image, index) => (
+                  <button
+                    aria-label={`${copy.showImage}: ${image.name[locale]}`}
+                    aria-pressed={selectedImage.id === image.id}
+                    className={selectedImage.id === image.id ? "is-active" : ""}
+                    key={image.id}
+                    onClick={() => setSelectedImage(image)}
+                    type="button"
+                  >
+                    <Image alt="" fill sizes="160px" src={image.image} />
+                    <span aria-hidden="true">0{index + 1}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="vehicle-gallery__main">
                 <Image
                   alt={selectedImage.imageAlt[locale]}
@@ -159,27 +213,29 @@ export function VehicleDetails({
                   sizes="(max-width: 900px) 100vw, 66vw"
                   src={selectedImage.image}
                 />
+                <span className="vehicle-gallery__caption">
+                  {copy.selectedImage} / {selectedImage.name[locale]}
+                </span>
               </div>
-              <div
-                className="vehicle-gallery__thumbs"
-                aria-label={locale === "ar" ? "صور العربية" : "Vehicle images"}
-              >
-                {gallery.map((image) => (
-                  <button
-                    aria-label={`${locale === "ar" ? "عرض صورة" : "Show image"}: ${image.name[locale]}`}
-                    aria-pressed={selectedImage.id === image.id}
-                    className={selectedImage.id === image.id ? "is-active" : ""}
-                    key={image.id}
-                    onClick={() => setSelectedImage(image)}
-                    type="button"
-                  >
-                    <Image alt="" fill sizes="180px" src={image.image} />
-                  </button>
-                ))}
+
+              <div className="vehicle-gallery__assurances">
+                <span>
+                  <Icon name="pin" size={18} />
+                  {copy.branch}
+                </span>
+                <span>
+                  <Icon name="shield" size={18} />
+                  {copy.salesReview}
+                </span>
+                <span>
+                  <Icon name="check" size={18} />
+                  {copy.egpOnly}
+                </span>
               </div>
             </div>
 
             <aside className="request-summary" id="request-summary">
+              <span className="request-summary__eyebrow">RAHAL / REQUEST</span>
               <div className="request-summary__rates">
                 <div>
                   <span>{copy.daily}</span>
@@ -203,6 +259,7 @@ export function VehicleDetails({
                 {copy.request}
                 <Icon name="arrow" size={18} />
               </a>
+              <small className="request-summary__payment-note">{copy.priceNote}</small>
               <div className="request-summary__notice">
                 <Icon name="shield" size={19} />
                 <div>
@@ -213,65 +270,59 @@ export function VehicleDetails({
             </aside>
           </div>
 
-          <section className="details-section" aria-labelledby="specifications-title">
-            <div className="details-section__heading">
-              <span className="eyebrow">RAHAL</span>
-              <h2 id="specifications-title">{copy.specifications}</h2>
+          <section
+            className="details-section details-section--specs"
+            aria-labelledby="specifications-title"
+          >
+            <div className="details-section__heading details-section__heading--editorial">
+              <div>
+                <span className="eyebrow">RAHAL / SPECIFICATION</span>
+                <h2 id="specifications-title">{copy.specifications}</h2>
+              </div>
+              <p>{copy.specificationsCopy}</p>
             </div>
             <div className="specification-grid">
-              <article>
-                <Icon name="clock" />
-                <span>{copy.transmission}</span>
-                <strong>{vehicle.transmission[locale]}</strong>
-              </article>
-              <article>
-                <Icon name="users" />
-                <span>{copy.seats}</span>
-                <strong>{vehicle.seats}</strong>
-              </article>
-              <article>
-                <Icon name="document" />
-                <span>{copy.bags}</span>
-                <strong>{vehicle.bags}</strong>
-              </article>
-              <article>
-                <Icon name="car" />
-                <span>{copy.model}</span>
-                <strong>{vehicle.year}</strong>
-              </article>
+              {[
+                ["01", "clock", copy.transmission, vehicle.transmission[locale]],
+                ["02", "users", copy.seats, String(vehicle.seats)],
+                ["03", "document", copy.bags, String(vehicle.bags)],
+                ["04", "car", copy.model, String(vehicle.year)],
+              ].map(([number, icon, label, value]) => (
+                <article key={String(label)}>
+                  <span className="specification-grid__number">{number}</span>
+                  <Icon name={icon as "clock" | "users" | "document" | "car"} />
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </article>
+              ))}
             </div>
           </section>
 
-          <section className="details-section" aria-labelledby="policies-title">
-            <div className="details-section__heading">
-              <span className="eyebrow">
-                {locale === "ar" ? "واضحة قبل الطلب" : "Clear before requesting"}
-              </span>
-              <h2 id="policies-title">{copy.policies}</h2>
+          <section
+            className="details-section details-section--policies"
+            aria-labelledby="policies-title"
+          >
+            <div className="details-section__heading details-section__heading--editorial">
+              <div>
+                <span className="eyebrow">{copy.clearBefore}</span>
+                <h2 id="policies-title">{copy.policies}</h2>
+              </div>
+              <p>{copy.policiesCopy}</p>
             </div>
             <div className="policy-grid">
-              <article>
-                <Icon name="users" />
-                <h3>{copy.driver}</h3>
-                <p>{vehicle.driverPolicy[locale]}</p>
-              </article>
-              <article>
-                <Icon name="car" />
-                <h3>{copy.fuel}</h3>
-                <p>{vehicle.fuelPolicy[locale]}</p>
-              </article>
-              <article>
-                <Icon name="clock" />
-                <h3>{copy.mileage}</h3>
-                <p>{vehicle.mileagePolicy[locale]}</p>
-              </article>
-              <article>
-                <Icon name="calendar" />
-                <h3>{copy.minimum}</h3>
-                <p>
-                  {vehicle.minimumDays} {copy.days}
-                </p>
-              </article>
+              {[
+                ["01", "users", copy.driver, vehicle.driverPolicy[locale]],
+                ["02", "car", copy.fuel, vehicle.fuelPolicy[locale]],
+                ["03", "clock", copy.mileage, vehicle.mileagePolicy[locale]],
+                ["04", "calendar", copy.minimum, `${vehicle.minimumDays} ${copy.days}`],
+              ].map(([number, icon, title, description]) => (
+                <article key={String(title)}>
+                  <span className="policy-grid__number">{number}</span>
+                  <Icon name={icon as "users" | "car" | "clock" | "calendar"} />
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -281,9 +332,7 @@ export function VehicleDetails({
           >
             <div className="details-section__heading details-section__heading--split">
               <div>
-                <span className="eyebrow">
-                  {locale === "ar" ? "بدون بيانات شخصية" : "No personal data"}
-                </span>
+                <span className="eyebrow">{copy.noPersonalData}</span>
                 <h2 id="availability-calendar-title">{copy.availability}</h2>
                 <p>{copy.availabilityCopy}</p>
               </div>
@@ -313,6 +362,14 @@ export function VehicleDetails({
           </section>
         </div>
       </main>
+
+      <div className="mobile-request-bar">
+        <p>
+          <small>{copy.from}</small>
+          <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
+        </p>
+        <a href={requestHref}>{copy.request}</a>
+      </div>
 
       <Footer locale={locale} />
     </div>

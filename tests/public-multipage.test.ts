@@ -68,6 +68,10 @@ describe("public multi-page experience", () => {
     expect(details).toContain("requestParams.set");
     expect(details).toContain("setSelectedImage");
     expect(details).toContain("aria-pressed={selectedImage.id === image.id}");
+    expect(details).toContain("vehicle-gallery__assurances");
+    expect(details).toContain("mobile-request-bar");
+    expect(details).toContain("The deposit is recorded at the branch");
+    expect(details).not.toContain("online payment");
   });
 
   it("provides a non-persistent first reservation step with branch-only confirmation copy", () => {
