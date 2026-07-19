@@ -174,11 +174,11 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 - Shared Arabic and English sign-in and registration screens with responsive cinematic layouts.
 - Same-origin web-to-API authentication proxying so secure session cookies are not exposed to client code.
 - Six-digit email and phone verification with HMAC-only code storage, 10-minute expiry, five-attempt limits, resend invalidation, and account activation after both channels are verified.
-- Provider-gated verification delivery with no plaintext code in API responses or browser UI, HTTPS enforcement in production, and fail-closed issuance when the delivery gateway is absent.
+- Provider-gated verification delivery with direct Resend email and Meta WhatsApp authentication-template adapters, a signed webhook fallback, no plaintext code in API responses or browser UI, and fail-closed issuance when the required channel provider is absent.
 
 ### Remaining scope
 
-- Production email and WhatsApp verification delivery providers and templates.
+- Production Resend domain/API credentials and Meta WhatsApp Business credentials plus approved Arabic/English authentication templates.
 - Password reset and reset-session revocation.
 - Session/device listing and individual/all-device revocation.
 - Customer-facing bilingual password-recovery screens.

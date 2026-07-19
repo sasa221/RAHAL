@@ -64,6 +64,8 @@ const authCopy = {
     continue: "استعرض السيارات",
     security: "لن نعرض كلمة المرور أو رمز الجلسة داخل الصفحة.",
     connectionError: "تعذر الاتصال بخدمة الحسابات. تأكد أن API تعمل ثم حاول مرة أخرى.",
+    verificationUnavailable:
+      "إرسال رمز التحقق غير متاح مؤقتًا. حاول مرة أخرى لاحقًا أو تواصل مع فريق رحال.",
   },
   en: {
     heroEyebrow: "YOUR RAHAL ACCOUNT",
@@ -112,6 +114,8 @@ const authCopy = {
     security: "Your password and raw session token are never rendered on this page.",
     connectionError:
       "The account service could not be reached. Make sure the API is running and try again.",
+    verificationUnavailable:
+      "Verification delivery is temporarily unavailable. Please try again later or contact Rahal.",
   },
 } as const;
 
@@ -221,7 +225,11 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         error?: { message?: string };
       };
       if (!response.ok || !result.data) {
-        setError(result.error?.message || copy.connectionError);
+        setError(
+          response.status === 503
+            ? copy.verificationUnavailable
+            : result.error?.message || copy.connectionError,
+        );
         return;
       }
       setVerificationChannel(channel);

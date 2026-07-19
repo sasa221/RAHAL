@@ -47,8 +47,18 @@ describe("AuthService", () => {
   });
 
   afterEach(() => {
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    for (const name of [
+      "VERIFICATION_DELIVERY_WEBHOOK_URL",
+      "VERIFICATION_DELIVERY_WEBHOOK_SECRET",
+      "RESEND_API_KEY",
+      "VERIFICATION_EMAIL_FROM",
+      "WHATSAPP_CLOUD_ACCESS_TOKEN",
+      "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
+      "WHATSAPP_AUTH_TEMPLATE_NAME",
+      "WHATSAPP_GRAPH_API_VERSION",
+    ]) {
+      delete process.env[name];
+    }
     vi.unstubAllGlobals();
   });
 
@@ -149,6 +159,66 @@ describe("AuthService", () => {
       }),
     );
     expect(repository.createVerificationCode.mock.calls[0]?.[0].codeHash).not.toBe(delivered.code);
+  });
+
+  it("sends email verification through Resend without exposing the code to the client", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.VERIFICATION_EMAIL_FROM = "RAHAL <accounts@rahal.example>";
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: { ...activeUser, emailVerifiedAt: null },
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    const result = await service.requestVerification("session-token", { channel: "email" }, {});
+    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(String(deliveryRequest?.[1]?.body)) as {
+      to: string[];
+      text: string;
+    };
+
+    expect(deliveryRequest?.[0]).toBe("https://api.resend.com/emails");
+    expect(deliveryRequest?.[1]?.headers).toEqual(
+      expect.objectContaining({ authorization: "Bearer re_test_key" }),
+    );
+    expect(body.to).toEqual([activeUser.email]);
+    expect(body.text).toMatch(/\d{6}/);
+    expect(result).not.toHaveProperty("code");
+    expect(result).not.toHaveProperty("developmentCode");
+  });
+
+  it("sends phone verification through a Meta WhatsApp authentication template", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    process.env.WHATSAPP_CLOUD_ACCESS_TOKEN = "whatsapp-test-token";
+    process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID = "123456789";
+    process.env.WHATSAPP_AUTH_TEMPLATE_NAME = "rahal_account_verification";
+    process.env.WHATSAPP_GRAPH_API_VERSION = "v23.0";
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: activeUser,
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    const result = await service.requestVerification("session-token", { channel: "phone" }, {});
+    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(String(deliveryRequest?.[1]?.body)) as {
+      to: string;
+      template: { name: string; components: Array<{ parameters: Array<{ text: string }> }> };
+    };
+
+    expect(deliveryRequest?.[0]).toBe("https://graph.facebook.com/v23.0/123456789/messages");
+    expect(body.to).toBe("201001112222");
+    expect(body.template.name).toBe("rahal_account_verification");
+    expect(body.template.components[0]?.parameters[0]?.text).toMatch(/^\d{6}$/);
+    expect(result).not.toHaveProperty("code");
+    expect(result).not.toHaveProperty("developmentCode");
   });
 
   it("fails closed without a delivery provider and does not create a code", async () => {

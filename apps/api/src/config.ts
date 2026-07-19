@@ -8,7 +8,25 @@ type ApiConfig = {
     url: string;
     secret: string;
   };
+  verificationEmail?: {
+    apiKey: string;
+    from: string;
+  };
+  verificationWhatsApp?: {
+    accessToken: string;
+    phoneNumberId: string;
+    templateName: string;
+    graphApiVersion: string;
+  };
 };
+
+function readCompleteGroup(env: NodeJS.ProcessEnv, names: string[]) {
+  const values = names.map((name) => env[name]?.trim() || undefined);
+  if (values.some(Boolean) && !values.every(Boolean)) {
+    throw new Error(`${names.join(", ")} must be configured together.`);
+  }
+  return values.every(Boolean) ? (values as string[]) : undefined;
+}
 
 function readPort(value: string | undefined) {
   if (!value) {
@@ -77,6 +95,31 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     verificationDelivery = { url, secret: verificationSecret };
   }
 
+  const emailDelivery = readCompleteGroup(env, ["RESEND_API_KEY", "VERIFICATION_EMAIL_FROM"]);
+  const verificationEmail = emailDelivery
+    ? { apiKey: emailDelivery[0]!, from: emailDelivery[1]! }
+    : undefined;
+
+  const whatsAppDelivery = readCompleteGroup(env, [
+    "WHATSAPP_CLOUD_ACCESS_TOKEN",
+    "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
+    "WHATSAPP_AUTH_TEMPLATE_NAME",
+    "WHATSAPP_GRAPH_API_VERSION",
+  ]);
+  let verificationWhatsApp: ApiConfig["verificationWhatsApp"];
+  if (whatsAppDelivery) {
+    const [accessToken, phoneNumberId, templateName, graphApiVersion] = whatsAppDelivery;
+    if (!/^v\d+\.\d+$/.test(graphApiVersion!)) {
+      throw new Error("WHATSAPP_GRAPH_API_VERSION must use the v00.0 format.");
+    }
+    verificationWhatsApp = {
+      accessToken: accessToken!,
+      phoneNumberId: phoneNumberId!,
+      templateName: templateName!,
+      graphApiVersion: graphApiVersion!,
+    };
+  }
+
   return {
     port: readPort(env.PORT),
     webUrl: readUrl("WEB_URL", env.WEB_URL, "http://localhost:3000"),
@@ -84,5 +127,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     authSecret,
     production,
     verificationDelivery,
+    verificationEmail,
+    verificationWhatsApp,
   };
 }

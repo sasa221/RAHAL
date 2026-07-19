@@ -177,7 +177,7 @@ export class AuthService {
     ) {
       throw new ConflictException("This contact method is already verified.");
     }
-    if (!this.config.verificationDelivery) {
+    if (!this.hasVerificationDelivery(input.channel)) {
       throw new ServiceUnavailableException("Verification delivery provider is not configured.");
     }
 
@@ -291,6 +291,15 @@ export class AuthService {
     code: string;
     expiresAt: Date;
   }) {
+    if (input.channel === "email" && this.config.verificationEmail) {
+      await this.deliverEmailVerification(input);
+      return;
+    }
+    if (input.channel === "phone" && this.config.verificationWhatsApp) {
+      await this.deliverWhatsAppVerification(input);
+      return;
+    }
+
     const delivery = this.config.verificationDelivery;
     if (!delivery) {
       throw new ServiceUnavailableException("Verification delivery provider is not configured.");
@@ -313,6 +322,96 @@ export class AuthService {
         }),
       });
       if (!response.ok) throw new Error("Verification delivery rejected the request.");
+    } catch {
+      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
+    }
+  }
+
+  private hasVerificationDelivery(channel: "email" | "phone") {
+    return channel === "email"
+      ? Boolean(this.config.verificationEmail || this.config.verificationDelivery)
+      : Boolean(this.config.verificationWhatsApp || this.config.verificationDelivery);
+  }
+
+  private async deliverEmailVerification(input: {
+    destination: string;
+    locale: string;
+    code: string;
+  }) {
+    const delivery = this.config.verificationEmail;
+    if (!delivery) return;
+    const arabic = input.locale !== "en";
+    const subject = arabic ? "رمز التحقق من حساب رحال" : "Verify your Rahal account";
+    const text = arabic
+      ? `رمز التحقق الخاص بك هو: ${input.code}. ينتهي خلال 10 دقائق. لا تشارك هذا الرمز مع أي شخص.`
+      : `Your Rahal verification code is ${input.code}. It expires in 10 minutes. Never share this code.`;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${delivery.apiKey}`,
+          "content-type": "application/json",
+          "idempotency-key": `rahal-auth-${randomBytes(16).toString("hex")}`,
+          "user-agent": "rahal-platform/1.0",
+        },
+        body: JSON.stringify({
+          from: delivery.from,
+          to: [input.destination],
+          subject,
+          text,
+          tags: [{ name: "category", value: "account_verification" }],
+        }),
+      });
+      if (!response.ok) throw new Error("Email provider rejected the request.");
+    } catch {
+      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
+    }
+  }
+
+  private async deliverWhatsAppVerification(input: {
+    destination: string;
+    locale: string;
+    code: string;
+  }) {
+    const delivery = this.config.verificationWhatsApp;
+    if (!delivery) return;
+    const destination = input.destination.replace(/\D/g, "");
+
+    try {
+      const response = await fetch(
+        `https://graph.facebook.com/${delivery.graphApiVersion}/${delivery.phoneNumberId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${delivery.accessToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: destination,
+            type: "template",
+            template: {
+              name: delivery.templateName,
+              language: { code: input.locale === "en" ? "en_US" : "ar" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [{ type: "text", text: input.code }],
+                },
+                {
+                  type: "button",
+                  sub_type: "url",
+                  index: "0",
+                  parameters: [{ type: "text", text: input.code }],
+                },
+              ],
+            },
+          }),
+        },
+      );
+      if (!response.ok) throw new Error("WhatsApp provider rejected the request.");
     } catch {
       throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
     }
