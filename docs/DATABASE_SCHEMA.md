@@ -67,6 +67,10 @@ The production schema should support the entities below. Some already exist part
 
 Document bytes must never be stored in PostgreSQL.
 
+### Implemented customer snapshot slice
+
+The current `Reservation` model now stores optional name, email, phone, nationality, address, emergency-contact, and completion-time snapshots for the authenticated draft owner. No identity-document number is stored in these snapshot fields. A reviewed migration adds the nullable fields so existing drafts remain valid.
+
 ## Notifications
 
 - `notifications`: in-app notification records.

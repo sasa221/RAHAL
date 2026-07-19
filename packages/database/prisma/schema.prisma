@@ -424,50 +424,58 @@ model VehicleBlock {
 }
 
 model Reservation {
-  id                   String                @id @default(cuid())
-  reference            String                @unique
-  customerId           String
-  customer             User                  @relation("CustomerReservations", fields: [customerId], references: [id])
-  assignedSalesId      String?
-  assignedSales        User?                 @relation("AssignedSales", fields: [assignedSalesId], references: [id])
-  vehicleId            String
-  vehicle              Vehicle               @relation(fields: [vehicleId], references: [id])
-  branchId             String
-  branch               Branch                @relation(fields: [branchId], references: [id])
-  status               ReservationStatus     @default(DRAFT)
-  pickupAt             DateTime
-  returnAt             DateTime
-  driverRequested      Boolean               @default(false)
-  vehicleRateSnapshot  Decimal               @db.Decimal(12, 2)
-  driverRateSnapshot   Decimal?              @db.Decimal(12, 2)
-  estimatedTotal       Decimal               @db.Decimal(12, 2)
-  finalTotal           Decimal?              @db.Decimal(12, 2)
-  customerNotes        String?
-  termsVersion         String?
-  termsAcceptedAt      DateTime?
-  privacyConsentAt     DateTime?
-  documentConsentAt    DateTime?
-  operationalConsentAt DateTime?
-  marketingConsentAt   DateTime?
-  preApprovalExpiresAt DateTime?
-  confirmedAt          DateTime?
-  deliveredAt          DateTime?
-  returnedAt           DateTime?
-  completedAt          DateTime?
-  rejectionReason      String?
-  cancellationReason   String?
-  documents            ReservationDocument[]
-  events               ReservationEvent[]
-  alternativeOffers    AlternativeOffer[]
-  internalNotes        InternalNote[]
-  customerMessages     CustomerMessage[]
-  contracts            Contract[]
-  booking              Booking?
-  deposit              Deposit?
-  notifications        Notification[]
-  review               Review?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                            String                @id @default(cuid())
+  reference                     String                @unique
+  customerId                    String
+  customer                      User                  @relation("CustomerReservations", fields: [customerId], references: [id])
+  assignedSalesId               String?
+  assignedSales                 User?                 @relation("AssignedSales", fields: [assignedSalesId], references: [id])
+  vehicleId                     String
+  vehicle                       Vehicle               @relation(fields: [vehicleId], references: [id])
+  branchId                      String
+  branch                        Branch                @relation(fields: [branchId], references: [id])
+  status                        ReservationStatus     @default(DRAFT)
+  pickupAt                      DateTime
+  returnAt                      DateTime
+  driverRequested               Boolean               @default(false)
+  vehicleRateSnapshot           Decimal               @db.Decimal(12, 2)
+  driverRateSnapshot            Decimal?              @db.Decimal(12, 2)
+  estimatedTotal                Decimal               @db.Decimal(12, 2)
+  finalTotal                    Decimal?              @db.Decimal(12, 2)
+  customerNotes                 String?
+  customerNameSnapshot          String?
+  customerEmailSnapshot         String?
+  customerPhoneSnapshot         String?
+  nationalitySnapshot           String?
+  addressSnapshot               String?
+  emergencyContactNameSnapshot  String?
+  emergencyContactPhoneSnapshot String?
+  customerDetailsCompletedAt    DateTime?
+  termsVersion                  String?
+  termsAcceptedAt               DateTime?
+  privacyConsentAt              DateTime?
+  documentConsentAt             DateTime?
+  operationalConsentAt          DateTime?
+  marketingConsentAt            DateTime?
+  preApprovalExpiresAt          DateTime?
+  confirmedAt                   DateTime?
+  deliveredAt                   DateTime?
+  returnedAt                    DateTime?
+  completedAt                   DateTime?
+  rejectionReason               String?
+  cancellationReason            String?
+  documents                     ReservationDocument[]
+  events                        ReservationEvent[]
+  alternativeOffers             AlternativeOffer[]
+  internalNotes                 InternalNote[]
+  customerMessages              CustomerMessage[]
+  contracts                     Contract[]
+  booking                       Booking?
+  deposit                       Deposit?
+  notifications                 Notification[]
+  review                        Review?
+  createdAt                     DateTime              @default(now())
+  updatedAt                     DateTime              @updatedAt
 
   @@index([vehicleId, pickupAt, returnAt, status])
   @@index([customerId, createdAt])

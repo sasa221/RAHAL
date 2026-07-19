@@ -116,4 +116,64 @@ describe("reservation draft service", () => {
       }),
     ).rejects.toThrow("This vehicle requires a driver.");
   });
+
+  it("saves owned-draft details using trusted session contacts", async () => {
+    const saveCustomerDetails = vi.fn().mockResolvedValue({
+      draftId: "draft-1",
+      reference: "RHL-2026-123456",
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: {
+            id: "customer-1",
+            role: "CUSTOMER",
+            fullName: "Trusted Customer",
+            email: "trusted@example.com",
+            phone: "+201001112222",
+          },
+        }),
+      } as never,
+      {
+        findOwnedDraft: vi.fn().mockResolvedValue({ id: "draft-1", reference: "RHL-2026-123456" }),
+        saveCustomerDetails,
+      } as never,
+    );
+
+    await service.saveCustomerDetails("session-token", "draft-1", {
+      nationality: "Egyptian",
+      address: "Fictional Cairo address",
+      emergencyContactName: "Emergency Contact",
+      emergencyContactPhone: "+201009998888",
+    });
+
+    expect(saveCustomerDetails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: "customer-1",
+        fullName: "Trusted Customer",
+        email: "trusted@example.com",
+        phone: "+201001112222",
+      }),
+    );
+  });
+
+  it("does not allow a customer to update another draft", async () => {
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER" },
+        }),
+      } as never,
+      { findOwnedDraft: vi.fn().mockResolvedValue(null), saveCustomerDetails: vi.fn() } as never,
+    );
+
+    await expect(
+      service.saveCustomerDetails("session-token", "another-customer-draft", {
+        nationality: "Egyptian",
+        address: "Fictional Cairo address",
+        emergencyContactName: "Emergency Contact",
+        emergencyContactPhone: "+201009998888",
+      }),
+    ).rejects.toThrow("The reservation draft was not found.");
+  });
 });

@@ -25,6 +25,19 @@ const requestCopy = {
     saveFailed: "تعذر حفظ المسودة الآن. حاول مرة أخرى.",
     chooseDriver: "اختر هل تريد سائقًا قبل حفظ المسودة.",
     draftNotice: "هذه مسودة فقط وليست طلبًا مرسلًا أو حجزًا مؤكدًا.",
+    stepTwo: "الخطوة 2 من 6: بيانات العميل",
+    detailsTitle: "بيانات العميل الآمنة",
+    detailsCopy:
+      "لن نطلب رقم بطاقة أو جواز هنا. بيانات الحساب الموثوقة يأخذها السيرفر من جلستك مباشرة.",
+    nationality: "الجنسية",
+    address: "العنوان",
+    emergencyName: "اسم شخص للطوارئ",
+    emergencyPhone: "رقم هاتف الطوارئ الدولي",
+    saveDetails: "احفظ بيانات العميل",
+    savingDetails: "جارٍ حفظ البيانات...",
+    detailsSaved: "تم حفظ بيانات العميل بأمان",
+    detailsFailed: "تعذر حفظ بيانات العميل. حاول مرة أخرى.",
+    protectedContact: "بيانات التواصل المحفوظة",
     title: "ابدأ طلب الحجز",
     copy: "راجع اختيار العربية والمواعيد ونظام السائق، وبعدها احفظ الخطوة الأولى بأمان في حسابك.",
     step: "الخطوة 1 من 6: المواعيد",
@@ -63,6 +76,19 @@ const requestCopy = {
     saveFailed: "The draft could not be saved. Please try again.",
     chooseDriver: "Choose whether you want a driver before saving the draft.",
     draftNotice: "This is only a draft. It is not a submitted request or a confirmed booking.",
+    stepTwo: "Step 2 of 6: customer details",
+    detailsTitle: "Secure customer details",
+    detailsCopy:
+      "No identity or passport number is requested here. The server reads trusted account contacts directly from your session.",
+    nationality: "Nationality",
+    address: "Address",
+    emergencyName: "Emergency contact name",
+    emergencyPhone: "Emergency contact international phone",
+    saveDetails: "Save customer details",
+    savingDetails: "Saving details...",
+    detailsSaved: "Customer details saved securely",
+    detailsFailed: "Customer details could not be saved. Please try again.",
+    protectedContact: "Saved contact details",
     title: "Start reservation request",
     copy: "Review the selected vehicle, dates, and driver option, then securely save this first step to your account.",
     step: "Step 1 of 6: rental dates",
@@ -153,8 +179,20 @@ export function ReservationStart({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [savedDraft, setSavedDraft] = useState<{
+    id: string;
     reference: string;
     estimatedTotalEgp: number;
+  } | null>(null);
+  const [nationality, setNationality] = useState("");
+  const [address, setAddress] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [savedDetails, setSavedDetails] = useState<{
+    emailMasked: string;
+    phoneMasked: string;
+    emergencyContactPhoneMasked: string;
   } | null>(null);
   const selectionParams = new URLSearchParams({
     vehicle: vehicle.id,
@@ -195,7 +233,7 @@ export function ReservationStart({
         }),
       });
       const payload = (await response.json()) as {
-        data?: { reference: string; estimatedTotalEgp: number };
+        data?: { id: string; reference: string; estimatedTotalEgp: number };
         error?: { message?: string };
       };
       if (response.status === 401) {
@@ -211,6 +249,46 @@ export function ReservationStart({
       setSaveError(copy.saveFailed);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveCustomerDetails(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!savedDraft) return;
+    setSavingDetails(true);
+    setDetailsError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/customer-details`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            nationality,
+            address,
+            emergencyContactName,
+            emergencyContactPhone,
+          }),
+        },
+      );
+      const payload = (await response.json()) as {
+        data?: {
+          emailMasked: string;
+          phoneMasked: string;
+          emergencyContactPhoneMasked: string;
+        };
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.data) {
+        setDetailsError(payload.error?.message ?? copy.detailsFailed);
+        return;
+      }
+      setSavedDetails(payload.data);
+    } catch {
+      setDetailsError(copy.detailsFailed);
+    } finally {
+      setSavingDetails(false);
     }
   }
 
@@ -267,12 +345,12 @@ export function ReservationStart({
 
           <div className="reservation-stage__workspace">
             <header className="reservation-page__intro" data-reveal>
-              <span className="eyebrow">{copy.step}</span>
+              <span className="eyebrow">{savedDraft ? copy.stepTwo : copy.step}</span>
               <h1>{copy.title}</h1>
               <p>{copy.copy}</p>
               <div className="reservation-progress" aria-label={copy.step}>
                 {Array.from({ length: 6 }, (_, index) => (
-                  <span className={index === 0 ? "is-active" : ""} key={index}>
+                  <span className={index <= (savedDraft ? 1 : 0) ? "is-active" : ""} key={index}>
                     <b>{String(index + 1).padStart(2, "0")}</b>
                   </span>
                 ))}
@@ -441,6 +519,89 @@ export function ReservationStart({
                     </p>
                   ) : null}
                   {saveError ? <p>{saveError}</p> : null}
+                  {savedDraft ? (
+                    <form className="reservation-form" onSubmit={saveCustomerDetails}>
+                      <div className="reservation-form-heading">
+                        <span>02</span>
+                        <div>
+                          <h2>{copy.detailsTitle}</h2>
+                          <p>{copy.detailsCopy}</p>
+                        </div>
+                      </div>
+                      <label className="field">
+                        <span>{copy.nationality}</span>
+                        <input
+                          autoComplete="country-name"
+                          minLength={2}
+                          onChange={(event) => {
+                            setNationality(event.target.value);
+                            setSavedDetails(null);
+                          }}
+                          required
+                          value={nationality}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>{copy.address}</span>
+                        <input
+                          autoComplete="street-address"
+                          minLength={5}
+                          onChange={(event) => {
+                            setAddress(event.target.value);
+                            setSavedDetails(null);
+                          }}
+                          required
+                          value={address}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>{copy.emergencyName}</span>
+                        <input
+                          autoComplete="name"
+                          minLength={2}
+                          onChange={(event) => {
+                            setEmergencyContactName(event.target.value);
+                            setSavedDetails(null);
+                          }}
+                          required
+                          value={emergencyContactName}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>{copy.emergencyPhone}</span>
+                        <input
+                          autoComplete="tel"
+                          inputMode="tel"
+                          onChange={(event) => {
+                            setEmergencyContactPhone(event.target.value);
+                            setSavedDetails(null);
+                          }}
+                          pattern="\+?[1-9][0-9]{7,14}"
+                          required
+                          value={emergencyContactPhone}
+                        />
+                      </label>
+                      <button
+                        className="button button--dark"
+                        disabled={savingDetails}
+                        type="submit"
+                      >
+                        {savingDetails ? copy.savingDetails : copy.saveDetails}
+                        <Icon name="arrow" size={18} />
+                      </button>
+                      {savedDetails ? (
+                        <div className="reservation-assurance__notice">
+                          <strong>{copy.detailsSaved}</strong>
+                          <p>{copy.protectedContact}</p>
+                          <small>
+                            {savedDetails.emailMasked} · {savedDetails.phoneMasked} ·{" "}
+                            {savedDetails.emergencyContactPhoneMasked}
+                          </small>
+                        </div>
+                      ) : null}
+                      {detailsError ? <p>{detailsError}</p> : null}
+                    </form>
+                  ) : null}
                 </div>
               ) : null}
             </aside>

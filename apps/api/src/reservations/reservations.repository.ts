@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { ReservationDraft } from "@rahal/contracts";
+import type { ReservationCustomerDetails, ReservationDraft } from "@rahal/contracts";
 import type { DriverPolicy } from "@rahal/database";
 import { randomInt } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
@@ -20,6 +20,19 @@ type CreateDraftInput = {
   returnAt: Date;
   driverRequested: boolean;
   rentalDays: number;
+};
+
+type SaveCustomerDetailsInput = {
+  draftId: string;
+  reference: string;
+  customerId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  nationality: string;
+  address: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
 };
 
 @Injectable()
@@ -96,6 +109,69 @@ export class ReservationsRepository {
 
     throw new Error("Unable to generate a reservation reference.");
   }
+
+  findOwnedDraft(id: string, customerId: string) {
+    return this.prisma.client.reservation.findFirst({
+      where: { id, customerId, status: "DRAFT" },
+      select: { id: true, reference: true },
+    });
+  }
+
+  async saveCustomerDetails(
+    input: SaveCustomerDetailsInput,
+  ): Promise<ReservationCustomerDetails | null> {
+    const completedAt = new Date();
+    const saved = await this.prisma.client.$transaction(async (transaction) => {
+      const updated = await transaction.reservation.updateMany({
+        where: { id: input.draftId, customerId: input.customerId, status: "DRAFT" },
+        data: {
+          customerNameSnapshot: input.fullName,
+          customerEmailSnapshot: input.email,
+          customerPhoneSnapshot: input.phone,
+          nationalitySnapshot: input.nationality,
+          addressSnapshot: input.address,
+          emergencyContactNameSnapshot: input.emergencyContactName,
+          emergencyContactPhoneSnapshot: input.emergencyContactPhone,
+          customerDetailsCompletedAt: completedAt,
+        },
+      });
+      if (!updated.count) return null;
+
+      await transaction.user.update({
+        where: { id: input.customerId },
+        data: {
+          nationality: input.nationality,
+          address: input.address,
+          emergencyContactName: input.emergencyContactName,
+          emergencyContactPhone: input.emergencyContactPhone,
+        },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: input.draftId,
+          fromStatus: "DRAFT",
+          toStatus: "DRAFT",
+          actorId: input.customerId,
+          note: "Customer completed the contact-details step.",
+        },
+      });
+      return true;
+    });
+    if (!saved) return null;
+
+    return {
+      draftId: input.draftId,
+      reference: input.reference,
+      fullName: input.fullName,
+      emailMasked: maskEmail(input.email),
+      phoneMasked: maskPhone(input.phone),
+      nationality: input.nationality,
+      address: input.address,
+      emergencyContactName: input.emergencyContactName,
+      emergencyContactPhoneMasked: maskPhone(input.emergencyContactPhone),
+      completedAt: completedAt.toISOString(),
+    };
+  }
 }
 
 const draftSelect = {
@@ -133,4 +209,13 @@ function toReservationDraft(record: {
 
 function isUniqueReferenceError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
+}
+
+function maskEmail(value: string) {
+  const [name, domain] = value.split("@");
+  return `${name?.slice(0, 2) || "**"}***@${domain ?? "***"}`;
+}
+
+function maskPhone(value: string) {
+  return `${value.slice(0, 3)}••••${value.slice(-4)}`;
 }

@@ -89,11 +89,16 @@ describe("public multi-page experience", () => {
     expect(englishRoute).toMatch(/<ReservationStart\s+locale="en"/);
     expect(reservation).toContain("event.preventDefault()");
     expect(reservation).toContain('fetch("/api/reservations/drafts"');
+    expect(reservation).toContain("/customer-details`");
     expect(reservation).toContain('credentials: "include"');
     expect(reservation).toContain("This is only a draft");
     expect(reservation).toContain("It is not a submitted request or a confirmed booking");
     expect(reservation).toContain("deposit recording");
     expect(reservation).not.toContain('type="file"');
+    expect(reservation).not.toContain("identityNumber");
+    expect(reservation).not.toContain("passportNumber");
+    expect(reservation).toContain("emailMasked");
+    expect(reservation).toContain("phoneMasked");
     expect(reservation).toContain("requestedPickup");
     expect(reservation).toContain("requestedReturn");
     expect(reservation).toContain("addDays(pickup || minimumDate, vehicle.minimumDays)");

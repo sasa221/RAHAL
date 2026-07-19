@@ -67,6 +67,19 @@ export type ReservationDraft = {
   estimatedTotalEgp: number;
 };
 
+export type ReservationCustomerDetails = {
+  draftId: string;
+  reference: string;
+  fullName: string;
+  emailMasked: string;
+  phoneMasked: string;
+  nationality: string;
+  address: string;
+  emergencyContactName: string;
+  emergencyContactPhoneMasked: string;
+  completedAt: string;
+};
+
 export type BranchSummary = {
   id: string;
   nameAr: string;

@@ -4,9 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { ReservationDraft } from "@rahal/contracts";
+import type { ReservationCustomerDetails, ReservationDraft } from "@rahal/contracts";
 import { AuthService } from "../auth/auth.service";
-import type { SaveReservationDraftDto } from "./reservations.dto";
+import type {
+  SaveReservationCustomerDetailsDto,
+  SaveReservationDraftDto,
+} from "./reservations.dto";
 import { ReservationsRepository } from "./reservations.repository";
 
 const dayMs = 24 * 60 * 60 * 1000;
@@ -59,6 +62,35 @@ export class ReservationsService {
       driverRequested: input.driverRequested,
       rentalDays,
     });
+  }
+
+  async saveCustomerDetails(
+    token: string | undefined,
+    draftId: string,
+    input: SaveReservationCustomerDetailsDto,
+  ): Promise<ReservationCustomerDetails> {
+    const session = await this.auth.getSession(token);
+    if (session.user.role !== "CUSTOMER") {
+      throw new ForbiddenException("Only customer accounts can update reservation drafts.");
+    }
+
+    const draft = await this.reservations.findOwnedDraft(draftId, session.user.id);
+    if (!draft) throw new NotFoundException("The reservation draft was not found.");
+
+    const saved = await this.reservations.saveCustomerDetails({
+      draftId,
+      reference: draft.reference,
+      customerId: session.user.id,
+      fullName: session.user.fullName,
+      email: session.user.email,
+      phone: session.user.phone,
+      nationality: input.nationality.trim(),
+      address: input.address.trim(),
+      emergencyContactName: input.emergencyContactName.trim(),
+      emergencyContactPhone: input.emergencyContactPhone,
+    });
+    if (!saved) throw new NotFoundException("The reservation draft was not found.");
+    return saved;
   }
 }
 

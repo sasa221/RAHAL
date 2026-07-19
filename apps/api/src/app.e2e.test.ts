@@ -130,6 +130,32 @@ describe("RAHAL API", () => {
           driverRequested: input.driverRequested,
           estimatedTotalEgp: 4500 * input.rentalDays,
         }),
+        findOwnedDraft: async (id: string, customerId: string) =>
+          id === "reservation-draft-e2e" && customerId === authUser.id
+            ? { id, reference: "RHL-2026-123456" }
+            : null,
+        saveCustomerDetails: async (input: {
+          draftId: string;
+          reference: string;
+          fullName: string;
+          email: string;
+          phone: string;
+          nationality: string;
+          address: string;
+          emergencyContactName: string;
+          emergencyContactPhone: string;
+        }) => ({
+          draftId: input.draftId,
+          reference: input.reference,
+          fullName: input.fullName,
+          emailMasked: "cu***@example.com",
+          phoneMasked: "+20••••2222",
+          nationality: input.nationality,
+          address: input.address,
+          emergencyContactName: input.emergencyContactName,
+          emergencyContactPhoneMasked: "+20••••8888",
+          completedAt: new Date().toISOString(),
+        }),
       })
       .compile();
 
@@ -272,5 +298,43 @@ describe("RAHAL API", () => {
       vehicleId: "silver-executive",
     });
     expect(response.body.data.status).not.toBe("CONFIRMED");
+  });
+
+  it("saves customer details only for the authenticated draft owner", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/drafts/reservation-draft-e2e/customer-details")
+      .set("Cookie", cookie)
+      .send({
+        nationality: "Egyptian",
+        address: "Fictional Cairo address",
+        emergencyContactName: "Emergency Contact",
+        emergencyContactPhone: "+201009998888",
+      })
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({
+      draftId: "reservation-draft-e2e",
+      emailMasked: "cu***@example.com",
+      phoneMasked: "+20••••2222",
+    });
+    expect(response.body.data).not.toHaveProperty("email");
+    expect(response.body.data).not.toHaveProperty("phone");
+
+    await request(app.getHttpServer())
+      .post("/api/reservations/drafts/another-customer-draft/customer-details")
+      .set("Cookie", cookie)
+      .send({
+        nationality: "Egyptian",
+        address: "Fictional Cairo address",
+        emergencyContactName: "Emergency Contact",
+        emergencyContactPhone: "+201009998888",
+      })
+      .expect(404);
   });
 });

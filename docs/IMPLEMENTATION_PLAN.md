@@ -204,7 +204,7 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 
 Goal: persist the customer's first vehicle/date/driver selection safely without presenting it as a submitted request or confirmed booking.
 
-Status: first-step draft slice completed locally on 2026-07-19. The remaining customer details, protected documents, consent, review, and verified submission steps are pending.
+Status: first-step draft and secure customer-details slices completed locally on 2026-07-19. Protected documents, consent, review, and verified submission steps are pending.
 
 ### Completed first-step scope
 
@@ -216,10 +216,14 @@ Status: first-step draft slice completed locally on 2026-07-19. The remaining cu
 - Repeated identical first-step saves return the existing draft instead of creating duplicates.
 - Draft creation and its initial status event are written in one transaction.
 - The bilingual UI clearly distinguishes a saved draft from submission and confirmation.
+- Draft owners can complete nationality, address, and emergency-contact details in bilingual step two.
+- Trusted name/email/phone snapshots come from the authenticated server session rather than browser input.
+- Reservation snapshots preserve historical customer contacts while the reusable profile stores the latest non-identity details.
+- Customer-detail responses mask email and phone values and ownership checks return no cross-customer data.
 
 ### Remaining scope
 
-- Customer details and verified contact review.
+- Verified contact review before final submission.
 - Configurable required-document rules and private document upload flow.
 - Terms, privacy, document, and operational consent capture with policy versions.
 - Final review and verified transition from `DRAFT` to `PENDING_REVIEW`.
@@ -236,8 +240,9 @@ Status: first-step draft slice completed locally on 2026-07-19. The remaining cu
 ### Tests
 
 - Unit coverage for future dates, minimum duration, customer role, and driver-policy rules.
-- API integration coverage for session-cookie authorization and `DRAFT` status.
-- Static bilingual UI coverage for the draft/not-confirmed copy and same-origin API call.
+- Unit coverage for trusted-session snapshots and cross-customer ownership rejection.
+- API integration coverage for session-cookie authorization, `DRAFT` status, masked customer details, and missing ownership.
+- Static bilingual UI coverage for the draft/not-confirmed copy, step-two fields, privacy exclusions, and same-origin API calls.
 
 ## Decisions not blocking Milestone 1
 
