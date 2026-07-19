@@ -91,5 +91,9 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("requestedPickup");
     expect(reservation).toContain("requestedReturn");
     expect(reservation).toContain("addDays(pickup || minimumDate, vehicle.minimumDays)");
+    expect(reservation).toContain("<ExperienceMotion />");
+    expect(reservation).toContain("reservation-stage__visual");
+    expect(reservation).toContain("reservation-form__options");
+    expect(reservation).toContain('aria-live="polite"');
   });
 });

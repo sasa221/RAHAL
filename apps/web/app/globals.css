@@ -5700,6 +5700,549 @@ select {
   }
 }
 
+/* Reservation request — cinematic workspace */
+.reservation-experience-page {
+  background: #f1eee7;
+}
+
+.reservation-experience-page .reservation-page {
+  padding: 0;
+}
+
+.reservation-stage {
+  display: grid;
+  grid-template-columns: minmax(390px, 0.82fr) minmax(0, 1.18fr);
+  align-items: start;
+}
+
+.reservation-stage__visual {
+  position: sticky;
+  inset-block-start: 76px;
+  min-height: calc(100svh - 76px);
+  overflow: hidden;
+  color: var(--color-white);
+  background: #171715;
+  isolation: isolate;
+}
+
+.reservation-stage__image {
+  z-index: -3;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.7) contrast(1.1) brightness(0.72);
+  transform: scale(1.04)
+    translate3d(calc(var(--pointer-rx) * -10px), calc(var(--pointer-ry) * -7px), 0);
+  transition: transform 750ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.reservation-stage__overlay,
+.reservation-stage__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.reservation-stage__overlay {
+  z-index: -2;
+  background:
+    linear-gradient(0deg, rgb(8 8 7 / 94%) 0%, rgb(8 8 7 / 30%) 58%, rgb(8 8 7 / 12%) 100%),
+    linear-gradient(90deg, rgb(8 8 7 / 34%), transparent 70%);
+}
+
+.reservation-stage__grain {
+  z-index: -1;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.34'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.reservation-stage__vehicle {
+  position: absolute;
+  inset-inline: clamp(2rem, 5vw, 4.5rem);
+  inset-block-end: clamp(4rem, 8vh, 7rem);
+}
+
+.reservation-stage__vehicle > span {
+  color: #e0bd76;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.reservation-stage__vehicle h2 {
+  max-width: 570px;
+  margin: 14px 0 12px;
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 4.5vw, 5.2rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+}
+
+.reservation-experience-page[dir="rtl"] .reservation-stage__vehicle h2 {
+  font-family: var(--font-body);
+  font-weight: 800;
+  line-height: 1.12;
+}
+
+.reservation-stage__vehicle > p {
+  margin: 0;
+  color: rgb(255 255 255 / 64%);
+}
+
+.reservation-stage__vehicle > div {
+  display: flex;
+  gap: 38px;
+  padding-block: 24px;
+  margin-block: 28px 20px;
+  border-block: 1px solid rgb(255 255 255 / 16%);
+}
+
+.reservation-stage__vehicle > div p {
+  display: grid;
+  margin: 0;
+}
+
+.reservation-stage__vehicle > div strong {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+}
+
+.reservation-stage__vehicle > div small {
+  margin-top: 4px;
+  color: rgb(255 255 255 / 48%);
+  font-size: var(--text-xs);
+}
+
+.reservation-stage__vehicle > a {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  color: rgb(255 255 255 / 65%);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.reservation-experience-page:not([dir="rtl"]) .reservation-stage__vehicle > a .icon {
+  transform: rotate(180deg);
+}
+
+.reservation-stage__edition {
+  position: absolute;
+  inset-block-start: 28px;
+  inset-inline-start: 30px;
+  color: rgb(255 255 255 / 42%);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  writing-mode: vertical-rl;
+}
+
+.reservation-stage__workspace {
+  width: min(100%, 900px);
+  padding: clamp(3rem, 6vw, 6.5rem);
+}
+
+.reservation-experience-page .reservation-page__intro {
+  max-width: 760px;
+  margin: 0;
+  text-align: start;
+}
+
+.reservation-experience-page .reservation-page__intro h1 {
+  max-width: 750px;
+  margin: 16px 0 18px;
+  font-size: clamp(3.2rem, 6vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.93;
+}
+
+.reservation-experience-page[dir="rtl"] .reservation-page__intro h1 {
+  font-family: var(--font-body);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.reservation-experience-page .reservation-page__intro > p {
+  max-width: 630px;
+  color: #65655f;
+}
+
+.reservation-experience-page .reservation-progress {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 42px;
+  border-bottom: 1px solid #cfc8bc;
+}
+
+.reservation-experience-page .reservation-progress span {
+  position: relative;
+  height: 45px;
+  color: #9a9891;
+  background: transparent;
+  border-radius: 0;
+}
+
+.reservation-experience-page .reservation-progress span::after {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: -1px;
+  height: 2px;
+  content: "";
+  background: transparent;
+}
+
+.reservation-experience-page .reservation-progress span.is-active {
+  color: #6f531d;
+  background: transparent;
+}
+
+.reservation-experience-page .reservation-progress span.is-active::after {
+  background: var(--color-gold-dark);
+}
+
+.reservation-progress b {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.reservation-form-heading {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 18px;
+  padding-block: clamp(3.5rem, 7vw, 6.5rem) 30px;
+}
+
+.reservation-form-heading > span {
+  color: #9c7c3d;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+}
+
+.reservation-form-heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.reservation-experience-page[dir="rtl"] .reservation-form-heading h2 {
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+
+.reservation-form-heading p {
+  max-width: 570px;
+  margin: 10px 0 0;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.reservation-experience-page .reservation-form {
+  display: grid;
+  gap: 1px;
+  padding: 1px;
+  overflow: hidden;
+  background: #d2cbc0;
+  border: 1px solid #d2cbc0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.reservation-experience-page .reservation-form__vehicle {
+  gap: 7px;
+  padding: 22px 24px;
+  background: #e7e1d7;
+  border: 0;
+}
+
+.reservation-experience-page .reservation-form__vehicle strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.reservation-experience-page .reservation-form__dates,
+.reservation-form__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: #d2cbc0;
+}
+
+.reservation-experience-page .reservation-form .field {
+  gap: 9px;
+  min-width: 0;
+  padding: 22px 24px;
+  background: #faf8f3;
+  border: 0;
+}
+
+.reservation-experience-page .reservation-form .field > span {
+  color: #77736b;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.reservation-experience-page .reservation-form input,
+.reservation-experience-page .reservation-form select {
+  min-height: 42px;
+  padding: 0;
+  color: var(--color-ink);
+  font-weight: 700;
+  background-color: transparent;
+  border: 0;
+  border-bottom: 1px solid #bbb3a7;
+  border-radius: 0;
+}
+
+.reservation-experience-page .reservation-form input:disabled,
+.reservation-experience-page .reservation-form select:disabled {
+  color: #5e5c55;
+  opacity: 1;
+}
+
+.reservation-experience-page .field__localized {
+  color: #8a857c;
+  font-size: var(--text-xs);
+}
+
+.reservation-experience-page .reservation-form > .button {
+  width: 100%;
+  min-height: 60px;
+  justify-self: stretch;
+  margin: 0;
+  color: var(--color-white);
+  background: var(--color-charcoal);
+  border: 0;
+  border-radius: 0;
+}
+
+.reservation-experience-page[dir="rtl"] .reservation-form > .button .icon {
+  transform: rotate(180deg);
+}
+
+.reservation-experience-page .reservation-assurance {
+  position: static;
+  padding: clamp(2rem, 4vw, 3rem);
+  margin-top: 28px;
+  color: #eae5db;
+  background: var(--color-charcoal);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition:
+    color 280ms ease,
+    background 280ms ease;
+}
+
+.reservation-experience-page .reservation-assurance.is-reviewing {
+  color: #211d15;
+  background: #d5b66f;
+}
+
+.reservation-assurance__heading {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+}
+
+.reservation-assurance__heading > .icon {
+  color: #d5b66f;
+}
+
+.reservation-assurance.is-reviewing .reservation-assurance__heading > .icon {
+  color: #493715;
+}
+
+.reservation-assurance__heading span {
+  color: #aaa79f;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.reservation-assurance.is-reviewing .reservation-assurance__heading span {
+  color: #655127;
+}
+
+.reservation-experience-page .reservation-assurance h2 {
+  margin: 7px 0 0;
+  font-size: clamp(1.5rem, 2.6vw, 2.3rem);
+  font-weight: 400;
+}
+
+.reservation-experience-page[dir="rtl"] .reservation-assurance h2 {
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+
+.reservation-experience-page .reservation-assurance > p {
+  color: #aaa79f;
+}
+
+.reservation-experience-page .reservation-assurance.is-reviewing > p {
+  color: #594b2e;
+}
+
+.reservation-experience-page .reservation-assurance dl {
+  gap: 0;
+  margin-top: 26px;
+  border-color: rgb(255 255 255 / 15%);
+}
+
+.reservation-experience-page .reservation-assurance.is-reviewing dl {
+  border-color: rgb(45 35 17 / 20%);
+}
+
+.reservation-experience-page .reservation-assurance dl div {
+  padding-block: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.reservation-experience-page .reservation-assurance dl div:last-child {
+  border-bottom: 0;
+}
+
+.reservation-experience-page .reservation-assurance.is-reviewing dl div {
+  border-color: rgb(45 35 17 / 15%);
+}
+
+.reservation-experience-page .reservation-assurance dt {
+  color: #aaa79f;
+}
+
+.reservation-experience-page .reservation-assurance.is-reviewing dt {
+  color: #655127;
+}
+
+.reservation-experience-page .reservation-assurance__notice {
+  color: #d8d3c9;
+  background: rgb(255 255 255 / 6%);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0;
+}
+
+.reservation-experience-page .reservation-assurance.is-reviewing .reservation-assurance__notice {
+  color: #41361f;
+  background: rgb(255 255 255 / 18%);
+  border-color: rgb(45 35 17 / 15%);
+}
+
+@media (max-width: 980px) {
+  .reservation-stage {
+    grid-template-columns: minmax(330px, 0.75fr) minmax(0, 1.25fr);
+  }
+
+  .reservation-stage__workspace {
+    padding-inline: 40px;
+  }
+
+  .reservation-stage__vehicle {
+    inset-inline: 34px;
+  }
+}
+
+@media (max-width: 820px) {
+  .reservation-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-stage__visual {
+    position: relative;
+    inset-block-start: 0;
+    min-height: 500px;
+  }
+
+  .reservation-stage__image {
+    object-position: center 52%;
+  }
+
+  .reservation-stage__vehicle {
+    inset-block-end: 50px;
+  }
+
+  .reservation-stage__workspace {
+    width: 100%;
+    padding: 64px 32px 90px;
+  }
+}
+
+@media (max-width: 580px) {
+  .reservation-stage__visual {
+    min-height: 430px;
+  }
+
+  .reservation-stage__vehicle {
+    inset-inline: 24px;
+    inset-block-end: 30px;
+  }
+
+  .reservation-stage__vehicle h2 {
+    max-width: 330px;
+    font-size: clamp(2.45rem, 11vw, 3.6rem);
+  }
+
+  .reservation-stage__vehicle > div {
+    gap: 24px;
+    padding-block: 18px;
+    margin-block: 20px 16px;
+  }
+
+  .reservation-stage__edition {
+    display: none;
+  }
+
+  .reservation-stage__workspace {
+    padding: 52px 24px 80px;
+  }
+
+  .reservation-experience-page .reservation-page__intro h1 {
+    font-size: clamp(2.8rem, 13vw, 4.2rem);
+  }
+
+  .reservation-experience-page .reservation-progress {
+    margin-top: 32px;
+  }
+
+  .reservation-experience-page .reservation-progress span {
+    height: 36px;
+  }
+
+  .reservation-form-heading {
+    grid-template-columns: 38px minmax(0, 1fr);
+    padding-block: 60px 24px;
+  }
+
+  .reservation-form-heading h2 {
+    font-size: 2rem;
+  }
+
+  .reservation-experience-page .reservation-form__dates,
+  .reservation-form__options {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-experience-page .reservation-form .field {
+    padding: 20px;
+  }
+
+  .reservation-experience-page .reservation-assurance {
+    margin-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reservation-stage__image {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Touch-first behavior: fast feedback without sticky desktop hover states. */
 @media (max-width: 900px) {
   .mobile-menu summary {

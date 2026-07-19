@@ -1,13 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import {
   dateInputValue,
+  formatEgp,
   getPublicContent,
   localizedPath,
   type PublicLocale,
   type PublicVehicle,
 } from "../lib/public-content";
+import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
 
 const requestCopy = {
@@ -31,6 +34,13 @@ const requestCopy = {
     notice:
       "الطلب لا يصبح حجزًا مؤكدًا إلا بعد مراجعة المبيعات والحضور للفرع وتسجيل العربون وتوقيع المستندات.",
     back: "العودة إلى تفاصيل العربية",
+    visualEyebrow: "اختيارك الحالي",
+    perDay: "في اليوم",
+    minimum: "أقل مدة",
+    days: "أيام",
+    formTitle: "حدد تفاصيل رحلتك",
+    formCopy: "اختار المواعيد ونظام السائق، وبعدها راجع كل اختيار قبل استكمال الطلب.",
+    reviewReady: "اختياراتك جاهزة للمراجعة",
   },
   en: {
     title: "Start reservation request",
@@ -52,6 +62,13 @@ const requestCopy = {
     notice:
       "A request becomes confirmed only after sales review, branch attendance, deposit recording, and signed documents.",
     back: "Back to vehicle details",
+    visualEyebrow: "YOUR CURRENT SELECTION",
+    perDay: "per day",
+    minimum: "Minimum rental",
+    days: "days",
+    formTitle: "Shape the details of your journey",
+    formCopy: "Choose the dates and driver option, then review every selection before continuing.",
+    reviewReady: "Your selections are ready for review",
   },
 } as const;
 
@@ -122,134 +139,199 @@ export function ReservationStart({
   const backHref = `${localizedPath(locale, "/cars")}/${vehicle.id}?${backParams.toString()}`;
 
   return (
-    <div className="public-site public-inner-page" dir={content.dir} lang={content.htmlLang}>
+    <div
+      className="public-site public-inner-page reservation-experience-page"
+      dir={content.dir}
+      lang={content.htmlLang}
+    >
+      <ExperienceMotion />
       <a className="skip-link" href="#reservation-main">
         {content.skip}
       </a>
       <Header locale={locale} languageHref={alternateHref} />
 
       <main className="reservation-page" id="reservation-main">
-        <div className="container reservation-page__intro">
-          <span className="eyebrow">{copy.step}</span>
-          <h1>{copy.title}</h1>
-          <p>{copy.copy}</p>
-          <div className="reservation-progress" aria-label={copy.step}>
-            {Array.from({ length: 6 }, (_, index) => (
-              <span className={index === 0 ? "is-active" : ""} key={index} />
-            ))}
-          </div>
-        </div>
-
-        <div className="container reservation-layout">
-          <form
-            className="reservation-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setReviewing(true);
-            }}
-          >
-            <div className="reservation-form__vehicle">
-              <span>{copy.vehicle}</span>
-              <strong>{vehicle.name[locale]}</strong>
-              <small>{vehicle.driverPolicy[locale]}</small>
+        <div className="reservation-stage">
+          <aside className="reservation-stage__visual">
+            <Image
+              alt={vehicle.imageAlt[locale]}
+              className="reservation-stage__image"
+              fill
+              priority
+              sizes="(max-width: 820px) 100vw, 44vw"
+              src={vehicle.image}
+            />
+            <span className="reservation-stage__overlay" aria-hidden="true" />
+            <span className="reservation-stage__grain" aria-hidden="true" />
+            <div className="reservation-stage__vehicle" data-reveal>
+              <span>{copy.visualEyebrow}</span>
+              <h2>{vehicle.name[locale]}</h2>
+              <p>{vehicle.driverPolicy[locale]}</p>
+              <div>
+                <p>
+                  <strong>{formatEgp(vehicle.dailyRateEgp, locale)}</strong>
+                  <small>{copy.perDay}</small>
+                </p>
+                <p>
+                  <strong>{vehicle.minimumDays}</strong>
+                  <small>
+                    {copy.minimum} / {copy.days}
+                  </small>
+                </p>
+              </div>
+              <a href={backHref}>
+                <Icon name="arrow" size={17} />
+                {copy.back}
+              </a>
             </div>
-            <div className="reservation-form__dates">
-              <label className="field">
-                <span>{copy.pickup}</span>
-                <input
-                  lang={content.htmlLang}
-                  min={minimumDate}
-                  onChange={(event) => {
-                    const nextPickup = event.target.value;
-                    const nextMinimumReturn = addDays(nextPickup, vehicle.minimumDays);
-                    setPickup(nextPickup);
-                    if (returnDate < nextMinimumReturn) setReturnDate(nextMinimumReturn);
-                    setReviewing(false);
-                  }}
-                  required
-                  type="date"
-                  value={pickup}
-                />
-                <small className="field__localized">{formatReservationDate(pickup, locale)}</small>
-              </label>
-              <label className="field">
-                <span>{copy.return}</span>
-                <input
-                  lang={content.htmlLang}
-                  min={addDays(pickup || minimumDate, vehicle.minimumDays)}
-                  onChange={(event) => {
-                    setReturnDate(event.target.value);
-                    setReviewing(false);
-                  }}
-                  required
-                  type="date"
-                  value={returnDate}
-                />
-                <small className="field__localized">
-                  {formatReservationDate(returnDate, locale)}
-                </small>
-              </label>
-            </div>
-            <label className="field">
-              <span>{copy.driver}</span>
-              <select
-                disabled={vehicle.driverPolicyKey === "self-drive"}
-                onChange={(event) => {
-                  setDriver(event.target.value);
-                  setReviewing(false);
-                }}
-                value={driver}
-              >
-                {vehicle.driverPolicyKey === "self-drive" ? (
-                  <option value="self-drive">{copy.selfDrive}</option>
-                ) : (
-                  <>
-                    <option value="later">{copy.optional}</option>
-                    <option value="with-driver">{copy.withDriver}</option>
-                    <option value="self-drive">{copy.selfDrive}</option>
-                  </>
-                )}
-              </select>
-            </label>
-            <label className="field">
-              <span>{copy.branch}</span>
-              <input disabled value={copy.branchValue} />
-            </label>
-            <button className="button button--gold" type="submit">
-              {copy.review}
-              <Icon name="arrow" size={18} />
-            </button>
-          </form>
-
-          <aside className="reservation-assurance">
-            <Icon name="shield" size={26} />
-            <h2>{reviewing ? copy.summary : copy.notSubmitted}</h2>
-            {reviewing ? (
-              <dl>
-                <div>
-                  <dt>{copy.pickup}</dt>
-                  <dd>{pickup}</dd>
-                </div>
-                <div>
-                  <dt>{copy.return}</dt>
-                  <dd>{returnDate}</dd>
-                </div>
-                <div>
-                  <dt>{copy.driver}</dt>
-                  <dd>
-                    {driver === "with-driver"
-                      ? copy.withDriver
-                      : driver === "self-drive"
-                        ? copy.selfDrive
-                        : copy.optional}
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
-            <p>{copy.next}</p>
-            <div className="reservation-assurance__notice">{copy.notice}</div>
-            <a href={backHref}>{copy.back}</a>
+            <span className="reservation-stage__edition" aria-hidden="true">
+              RAHAL / REQUEST 01
+            </span>
           </aside>
+
+          <div className="reservation-stage__workspace">
+            <header className="reservation-page__intro" data-reveal>
+              <span className="eyebrow">{copy.step}</span>
+              <h1>{copy.title}</h1>
+              <p>{copy.copy}</p>
+              <div className="reservation-progress" aria-label={copy.step}>
+                {Array.from({ length: 6 }, (_, index) => (
+                  <span className={index === 0 ? "is-active" : ""} key={index}>
+                    <b>{String(index + 1).padStart(2, "0")}</b>
+                  </span>
+                ))}
+              </div>
+            </header>
+
+            <div className="reservation-form-heading">
+              <span>01</span>
+              <div>
+                <h2>{copy.formTitle}</h2>
+                <p>{copy.formCopy}</p>
+              </div>
+            </div>
+
+            <form
+              className="reservation-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setReviewing(true);
+              }}
+            >
+              <div className="reservation-form__vehicle">
+                <span>{copy.vehicle}</span>
+                <strong>{vehicle.name[locale]}</strong>
+                <small>{vehicle.driverPolicy[locale]}</small>
+              </div>
+              <div className="reservation-form__dates">
+                <label className="field">
+                  <span>{copy.pickup}</span>
+                  <input
+                    lang={content.htmlLang}
+                    min={minimumDate}
+                    onChange={(event) => {
+                      const nextPickup = event.target.value;
+                      const nextMinimumReturn = addDays(nextPickup, vehicle.minimumDays);
+                      setPickup(nextPickup);
+                      if (returnDate < nextMinimumReturn) setReturnDate(nextMinimumReturn);
+                      setReviewing(false);
+                    }}
+                    required
+                    type="date"
+                    value={pickup}
+                  />
+                  <small className="field__localized">
+                    {formatReservationDate(pickup, locale)}
+                  </small>
+                </label>
+                <label className="field">
+                  <span>{copy.return}</span>
+                  <input
+                    lang={content.htmlLang}
+                    min={addDays(pickup || minimumDate, vehicle.minimumDays)}
+                    onChange={(event) => {
+                      setReturnDate(event.target.value);
+                      setReviewing(false);
+                    }}
+                    required
+                    type="date"
+                    value={returnDate}
+                  />
+                  <small className="field__localized">
+                    {formatReservationDate(returnDate, locale)}
+                  </small>
+                </label>
+              </div>
+              <div className="reservation-form__options">
+                <label className="field">
+                  <span>{copy.driver}</span>
+                  <select
+                    disabled={vehicle.driverPolicyKey === "self-drive"}
+                    onChange={(event) => {
+                      setDriver(event.target.value);
+                      setReviewing(false);
+                    }}
+                    value={driver}
+                  >
+                    {vehicle.driverPolicyKey === "self-drive" ? (
+                      <option value="self-drive">{copy.selfDrive}</option>
+                    ) : (
+                      <>
+                        <option value="later">{copy.optional}</option>
+                        <option value="with-driver">{copy.withDriver}</option>
+                        <option value="self-drive">{copy.selfDrive}</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>{copy.branch}</span>
+                  <input disabled value={copy.branchValue} />
+                </label>
+              </div>
+              <button className="button button--gold" type="submit">
+                {copy.review}
+                <Icon name="arrow" size={18} />
+              </button>
+            </form>
+
+            <aside
+              aria-live="polite"
+              className={`reservation-assurance${reviewing ? " is-reviewing" : ""}`}
+            >
+              <div className="reservation-assurance__heading">
+                <Icon name="shield" size={26} />
+                <div>
+                  <span>{reviewing ? copy.reviewReady : copy.notSubmitted}</span>
+                  <h2>{reviewing ? copy.summary : copy.notSubmitted}</h2>
+                </div>
+              </div>
+              {reviewing ? (
+                <dl>
+                  <div>
+                    <dt>{copy.pickup}</dt>
+                    <dd>{formatReservationDate(pickup, locale)}</dd>
+                  </div>
+                  <div>
+                    <dt>{copy.return}</dt>
+                    <dd>{formatReservationDate(returnDate, locale)}</dd>
+                  </div>
+                  <div>
+                    <dt>{copy.driver}</dt>
+                    <dd>
+                      {driver === "with-driver"
+                        ? copy.withDriver
+                        : driver === "self-drive"
+                          ? copy.selfDrive
+                          : copy.optional}
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+              <p>{copy.next}</p>
+              <div className="reservation-assurance__notice">{copy.notice}</div>
+            </aside>
+          </div>
         </div>
       </main>
 
