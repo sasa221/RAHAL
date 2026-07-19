@@ -40,6 +40,14 @@ describe("Milestone 2 public home", () => {
     expect(component).toContain("<VehicleCard compact");
   });
 
+  it("uses a local photographic gallery for every vehicle category", () => {
+    expect(component).toContain("const categoryImages");
+    expect(component).toContain('className="category-card__image"');
+    expect(component).toContain('className="category-card__overlay"');
+    expect(component).toContain('className="category-card__content"');
+    expect(styles).toContain("grid-template-columns: repeat(12, minmax(0, 1fr))");
+  });
+
   it("includes desktop and mobile navigation with accessible labels", () => {
     expect(component).toContain('className="desktop-navigation"');
     expect(component).toContain('className="mobile-menu"');

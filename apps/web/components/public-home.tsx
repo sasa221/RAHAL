@@ -28,6 +28,13 @@ type IconName =
   | "users"
   | "whatsapp";
 
+const categoryImages = [
+  "/images/white-sedan.jpg",
+  "/images/silver-sedan.jpg",
+  "/images/black-suv.jpg",
+  "/images/rahal-hero-gem.png",
+] as const;
+
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
     arrow: <path d="m9 18 6-6-6-6" />,
@@ -390,18 +397,33 @@ export function PublicHome({ locale }: PublicHomeProps) {
             <div className="category-grid">
               {content.categories.map(([title, description, number], index) => (
                 <article className="category-card" data-reveal data-tilt key={title}>
-                  <span className="category-card__number">{number}</span>
-                  <span className="category-card__icon">
-                    <Icon name={(["car", "clock", "users", "shield"] as IconName[])[index]} />
-                  </span>
-                  <h3>{title}</h3>
-                  <p>{description}</p>
-                  <a
-                    href={`${localizedPath(locale, "/cars")}?${index === 3 ? "driver=with-driver" : `category=${["economy", "sedan", "suv"][index]}`}`}
-                    aria-label={`${content.viewAll}: ${title}`}
-                  >
-                    <Icon name="arrow" />
-                  </a>
+                  <Image
+                    alt=""
+                    className="category-card__image"
+                    fill
+                    sizes="(max-width: 680px) 100vw, (max-width: 900px) 50vw, 55vw"
+                    src={categoryImages[index]}
+                  />
+                  <div className="category-card__overlay" />
+                  <div className="category-card__content">
+                    <div className="category-card__meta">
+                      <span className="category-card__number">{number}</span>
+                      <span className="category-card__icon">
+                        <Icon name={(["car", "clock", "users", "shield"] as IconName[])[index]} />
+                      </span>
+                    </div>
+                    <div>
+                      <h3>{title}</h3>
+                      <p>{description}</p>
+                    </div>
+                    <a
+                      href={`${localizedPath(locale, "/cars")}?${index === 3 ? "driver=with-driver" : `category=${["economy", "sedan", "suv"][index]}`}`}
+                      aria-label={`${content.viewAll}: ${title}`}
+                    >
+                      <span>{content.viewAll}</span>
+                      <Icon name="arrow" />
+                    </a>
+                  </div>
                 </article>
               ))}
             </div>
