@@ -122,6 +122,8 @@ describe("Milestone 2 public home", () => {
     expect(component).toContain("data-tilt");
     expect(component).toContain("hero__edition");
     expect(motion).toContain("IntersectionObserver");
+    expect(motion).toContain("MutationObserver");
+    expect(motion).toContain("requestAnimationFrame(updateAmbientMotion)");
     expect(motion).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
     expect(motion).toContain('matchMedia("(pointer: fine)")');
     expect(styles).toContain("@keyframes rahal-hero-enter");

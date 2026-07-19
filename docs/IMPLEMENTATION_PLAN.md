@@ -163,6 +163,7 @@ Status: account-access slice completed locally on 2026-07-19. Registration, logi
 - Customer registration with normalized email/phone and pending-verification status.
 - Login by email or international-format phone number.
 - Memory-hard scrypt password hashing with a random salt.
+- Shared registration password policy of 8 to 128 characters across the web and API.
 - Opaque 256-bit session tokens stored only as SHA-256 hashes.
 - HTTP-only, same-site browser cookie restricted to `/api`.
 - Session expiry, lookup, last-seen update, and revocation.

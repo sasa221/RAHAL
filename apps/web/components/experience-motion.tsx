@@ -8,7 +8,7 @@ export function ExperienceMotion() {
     root.classList.add("motion-ready");
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const finePointer = window.matchMedia("(pointer: fine)");
-    const revealItems = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+    const observedRevealItems = new WeakSet<HTMLElement>();
 
     const revealObserver = new IntersectionObserver(
       (entries) => {
@@ -21,7 +21,28 @@ export function ExperienceMotion() {
       { rootMargin: "0px 0px -8%", threshold: 0.12 },
     );
 
-    revealItems.forEach((item) => revealObserver.observe(item));
+    const observeRevealItem = (item: HTMLElement) => {
+      if (observedRevealItems.has(item)) return;
+      observedRevealItems.add(item);
+      if (reducedMotion.matches) {
+        item.classList.add("is-visible");
+        return;
+      }
+      revealObserver.observe(item);
+    };
+
+    const observeRevealTree = (node: Node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (node.matches("[data-reveal]")) observeRevealItem(node);
+      node.querySelectorAll<HTMLElement>("[data-reveal]").forEach(observeRevealItem);
+    };
+
+    document.querySelectorAll<HTMLElement>("[data-reveal]").forEach(observeRevealItem);
+
+    const mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => mutation.addedNodes.forEach(observeRevealTree));
+    });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
 
     const updateScrollProgress = () => {
       const available = document.documentElement.scrollHeight - window.innerHeight;
@@ -64,6 +85,19 @@ export function ExperienceMotion() {
       };
     });
 
+    let ambientFrame: number | undefined;
+    const updateAmbientMotion = (time: number) => {
+      const horizontal = Math.sin(time / 2200);
+      const vertical = Math.cos(time / 2800);
+      root.style.setProperty("--pointer-rx", (horizontal * 0.42).toFixed(3));
+      root.style.setProperty("--pointer-ry", (vertical * 0.34).toFixed(3));
+      ambientFrame = window.requestAnimationFrame(updateAmbientMotion);
+    };
+
+    if (!finePointer.matches && !reducedMotion.matches) {
+      ambientFrame = window.requestAnimationFrame(updateAmbientMotion);
+    }
+
     updateScrollProgress();
     window.addEventListener("scroll", updateScrollProgress, { passive: true });
     window.addEventListener("pointermove", updatePointer, { passive: true });
@@ -71,6 +105,8 @@ export function ExperienceMotion() {
     return () => {
       root.classList.remove("motion-ready");
       revealObserver.disconnect();
+      mutationObserver.disconnect();
+      if (ambientFrame !== undefined) window.cancelAnimationFrame(ambientFrame);
       tiltCleanups.forEach((cleanup) => cleanup());
       window.removeEventListener("scroll", updateScrollProgress);
       window.removeEventListener("pointermove", updatePointer);

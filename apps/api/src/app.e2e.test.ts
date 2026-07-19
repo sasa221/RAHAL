@@ -152,6 +152,28 @@ describe("RAHAL API", () => {
     });
   });
 
+  it("accepts an eight-character registration password and rejects seven characters", async () => {
+    const registration = {
+      fullNameEn: "Fictional Rahal Customer",
+      email: "new-customer@example.com",
+      phone: "+201001113333",
+      preferredLocale: "en",
+    };
+
+    await request(app.getHttpServer())
+      .post("/api/auth/register")
+      .send({ ...registration, password: "Seven77" })
+      .expect(400);
+
+    const accepted = await request(app.getHttpServer())
+      .post("/api/auth/register")
+      .send({ ...registration, password: "Eight888" })
+      .expect(201);
+
+    expect(accepted.body.data.user).not.toHaveProperty("passwordHash");
+    expect(accepted.headers["set-cookie"]?.[0]).toContain("rahal_session=");
+  });
+
   it("creates an HTTP-only session without exposing secrets", async () => {
     const login = await request(app.getHttpServer())
       .post("/api/auth/login")

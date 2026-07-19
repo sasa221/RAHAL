@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
@@ -37,7 +37,7 @@ const authCopy = {
     phone: "رقم الهاتف الدولي",
     identifier: "البريد الإلكتروني أو رقم الهاتف",
     password: "كلمة المرور",
-    passwordHint: "12 حرفًا على الأقل",
+    passwordHint: "8 أحرف على الأقل",
     loginAction: "دخول آمن",
     registerAction: "إنشاء الحساب",
     working: "جاري التأمين...",
@@ -70,7 +70,7 @@ const authCopy = {
     phone: "International phone number",
     identifier: "Email address or phone number",
     password: "Password",
-    passwordHint: "At least 12 characters",
+    passwordHint: "At least 8 characters",
     loginAction: "Sign in securely",
     registerAction: "Create account",
     working: "Securing session...",
@@ -95,6 +95,18 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [session, setSession] = useState<SessionResult | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    const frame = window.requestAnimationFrame(() => {
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById("auth-workspace")?.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [session]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -184,7 +196,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
           </div>
         </section>
 
-        <section className="auth-workspace">
+        <section className="auth-workspace" id="auth-workspace">
           <div className="auth-mode-switch" role="tablist" aria-label={copy.heroEyebrow}>
             <button
               aria-selected={mode === "login"}
@@ -205,7 +217,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
           </div>
 
           {session ? (
-            <div className="auth-success" aria-live="polite" data-reveal>
+            <div className="auth-success auth-panel" aria-live="polite">
               <span className="auth-success__mark">
                 <Icon name="shield" size={30} />
               </span>
@@ -233,7 +245,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
               </a>
             </div>
           ) : (
-            <form className="auth-form" onSubmit={submit}>
+            <form className="auth-form auth-panel" key={mode} onSubmit={submit}>
               <header>
                 <span className="eyebrow">RAHAL / SECURE ACCESS</span>
                 <h2>{mode === "login" ? copy.loginTitle : copy.registerTitle}</h2>
@@ -294,7 +306,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                 <span>{copy.password}</span>
                 <input
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  minLength={mode === "register" ? 12 : 1}
+                  minLength={mode === "register" ? 8 : 1}
                   maxLength={128}
                   name="password"
                   required

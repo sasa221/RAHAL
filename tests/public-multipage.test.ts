@@ -109,6 +109,11 @@ describe("public multi-page experience", () => {
     expect(auth).toContain('/api/auth/${mode === "login" ? "login" : "register"}');
     expect(auth).toContain('credentials: "include"');
     expect(auth).toContain('autoComplete={mode === "login" ? "current-password" : "new-password"}');
+    expect(auth).toContain('minLength={mode === "register" ? 8 : 1}');
+    expect(auth).toContain("At least 8 characters");
+    expect(auth).toContain('className="auth-success auth-panel"');
+    expect(auth).not.toContain('className="auth-success" aria-live="polite" data-reveal');
+    expect(auth).toContain('document.getElementById("auth-workspace")?.scrollIntoView');
     expect(auth).toContain('pattern="\\+?[1-9][0-9]{7,14}"');
     expect(auth).toContain("Phone and email verification are required");
     expect(auth).not.toContain("identityNumber");
