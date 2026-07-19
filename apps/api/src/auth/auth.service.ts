@@ -1,16 +1,29 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import type { AuthSession, AuthUser } from "@rahal/contracts";
-import { createHash, randomBytes } from "node:crypto";
+import type { VerificationPurpose } from "@rahal/database";
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { loadApiConfig } from "../config";
 import { AuthRepository, type AuthUserRecord } from "./auth.repository";
-import type { LoginDto, RegisterDto } from "./auth.dto";
+import type {
+  ConfirmVerificationDto,
+  LoginDto,
+  RegisterDto,
+  RequestVerificationDto,
+} from "./auth.dto";
 import { PasswordService } from "./password.service";
 
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
+const verificationLifetimeMs = 10 * 60 * 1000;
+const verificationAttemptLimit = 5;
 
 export type AuthRequestContext = { ipHash?: string; userAgent?: string };
 
@@ -43,6 +56,8 @@ function toAuthUser(user: AuthUserRecord): AuthUser {
 
 @Injectable()
 export class AuthService {
+  private readonly config = loadApiConfig();
+
   constructor(
     private readonly repository: AuthRepository,
     private readonly passwords: PasswordService,
@@ -147,6 +162,113 @@ export class AuthService {
       ...context,
       succeeded: true,
     });
+  }
+
+  async requestVerification(
+    token: string | undefined,
+    input: RequestVerificationDto,
+    context: AuthRequestContext,
+  ) {
+    if (this.config.production) {
+      throw new ServiceUnavailableException("Verification delivery is not configured.");
+    }
+    const session = await this.getSession(token);
+    const purpose = this.verificationPurpose(input.channel);
+    if (
+      (input.channel === "email" && session.user.emailVerified) ||
+      (input.channel === "phone" && session.user.phoneVerified)
+    ) {
+      throw new ConflictException("This contact method is already verified.");
+    }
+
+    const code = String(randomInt(100_000, 1_000_000));
+    const expiresAt = new Date(Date.now() + verificationLifetimeMs);
+    await this.repository.invalidateVerificationCodes(session.user.id, purpose);
+    await this.repository.createVerificationCode({
+      userId: session.user.id,
+      purpose,
+      codeHash: this.hashVerificationCode(session.user.id, purpose, code),
+      expiresAt,
+    });
+    await this.repository.writeAudit({
+      actorId: session.user.id,
+      action: "AUTH_VERIFICATION_REQUEST",
+      entityType: "USER",
+      entityId: session.user.id,
+      reason: purpose,
+      ...context,
+      succeeded: true,
+    });
+
+    return {
+      channel: input.channel,
+      destination:
+        input.channel === "email"
+          ? this.maskEmail(session.user.email)
+          : this.maskPhone(session.user.phone),
+      expiresAt: expiresAt.toISOString(),
+      developmentCode: code,
+    };
+  }
+
+  async confirmVerification(
+    token: string | undefined,
+    input: ConfirmVerificationDto,
+    context: AuthRequestContext,
+  ) {
+    const session = await this.getSession(token);
+    const purpose = this.verificationPurpose(input.channel);
+    const record = await this.repository.findActiveVerificationCode(session.user.id, purpose);
+    if (!record || record.attempts >= verificationAttemptLimit) {
+      throw new BadRequestException("Invalid or expired verification code.");
+    }
+
+    const expected = Buffer.from(record.codeHash, "hex");
+    const actual = Buffer.from(
+      this.hashVerificationCode(session.user.id, purpose, input.code),
+      "hex",
+    );
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      const attempt = await this.repository.incrementVerificationAttempts(record.id);
+      if (attempt.attempts >= verificationAttemptLimit) {
+        throw new HttpException(
+          "Too many verification attempts. Request a new code.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      throw new BadRequestException("Invalid or expired verification code.");
+    }
+
+    const user = await this.repository.completeVerification(record.id, session.user.id, purpose);
+    await this.repository.writeAudit({
+      actorId: session.user.id,
+      action: "AUTH_VERIFICATION_COMPLETE",
+      entityType: "USER",
+      entityId: session.user.id,
+      reason: purpose,
+      ...context,
+      succeeded: true,
+    });
+    return { channel: input.channel, verified: true as const, user: toAuthUser(user) };
+  }
+
+  private verificationPurpose(channel: "email" | "phone"): VerificationPurpose {
+    return channel === "email" ? "VERIFY_EMAIL" : "VERIFY_PHONE";
+  }
+
+  private hashVerificationCode(userId: string, purpose: VerificationPurpose, code: string) {
+    return createHmac("sha256", this.config.authSecret)
+      .update(`${userId}:${purpose}:${code}`)
+      .digest("hex");
+  }
+
+  private maskEmail(email: string) {
+    const [name, domain] = email.split("@");
+    return `${name?.slice(0, 2) || "**"}***@${domain ?? "***"}`;
+  }
+
+  private maskPhone(phone: string) {
+    return `${phone.slice(0, 3)}••••${phone.slice(-4)}`;
   }
 
   private async issueSession(user: AuthUserRecord, context: AuthRequestContext) {

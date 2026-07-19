@@ -7,6 +7,7 @@ import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
 
 type AuthMode = "login" | "register";
+type VerificationChannel = "email" | "phone";
 
 type SessionResult = {
   user: {
@@ -44,10 +45,23 @@ const authCopy = {
     pendingTitle: "الحساب اتعمل بنجاح",
     activeTitle: "تم تسجيل الدخول",
     successCopy: "جلسة المتصفح آمنة. الخطوة التالية هي التحقق من الهاتف والبريد قبل إرسال الطلب.",
+    activeCopy: "تم التحقق من الهاتف والبريد. حسابك جاهز لمتابعة الطلبات وإرسال طلب حجز.",
     emailStatus: "البريد",
     phoneStatus: "الهاتف",
     verified: "تم التحقق",
     pending: "بانتظار التحقق",
+    verifyEmail: "تحقق من البريد",
+    verifyPhone: "تحقق من الهاتف",
+    codeTitle: "أدخل رمز التحقق",
+    codeCopy: "الرمز صالح لمدة 10 دقائق وبحد أقصى 5 محاولات.",
+    codeLabel: "رمز من 6 أرقام",
+    confirmCode: "تأكيد الرمز",
+    sendCode: "إرسال رمز التحقق",
+    cancelVerification: "رجوع",
+    developmentCode: "رمز التجربة المحلية",
+    verifiedMessage: "تم التحقق بنجاح.",
+    requestingCode: "جاري إنشاء الرمز...",
+    confirmingCode: "جاري التحقق...",
     continue: "استعرض السيارات",
     security: "لن نعرض كلمة المرور أو رمز الجلسة داخل الصفحة.",
     connectionError: "تعذر الاتصال بخدمة الحسابات. تأكد أن API تعمل ثم حاول مرة أخرى.",
@@ -78,10 +92,24 @@ const authCopy = {
     activeTitle: "You are signed in",
     successCopy:
       "Your browser session is protected. Phone and email verification come next before request submission.",
+    activeCopy:
+      "Phone and email are verified. Your account is ready to follow and submit reservation requests.",
     emailStatus: "Email",
     phoneStatus: "Phone",
     verified: "Verified",
     pending: "Verification pending",
+    verifyEmail: "Verify email",
+    verifyPhone: "Verify phone",
+    codeTitle: "Enter your verification code",
+    codeCopy: "The code expires in 10 minutes and allows up to 5 attempts.",
+    codeLabel: "Six-digit code",
+    confirmCode: "Confirm code",
+    sendCode: "Send verification code",
+    cancelVerification: "Back",
+    developmentCode: "Local development code",
+    verifiedMessage: "Verification completed.",
+    requestingCode: "Creating code...",
+    confirmingCode: "Verifying...",
     continue: "Explore the fleet",
     security: "Your password and raw session token are never rendered on this page.",
     connectionError:
@@ -95,6 +123,29 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [session, setSession] = useState<SessionResult | null>(null);
+  const [verificationChannel, setVerificationChannel] = useState<VerificationChannel | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [developmentCode, setDevelopmentCode] = useState("");
+  const [verificationDestination, setVerificationDestination] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  const [verificationNotice, setVerificationNotice] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/auth/session", { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const result = (await response.json()) as { data?: SessionResult };
+        return result.data ?? null;
+      })
+      .then((currentSession) => {
+        if (active && currentSession) setSession(currentSession);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -155,6 +206,68 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
     setMode(nextMode);
     setError("");
     setSession(null);
+  }
+
+  async function requestVerification(channel: VerificationChannel) {
+    setVerificationBusy(true);
+    setError("");
+    setVerificationNotice("");
+    try {
+      const response = await fetch("/api/auth/verification/request", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ channel }),
+      });
+      const result = (await response.json()) as {
+        data?: { destination: string; developmentCode?: string };
+        error?: { message?: string };
+      };
+      if (!response.ok || !result.data) {
+        setError(result.error?.message || copy.connectionError);
+        return;
+      }
+      setVerificationChannel(channel);
+      setVerificationDestination(result.data.destination);
+      setDevelopmentCode(result.data.developmentCode ?? "");
+      setVerificationCode("");
+    } catch {
+      setError(copy.connectionError);
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
+
+  async function confirmVerification(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!verificationChannel) return;
+    setVerificationBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/verification/confirm", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ channel: verificationChannel, code: verificationCode }),
+      });
+      const result = (await response.json()) as {
+        data?: { user: SessionResult["user"] };
+        error?: { message?: string };
+      };
+      if (!response.ok || !result.data || !session) {
+        setError(result.error?.message || copy.connectionError);
+        return;
+      }
+      setSession({ ...session, user: result.data.user });
+      setVerificationNotice(copy.verifiedMessage);
+      setVerificationChannel(null);
+      setVerificationCode("");
+      setDevelopmentCode("");
+    } catch {
+      setError(copy.connectionError);
+    } finally {
+      setVerificationBusy(false);
+    }
   }
 
   return (
@@ -227,18 +340,80 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                   ? copy.pendingTitle
                   : copy.activeTitle}
               </h2>
-              <p>{copy.successCopy}</p>
+              <p>
+                {session.user.status === "PENDING_VERIFICATION"
+                  ? copy.successCopy
+                  : copy.activeCopy}
+              </p>
               <strong>{session.user.fullName}</strong>
               <div className="auth-success__status">
-                <span>
+                <button
+                  disabled={session.user.emailVerified || verificationBusy}
+                  onClick={() => requestVerification("email")}
+                  type="button"
+                >
                   {copy.emailStatus}
                   <b>{session.user.emailVerified ? copy.verified : copy.pending}</b>
-                </span>
-                <span>
+                  {!session.user.emailVerified ? <small>{copy.verifyEmail}</small> : null}
+                </button>
+                <button
+                  disabled={session.user.phoneVerified || verificationBusy}
+                  onClick={() => requestVerification("phone")}
+                  type="button"
+                >
                   {copy.phoneStatus}
                   <b>{session.user.phoneVerified ? copy.verified : copy.pending}</b>
-                </span>
+                  {!session.user.phoneVerified ? <small>{copy.verifyPhone}</small> : null}
+                </button>
               </div>
+              {verificationChannel ? (
+                <form className="auth-verification auth-panel" onSubmit={confirmVerification}>
+                  <span className="eyebrow">{copy.sendCode}</span>
+                  <h3>{copy.codeTitle}</h3>
+                  <p>
+                    {copy.codeCopy} <strong>{verificationDestination}</strong>
+                  </p>
+                  {developmentCode ? (
+                    <div className="auth-verification__preview">
+                      <span>{copy.developmentCode}</span>
+                      <strong>{developmentCode}</strong>
+                    </div>
+                  ) : null}
+                  <label>
+                    <span>{copy.codeLabel}</span>
+                    <input
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      maxLength={6}
+                      minLength={6}
+                      onChange={(event) =>
+                        setVerificationCode(event.target.value.replace(/\D/g, ""))
+                      }
+                      pattern="[0-9]{6}"
+                      required
+                      value={verificationCode}
+                    />
+                  </label>
+                  <div>
+                    <button disabled={verificationBusy} type="submit">
+                      {verificationBusy ? copy.confirmingCode : copy.confirmCode}
+                    </button>
+                    <button onClick={() => setVerificationChannel(null)} type="button">
+                      {copy.cancelVerification}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+              {verificationNotice ? (
+                <p className="auth-success__notice" role="status">
+                  {verificationNotice}
+                </p>
+              ) : null}
+              {error ? (
+                <p className="auth-form__error" role="alert">
+                  {error}
+                </p>
+              ) : null}
               <a href={localizedPath(locale, "/cars")}>
                 {copy.continue}
                 <Icon name="arrow" size={18} />

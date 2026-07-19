@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import type { Request, Response } from "express";
 import { loadApiConfig } from "../config";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
-import { LoginDto, RegisterDto } from "./auth.dto";
+import { ConfirmVerificationDto, LoginDto, RegisterDto, RequestVerificationDto } from "./auth.dto";
 import { AuthService, type AuthRequestContext } from "./auth.service";
 
 const cookieName = "rahal_session";
@@ -67,6 +67,32 @@ export class AuthController {
     await this.auth.logout(readCookie(request), this.context(request));
     response.clearCookie(cookieName, this.cookieOptions());
     return { data: { loggedOut: true } };
+  }
+
+  @Post("verification/request")
+  async requestVerification(@Body() input: RequestVerificationDto, @Req() request: Request) {
+    const context = this.context(request);
+    this.rateLimits.assertAllowed(
+      `verification-request:${context.ipHash ?? "unknown"}:${input.channel}`,
+      3,
+      15 * 60 * 1000,
+    );
+    return {
+      data: await this.auth.requestVerification(readCookie(request), input, context),
+    };
+  }
+
+  @Post("verification/confirm")
+  async confirmVerification(@Body() input: ConfirmVerificationDto, @Req() request: Request) {
+    const context = this.context(request);
+    this.rateLimits.assertAllowed(
+      `verification-confirm:${context.ipHash ?? "unknown"}:${input.channel}`,
+      8,
+      15 * 60 * 1000,
+    );
+    return {
+      data: await this.auth.confirmVerification(readCookie(request), input, context),
+    };
   }
 
   private context(request: Request): AuthRequestContext {

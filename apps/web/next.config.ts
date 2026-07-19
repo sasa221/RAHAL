@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   async rewrites() {
     const apiUrl = (process.env.API_URL ?? "http://localhost:4000").replace(/\/$/, "");
     return [{ source: "/api/:path*", destination: `${apiUrl}/api/:path*` }];

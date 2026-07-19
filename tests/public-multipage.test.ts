@@ -121,5 +121,11 @@ describe("public multi-page experience", () => {
     expect(home).toContain('localizedPath(locale, "/auth")');
     expect(home).not.toContain('aria-disabled="true"');
     expect(nextConfig).toContain('source: "/api/:path*"');
+    expect(nextConfig).toContain("devIndicators: false");
+    expect(auth).toContain('fetch("/api/auth/verification/request"');
+    expect(auth).toContain('fetch("/api/auth/verification/confirm"');
+    expect(auth).toContain('fetch("/api/auth/session"');
+    expect(auth).toContain('autoComplete="one-time-code"');
+    expect(auth).toContain("developmentCode");
   });
 });

@@ -36,3 +36,13 @@ export class LoginDto {
   @Length(1, 128)
   password!: string;
 }
+
+export class RequestVerificationDto {
+  @IsIn(["email", "phone"])
+  channel!: "email" | "phone";
+}
+
+export class ConfirmVerificationDto extends RequestVerificationDto {
+  @Matches(/^\d{6}$/, { message: "code must contain exactly six digits" })
+  code!: string;
+}

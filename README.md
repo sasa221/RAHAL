@@ -36,7 +36,9 @@ The API exposes the first secure account/session slice under `/api/auth`:
 - `POST /login`: accepts email or phone plus password.
 - `GET /session`: returns the current redacted user session.
 - `DELETE /session`: revokes the current session.
+- `POST /verification/request`: issues a short-lived phone or email verification code.
+- `POST /verification/confirm`: validates the current code and activates fully verified accounts.
 
-Passwords use Node's memory-hard scrypt implementation. Browser sessions use an opaque token in an HTTP-only, same-site cookie; only the token hash is stored. Set a unique `AUTH_SECRET` of at least 32 characters in every deployed environment. Bilingual customer sign-in and registration are available at `/auth` and `/en/auth`; phone OTP, email verification, and password recovery remain deliberately unimplemented until their complete tested slices are added.
+Passwords use Node's memory-hard scrypt implementation. Browser sessions use an opaque token in an HTTP-only, same-site cookie; only the token hash is stored. Set a unique `AUTH_SECRET` of at least 32 characters in every deployed environment. Bilingual customer sign-in, registration, and verification are available at `/auth` and `/en/auth`. Local development returns a clearly labelled preview code; production refuses to issue a code until the approved email and WhatsApp delivery providers are configured. Password recovery remains pending.
 
 Customer registration accepts passwords from 8 to 128 characters. The bilingual account UI applies the same limit before submission, while the API remains the authoritative validation boundary.

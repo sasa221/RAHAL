@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { SystemRole, UserStatus } from "@rahal/database";
+import type { SystemRole, UserStatus, VerificationPurpose } from "@rahal/database";
 import { PrismaService } from "../database/prisma.service";
 
 export type AuthUserRecord = {
@@ -80,6 +80,64 @@ export class AuthRepository {
     return this.prisma.client.session.updateMany({
       where: { refreshTokenHash, status: "ACTIVE" },
       data: { status: "REVOKED", revokedAt: new Date() },
+    });
+  }
+
+  invalidateVerificationCodes(userId: string, purpose: VerificationPurpose) {
+    return this.prisma.client.verificationCode.updateMany({
+      where: { userId, purpose, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  createVerificationCode(input: {
+    userId: string;
+    purpose: VerificationPurpose;
+    codeHash: string;
+    expiresAt: Date;
+  }) {
+    return this.prisma.client.verificationCode.create({
+      data: input,
+      select: { id: true, expiresAt: true },
+    });
+  }
+
+  findActiveVerificationCode(userId: string, purpose: VerificationPurpose) {
+    return this.prisma.client.verificationCode.findFirst({
+      where: { userId, purpose, usedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, codeHash: true, attempts: true, expiresAt: true },
+    });
+  }
+
+  incrementVerificationAttempts(id: string) {
+    return this.prisma.client.verificationCode.update({
+      where: { id },
+      data: { attempts: { increment: 1 } },
+      select: { attempts: true },
+    });
+  }
+
+  completeVerification(id: string, userId: string, purpose: VerificationPurpose) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      await transaction.verificationCode.update({ where: { id }, data: { usedAt: new Date() } });
+      const verifiedAt = new Date();
+      let user = await transaction.user.update({
+        where: { id: userId },
+        data:
+          purpose === "VERIFY_EMAIL"
+            ? { emailVerifiedAt: verifiedAt }
+            : { phoneVerifiedAt: verifiedAt },
+        select: authUserSelect,
+      });
+      if (user.status === "PENDING_VERIFICATION" && user.emailVerifiedAt && user.phoneVerifiedAt) {
+        user = await transaction.user.update({
+          where: { id: userId },
+          data: { status: "ACTIVE" },
+          select: authUserSelect,
+        });
+      }
+      return user;
     });
   }
 
