@@ -58,7 +58,6 @@ const authCopy = {
     confirmCode: "تأكيد الرمز",
     sendCode: "إرسال رمز التحقق",
     cancelVerification: "رجوع",
-    developmentCode: "رمز التجربة المحلية",
     verifiedMessage: "تم التحقق بنجاح.",
     requestingCode: "جاري إنشاء الرمز...",
     confirmingCode: "جاري التحقق...",
@@ -106,7 +105,6 @@ const authCopy = {
     confirmCode: "Confirm code",
     sendCode: "Send verification code",
     cancelVerification: "Back",
-    developmentCode: "Local development code",
     verifiedMessage: "Verification completed.",
     requestingCode: "Creating code...",
     confirmingCode: "Verifying...",
@@ -125,7 +123,6 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   const [session, setSession] = useState<SessionResult | null>(null);
   const [verificationChannel, setVerificationChannel] = useState<VerificationChannel | null>(null);
   const [verificationCode, setVerificationCode] = useState("");
-  const [developmentCode, setDevelopmentCode] = useState("");
   const [verificationDestination, setVerificationDestination] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
@@ -220,7 +217,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         body: JSON.stringify({ channel }),
       });
       const result = (await response.json()) as {
-        data?: { destination: string; developmentCode?: string };
+        data?: { destination: string };
         error?: { message?: string };
       };
       if (!response.ok || !result.data) {
@@ -229,7 +226,6 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
       }
       setVerificationChannel(channel);
       setVerificationDestination(result.data.destination);
-      setDevelopmentCode(result.data.developmentCode ?? "");
       setVerificationCode("");
     } catch {
       setError(copy.connectionError);
@@ -262,7 +258,6 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
       setVerificationNotice(copy.verifiedMessage);
       setVerificationChannel(null);
       setVerificationCode("");
-      setDevelopmentCode("");
     } catch {
       setError(copy.connectionError);
     } finally {
@@ -373,12 +368,6 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                   <p>
                     {copy.codeCopy} <strong>{verificationDestination}</strong>
                   </p>
-                  {developmentCode ? (
-                    <div className="auth-verification__preview">
-                      <span>{copy.developmentCode}</span>
-                      <strong>{developmentCode}</strong>
-                    </div>
-                  ) : null}
                   <label>
                     <span>{copy.codeLabel}</span>
                     <input

@@ -169,9 +169,6 @@ export class AuthService {
     input: RequestVerificationDto,
     context: AuthRequestContext,
   ) {
-    if (this.config.production) {
-      throw new ServiceUnavailableException("Verification delivery is not configured.");
-    }
     const session = await this.getSession(token);
     const purpose = this.verificationPurpose(input.channel);
     if (
@@ -179,6 +176,9 @@ export class AuthService {
       (input.channel === "phone" && session.user.phoneVerified)
     ) {
       throw new ConflictException("This contact method is already verified.");
+    }
+    if (!this.config.verificationDelivery) {
+      throw new ServiceUnavailableException("Verification delivery provider is not configured.");
     }
 
     const code = String(randomInt(100_000, 1_000_000));
@@ -190,6 +190,29 @@ export class AuthService {
       codeHash: this.hashVerificationCode(session.user.id, purpose, code),
       expiresAt,
     });
+
+    try {
+      await this.deliverVerificationCode({
+        channel: input.channel,
+        destination: input.channel === "email" ? session.user.email : session.user.phone,
+        locale: session.user.preferredLocale,
+        code,
+        expiresAt,
+      });
+    } catch (error) {
+      await this.repository.invalidateVerificationCodes(session.user.id, purpose);
+      await this.repository.writeAudit({
+        actorId: session.user.id,
+        action: "AUTH_VERIFICATION_REQUEST",
+        entityType: "USER",
+        entityId: session.user.id,
+        reason: `${purpose}_DELIVERY_FAILED`,
+        ...context,
+        succeeded: false,
+      });
+      throw error;
+    }
+
     await this.repository.writeAudit({
       actorId: session.user.id,
       action: "AUTH_VERIFICATION_REQUEST",
@@ -207,7 +230,6 @@ export class AuthService {
           ? this.maskEmail(session.user.email)
           : this.maskPhone(session.user.phone),
       expiresAt: expiresAt.toISOString(),
-      developmentCode: code,
     };
   }
 
@@ -260,6 +282,40 @@ export class AuthService {
     return createHmac("sha256", this.config.authSecret)
       .update(`${userId}:${purpose}:${code}`)
       .digest("hex");
+  }
+
+  private async deliverVerificationCode(input: {
+    channel: "email" | "phone";
+    destination: string;
+    locale: string;
+    code: string;
+    expiresAt: Date;
+  }) {
+    const delivery = this.config.verificationDelivery;
+    if (!delivery) {
+      throw new ServiceUnavailableException("Verification delivery provider is not configured.");
+    }
+
+    try {
+      const response = await fetch(delivery.url, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${delivery.secret}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          event: "AUTH_VERIFICATION_CODE",
+          channel: input.channel,
+          destination: input.destination,
+          locale: input.locale,
+          code: input.code,
+          expiresAt: input.expiresAt.toISOString(),
+        }),
+      });
+      if (!response.ok) throw new Error("Verification delivery rejected the request.");
+    } catch {
+      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
+    }
   }
 
   private maskEmail(email: string) {

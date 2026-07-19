@@ -1792,27 +1792,6 @@ select {
   line-height: 1.6;
 }
 
-.auth-verification__preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 18px 0;
-  padding: 14px 16px;
-  color: #f8f1e3;
-  background: #191815;
-}
-
-.auth-verification__preview span {
-  font-size: 0.67rem;
-}
-
-.auth-verification__preview strong {
-  color: #d5b264;
-  font-size: 1.15rem;
-  letter-spacing: 0.18em;
-}
-
 .auth-verification label {
   display: grid;
   gap: 8px;

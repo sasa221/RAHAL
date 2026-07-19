@@ -1,4 +1,8 @@
-import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { AuthService, hashSessionToken } from "./auth.service";
 import type { AuthRepository, AuthUserRecord } from "./auth.repository";
 import { PasswordService } from "./password.service";
@@ -35,6 +39,19 @@ function buildRepository() {
 }
 
 describe("AuthService", () => {
+  beforeEach(() => {
+    process.env.VERIFICATION_DELIVERY_WEBHOOK_URL = "http://localhost:9999/verification";
+    process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET =
+      "test-verification-delivery-secret-32-characters";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+  });
+
+  afterEach(() => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    vi.unstubAllGlobals();
+  });
+
   it("returns a redacted user and stores only a hash of the opaque session token", async () => {
     const repository = buildRepository();
     repository.findByIdentifier.mockResolvedValue(activeUser);
@@ -92,7 +109,7 @@ describe("AuthService", () => {
     expect(repository.createSession).not.toHaveBeenCalled();
   });
 
-  it("issues a short-lived development verification code but stores only its hash", async () => {
+  it("delivers a short-lived verification code without returning or storing its plaintext", async () => {
     const repository = buildRepository();
     repository.findSession.mockResolvedValue({
       id: "session-1",
@@ -103,7 +120,23 @@ describe("AuthService", () => {
 
     const result = await service.requestVerification("session-token", { channel: "phone" }, {});
 
-    expect(result.developmentCode).toMatch(/^\d{6}$/);
+    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
+    const delivered = JSON.parse(String(deliveryRequest?.[1]?.body)) as { code: string };
+
+    expect(delivered.code).toMatch(/^\d{6}$/);
+    expect(result).not.toHaveProperty("developmentCode");
+    expect(result).toEqual(
+      expect.objectContaining({ channel: "phone", destination: expect.any(String) }),
+    );
+    expect(deliveryRequest?.[0]).toBe("http://localhost:9999/verification");
+    expect(deliveryRequest?.[1]).toEqual(
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer test-verification-delivery-secret-32-characters",
+        }),
+      }),
+    );
     expect(repository.invalidateVerificationCodes).toHaveBeenCalledWith(
       activeUser.id,
       "VERIFY_PHONE",
@@ -115,8 +148,50 @@ describe("AuthService", () => {
         codeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     );
-    expect(repository.createVerificationCode.mock.calls[0]?.[0].codeHash).not.toBe(
-      result.developmentCode,
+    expect(repository.createVerificationCode.mock.calls[0]?.[0].codeHash).not.toBe(delivered.code);
+  });
+
+  it("fails closed without a delivery provider and does not create a code", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: activeUser,
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    await expect(
+      service.requestVerification("session-token", { channel: "phone" }, {}),
+    ).rejects.toThrow(
+      new ServiceUnavailableException("Verification delivery provider is not configured."),
+    );
+    expect(repository.createVerificationCode).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("invalidates the issued code when the delivery provider fails", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false } as Response);
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: activeUser,
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    await expect(
+      service.requestVerification("session-token", { channel: "phone" }, {}),
+    ).rejects.toThrow(
+      new ServiceUnavailableException("Verification delivery is temporarily unavailable."),
+    );
+    expect(repository.invalidateVerificationCodes).toHaveBeenCalledTimes(2);
+    expect(repository.writeAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        succeeded: false,
+        reason: "VERIFY_PHONE_DELIVERY_FAILED",
+      }),
     );
   });
 
@@ -132,7 +207,9 @@ describe("AuthService", () => {
       phoneVerifiedAt: new Date(),
     });
     const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
-    const issued = await service.requestVerification("session-token", { channel: "phone" }, {});
+    await service.requestVerification("session-token", { channel: "phone" }, {});
+    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
+    const delivered = JSON.parse(String(deliveryRequest?.[1]?.body)) as { code: string };
     const codeHash = repository.createVerificationCode.mock.calls[0]?.[0].codeHash as string;
     repository.findActiveVerificationCode.mockResolvedValue({
       id: "code-1",
@@ -148,7 +225,7 @@ describe("AuthService", () => {
 
     const confirmed = await service.confirmVerification(
       "session-token",
-      { channel: "phone", code: issued.developmentCode },
+      { channel: "phone", code: delivered.code },
       {},
     );
     expect(confirmed.verified).toBe(true);

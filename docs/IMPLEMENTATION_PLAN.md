@@ -156,7 +156,7 @@ Status: completed locally on 2026-07-18. The baseline migration and relative dem
 
 Goal: establish secure customer identity and browser sessions before reservation drafts can be persisted.
 
-Status: account verification slice completed locally on 2026-07-19. Registration, login, current-session lookup, logout, password hashing, opaque session cookies, basic rate limiting, authentication audit writes, bilingual customer access screens, and development-safe phone/email verification are implemented. Production delivery and recovery remain pending.
+Status: account verification slice completed locally on 2026-07-19. Registration, login, current-session lookup, logout, password hashing, opaque session cookies, basic rate limiting, authentication audit writes, bilingual customer access screens, and provider-gated phone/email verification are implemented. Approved production delivery and recovery remain pending.
 
 ### Completed foundation scope
 
@@ -174,14 +174,14 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 - Shared Arabic and English sign-in and registration screens with responsive cinematic layouts.
 - Same-origin web-to-API authentication proxying so secure session cookies are not exposed to client code.
 - Six-digit email and phone verification with HMAC-only code storage, 10-minute expiry, five-attempt limits, resend invalidation, and account activation after both channels are verified.
-- Development-only code preview with production issuance blocked until approved delivery providers are configured.
+- Provider-gated verification delivery with no plaintext code in API responses or browser UI, HTTPS enforcement in production, and fail-closed issuance when the delivery gateway is absent.
 
 ### Remaining scope
 
 - Production email and WhatsApp verification delivery providers and templates.
 - Password reset and reset-session revocation.
 - Session/device listing and individual/all-device revocation.
-- Customer-facing bilingual phone/email verification and password-recovery screens.
+- Customer-facing bilingual password-recovery screens.
 - Shared production rate-limit storage and operational monitoring.
 
 ### Acceptance criteria

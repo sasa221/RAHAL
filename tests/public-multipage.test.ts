@@ -126,6 +126,7 @@ describe("public multi-page experience", () => {
     expect(auth).toContain('fetch("/api/auth/verification/confirm"');
     expect(auth).toContain('fetch("/api/auth/session"');
     expect(auth).toContain('autoComplete="one-time-code"');
-    expect(auth).toContain("developmentCode");
+    expect(auth).not.toContain("developmentCode");
+    expect(auth).not.toContain("Local development code");
   });
 });
