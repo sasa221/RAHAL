@@ -26,4 +26,19 @@ describe("public site localization", () => {
     expect(englishPage).toContain('<PublicHome locale="en" />');
     expect(publicHome).toContain("dir={content.dir} lang={content.htmlLang}");
   });
+
+  it("self-hosts distinct premium Arabic, Latin body, and Latin display fonts", () => {
+    const layout = read("apps/web/app/layout.tsx");
+    const styles = read("apps/web/app/globals.css");
+
+    expect(layout).toContain('src: "./fonts/alexandria-arabic.woff2"');
+    expect(layout).toContain('src: "./fonts/cormorant-garamond-latin.woff2"');
+    expect(layout).toContain('src: "./fonts/manrope-latin.woff2"');
+    expect(layout).toContain('from "next/font/local"');
+    expect(layout).not.toContain('from "next/font/google"');
+    expect(layout.match(/display: "swap"/g)).toHaveLength(3);
+    expect(styles).toContain("--font-arabic: var(--font-alexandria)");
+    expect(styles).toContain("--font-display: var(--font-cormorant)");
+    expect(styles).toContain('.public-site[dir="rtl"]');
+  });
 });

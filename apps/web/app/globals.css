@@ -10,8 +10,9 @@
   --color-muted: #686962;
   --color-border: #e5e5e5;
   --color-success: #247647;
-  --font-body: Tahoma, Arial, sans-serif;
+  --font-body: "Segoe UI", Arial, sans-serif;
   --font-display: Georgia, "Times New Roman", serif;
+  --font-arabic: "Segoe UI", Tahoma, Arial, sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -53,10 +54,13 @@ html {
 }
 
 body {
+  --font-body: var(--font-manrope), "Segoe UI", Arial, sans-serif;
+  --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-arabic: var(--font-alexandria), var(--font-manrope), "Segoe UI", Tahoma, Arial, sans-serif;
   margin: 0;
   background: var(--color-off-white);
   color: var(--color-ink);
-  font-family: var(--font-body);
+  font-family: var(--font-manrope), "Segoe UI", Arial, sans-serif;
   text-rendering: optimizeLegibility;
 }
 
@@ -93,7 +97,13 @@ select {
 }
 
 .public-site[dir="ltr"] {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-body);
+}
+
+.public-site[dir="rtl"] {
+  --font-body: var(--font-arabic);
+  --font-display: var(--font-arabic);
+  font-family: var(--font-arabic);
 }
 
 .container {
