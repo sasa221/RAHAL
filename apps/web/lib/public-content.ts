@@ -140,6 +140,7 @@ const shared = {
     processEyebrow: "طلب واضح من البداية",
     processTitle: "الحجز في أربع خطوات",
     processCopy: "طلبك لا يصبح حجزًا مؤكدًا إلا بعد المراجعة وإتمام الإجراءات داخل الفرع.",
+    processNotice: "إرسال الطلب لا يعني تأكيد الحجز.",
     steps: [
       ["اختار العربية والمدة", "شوف الخيارات والأسعار التقديرية وحدد المواعيد المناسبة."],
       ["ابعت طلبك", "سجّل بياناتك وأكمل المتطلبات المطلوبة بصورة آمنة."],
@@ -220,6 +221,7 @@ const shared = {
     processTitle: "Reserve in four steps",
     processCopy:
       "Your request is confirmed only after review and completion of the required branch procedures.",
+    processNotice: "Submitting a request does not confirm a booking.",
     steps: [
       ["Choose car and dates", "Review options and estimated prices, then choose suitable dates."],
       ["Send your request", "Enter your details and complete the required information securely."],

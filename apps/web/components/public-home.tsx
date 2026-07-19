@@ -438,6 +438,10 @@ export function PublicHome({ locale }: PublicHomeProps) {
                 title={content.processTitle}
                 copy={content.processCopy}
               />
+              <div className="process-notice" role="note">
+                <Icon name="shield" size={20} />
+                <span>{content.processNotice}</span>
+              </div>
               <div className="process-seal">
                 <RahalLogo compact />
               </div>
@@ -446,7 +450,10 @@ export function PublicHome({ locale }: PublicHomeProps) {
               {content.steps.map(([title, description], index) => (
                 <li data-reveal key={title}>
                   <span className="process-list__number">{String(index + 1).padStart(2, "0")}</span>
-                  <div>
+                  <div className="process-list__copy">
+                    <span className="process-list__kicker">
+                      {locale === "ar" ? `الخطوة ${index + 1}` : `STEP ${index + 1}`}
+                    </span>
                     <h3>{title}</h3>
                     <p>{description}</p>
                   </div>

@@ -48,6 +48,14 @@ describe("Milestone 2 public home", () => {
     expect(styles).toContain("grid-template-columns: repeat(12, minmax(0, 1fr))");
   });
 
+  it("makes the reservation-request boundary explicit in the four-step journey", () => {
+    expect(getPublicContent("en").processNotice).toContain("does not confirm");
+    expect(getPublicContent("ar").processNotice).toContain("لا يعني");
+    expect(component).toContain('className="process-notice"');
+    expect(component).toContain('className="process-list__kicker"');
+    expect(component).toContain('role="note"');
+  });
+
   it("includes desktop and mobile navigation with accessible labels", () => {
     expect(component).toContain('className="desktop-navigation"');
     expect(component).toContain('className="mobile-menu"');
