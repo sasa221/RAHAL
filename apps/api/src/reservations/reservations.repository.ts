@@ -1,5 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import type { ReservationCustomerDetails, ReservationDraft } from "@rahal/contracts";
+import type {
+  ReservationConsents,
+  ReservationCustomerDetails,
+  ReservationDraft,
+} from "@rahal/contracts";
 import type { DriverPolicy } from "@rahal/database";
 import { randomInt } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
@@ -33,6 +37,14 @@ type SaveCustomerDetailsInput = {
   address: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
+};
+
+type SaveConsentsInput = {
+  draftId: string;
+  reference: string;
+  customerId: string;
+  policyVersion: string;
+  marketingAccepted: boolean;
 };
 
 @Injectable()
@@ -113,7 +125,23 @@ export class ReservationsRepository {
   findOwnedDraft(id: string, customerId: string) {
     return this.prisma.client.reservation.findFirst({
       where: { id, customerId, status: "DRAFT" },
-      select: { id: true, reference: true },
+      select: { id: true, reference: true, customerDetailsCompletedAt: true },
+    });
+  }
+
+  findConsentPolicies(locale: "ar" | "en") {
+    const now = new Date();
+    return this.prisma.client.policyVersion.findMany({
+      where: {
+        locale,
+        policyKey: {
+          in: ["RENTAL_TERMS", "PRIVACY", "DOCUMENT_PROCESSING", "RESERVATION_PROCESS"],
+        },
+        effectiveAt: { lte: now },
+        OR: [{ retiredAt: null }, { retiredAt: { gt: now } }],
+      },
+      orderBy: { effectiveAt: "desc" },
+      select: { policyKey: true, version: true, title: true, body: true },
     });
   }
 
@@ -170,6 +198,53 @@ export class ReservationsRepository {
       emergencyContactName: input.emergencyContactName,
       emergencyContactPhoneMasked: maskPhone(input.emergencyContactPhone),
       completedAt: completedAt.toISOString(),
+    };
+  }
+
+  async saveConsents(input: SaveConsentsInput): Promise<ReservationConsents | null> {
+    const acceptedAt = new Date();
+    const saved = await this.prisma.client.$transaction(async (transaction) => {
+      const updated = await transaction.reservation.updateMany({
+        where: {
+          id: input.draftId,
+          customerId: input.customerId,
+          status: "DRAFT",
+          customerDetailsCompletedAt: { not: null },
+        },
+        data: {
+          termsVersion: input.policyVersion,
+          termsAcceptedAt: acceptedAt,
+          privacyConsentAt: acceptedAt,
+          documentConsentAt: acceptedAt,
+          operationalConsentAt: acceptedAt,
+          marketingConsentAt: input.marketingAccepted ? acceptedAt : null,
+        },
+      });
+      if (!updated.count) return false;
+
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: input.draftId,
+          fromStatus: "DRAFT",
+          toStatus: "DRAFT",
+          actorId: input.customerId,
+          note: "Customer accepted the required policy bundle.",
+          metadata: {
+            policyVersion: input.policyVersion,
+            marketingAccepted: input.marketingAccepted,
+          },
+        },
+      });
+      return true;
+    });
+    if (!saved) return null;
+
+    return {
+      draftId: input.draftId,
+      reference: input.reference,
+      policyVersion: input.policyVersion,
+      requiredAcceptedAt: acceptedAt.toISOString(),
+      marketingAccepted: input.marketingAccepted,
     };
   }
 }

@@ -132,7 +132,11 @@ describe("RAHAL API", () => {
         }),
         findOwnedDraft: async (id: string, customerId: string) =>
           id === "reservation-draft-e2e" && customerId === authUser.id
-            ? { id, reference: "RHL-2026-123456" }
+            ? {
+                id,
+                reference: "RHL-2026-123456",
+                customerDetailsCompletedAt: new Date(),
+              }
             : null,
         saveCustomerDetails: async (input: {
           draftId: string;
@@ -155,6 +159,27 @@ describe("RAHAL API", () => {
           emergencyContactName: input.emergencyContactName,
           emergencyContactPhoneMasked: "+20••••8888",
           completedAt: new Date().toISOString(),
+        }),
+        findConsentPolicies: async (locale: string) =>
+          ["RENTAL_TERMS", "PRIVACY", "DOCUMENT_PROCESSING", "RESERVATION_PROCESS"].map(
+            (policyKey) => ({
+              policyKey,
+              version: "DEV-2026-07-19",
+              title: `${policyKey} ${locale}`,
+              body: "Development-only policy summary.",
+            }),
+          ),
+        saveConsents: async (input: {
+          draftId: string;
+          reference: string;
+          policyVersion: string;
+          marketingAccepted: boolean;
+        }) => ({
+          draftId: input.draftId,
+          reference: input.reference,
+          policyVersion: input.policyVersion,
+          requiredAcceptedAt: new Date().toISOString(),
+          marketingAccepted: input.marketingAccepted,
         }),
       })
       .compile();
@@ -336,5 +361,38 @@ describe("RAHAL API", () => {
         emergencyContactPhone: "+201009998888",
       })
       .expect(404);
+  });
+
+  it("serves a versioned policy bundle and stores required consents separately from marketing", async () => {
+    const bundle = await request(app.getHttpServer())
+      .get("/api/reservations/consent-policies/en")
+      .expect(200);
+    expect(bundle.body.data).toMatchObject({
+      version: "DEV-2026-07-19",
+      developmentOnly: true,
+    });
+    expect(bundle.body.data.policies).toHaveLength(4);
+
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: authUser.email, password: "correct-customer-password" })
+      .expect(201);
+    const response = await request(app.getHttpServer())
+      .post("/api/reservations/drafts/reservation-draft-e2e/consents")
+      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .send({
+        policyVersion: "DEV-2026-07-19",
+        termsAccepted: true,
+        privacyAccepted: true,
+        documentAccepted: true,
+        operationalAccepted: true,
+        marketingAccepted: false,
+      })
+      .expect(201);
+
+    expect(response.body.data).toMatchObject({
+      policyVersion: "DEV-2026-07-19",
+      marketingAccepted: false,
+    });
   });
 });

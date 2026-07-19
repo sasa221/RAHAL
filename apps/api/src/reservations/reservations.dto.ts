@@ -1,4 +1,4 @@
-import { IsBoolean, IsString, Length, Matches, MaxLength } from "class-validator";
+import { Equals, IsBoolean, IsString, Length, Matches, MaxLength } from "class-validator";
 
 export class SaveReservationDraftDto {
   @IsString()
@@ -34,4 +34,25 @@ export class SaveReservationCustomerDetailsDto {
     message: "emergencyContactPhone must use a valid international number format",
   })
   emergencyContactPhone!: string;
+}
+
+export class SaveReservationConsentsDto {
+  @IsString()
+  @MaxLength(50)
+  policyVersion!: string;
+
+  @Equals(true)
+  termsAccepted!: true;
+
+  @Equals(true)
+  privacyAccepted!: true;
+
+  @Equals(true)
+  documentAccepted!: true;
+
+  @Equals(true)
+  operationalAccepted!: true;
+
+  @IsBoolean()
+  marketingAccepted!: boolean;
 }

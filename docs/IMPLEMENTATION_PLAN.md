@@ -204,7 +204,7 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 
 Goal: persist the customer's first vehicle/date/driver selection safely without presenting it as a submitted request or confirmed booking.
 
-Status: first-step draft and secure customer-details slices completed locally on 2026-07-19. Protected documents, consent, review, and verified submission steps are pending.
+Status: first-step draft, secure customer-details, and versioned-consent slices completed locally on 2026-07-19. Protected documents, review, and verified submission steps are pending.
 
 ### Completed first-step scope
 
@@ -220,12 +220,17 @@ Status: first-step draft and secure customer-details slices completed locally on
 - Trusted name/email/phone snapshots come from the authenticated server session rather than browser input.
 - Reservation snapshots preserve historical customer contacts while the reusable profile stores the latest non-identity details.
 - Customer-detail responses mask email and phone values and ownership checks return no cross-customer data.
+- Four required consent summaries load from versioned bilingual `PolicyVersion` records.
+- Required consent timestamps and the accepted bundle version are stored on the owned draft.
+- Marketing consent is separate, optional, false by default, and never required to continue.
+- Stale or incomplete policy bundles fail closed instead of recording ambiguous consent.
+- The seeded policy bundle is explicitly development-only and must be replaced by approved legal copy before production submission is enabled.
 
 ### Remaining scope
 
 - Verified contact review before final submission.
 - Configurable required-document rules and private document upload flow.
-- Terms, privacy, document, and operational consent capture with policy versions.
+- Approved production legal copy to replace the development-only consent bundle.
 - Final review and verified transition from `DRAFT` to `PENDING_REVIEW`.
 - Availability recheck, notification outbox events, customer draft listing, and expiry/abandonment handling.
 
@@ -242,7 +247,8 @@ Status: first-step draft and secure customer-details slices completed locally on
 - Unit coverage for future dates, minimum duration, customer role, and driver-policy rules.
 - Unit coverage for trusted-session snapshots and cross-customer ownership rejection.
 - API integration coverage for session-cookie authorization, `DRAFT` status, masked customer details, and missing ownership.
-- Static bilingual UI coverage for the draft/not-confirmed copy, step-two fields, privacy exclusions, and same-origin API calls.
+- Consent bundle/version tests, stale-version rejection, required-consent validation, and optional-marketing coverage.
+- Static bilingual UI coverage for draft/not-confirmed copy, customer fields, separate consent controls, privacy exclusions, and same-origin API calls.
 
 ## Decisions not blocking Milestone 1
 

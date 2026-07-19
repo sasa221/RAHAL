@@ -71,6 +71,8 @@ Document bytes must never be stored in PostgreSQL.
 
 The current `Reservation` model now stores optional name, email, phone, nationality, address, emergency-contact, and completion-time snapshots for the authenticated draft owner. No identity-document number is stored in these snapshot fields. A reviewed migration adds the nullable fields so existing drafts remain valid.
 
+The existing consent timestamps now record required terms, privacy, document-processing, and operational consent together with `termsVersion`. `marketingConsentAt` remains nullable and independent. Active bilingual consent text is selected from `PolicyVersion`; the current seed is development-only rather than approved production legal copy.
+
 ## Notifications
 
 - `notifications`: in-app notification records.

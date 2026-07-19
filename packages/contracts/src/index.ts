@@ -80,6 +80,24 @@ export type ReservationCustomerDetails = {
   completedAt: string;
 };
 
+export type ReservationConsentBundle = {
+  version: string;
+  developmentOnly: boolean;
+  policies: Array<{
+    key: "RENTAL_TERMS" | "PRIVACY" | "DOCUMENT_PROCESSING" | "RESERVATION_PROCESS";
+    title: string;
+    body: string;
+  }>;
+};
+
+export type ReservationConsents = {
+  draftId: string;
+  reference: string;
+  policyVersion: string;
+  requiredAcceptedAt: string;
+  marketingAccepted: boolean;
+};
+
 export type BranchSummary = {
   id: string;
   nameAr: string;

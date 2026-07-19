@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   dateInputValue,
   formatEgp,
@@ -38,6 +38,19 @@ const requestCopy = {
     detailsSaved: "تم حفظ بيانات العميل بأمان",
     detailsFailed: "تعذر حفظ بيانات العميل. حاول مرة أخرى.",
     protectedContact: "بيانات التواصل المحفوظة",
+    stepThree: "الخطوة 3 من 6: الموافقات",
+    consentsTitle: "راجع نسخة السياسات ووافق بوضوح",
+    consentsCopy: "كل موافقة إلزامية منفصلة ومسجلة مع رقم النسخة. موافقة التسويق اختيارية دائمًا.",
+    developmentPolicy: "نسخة تطويرية للمعاينة وليست النص القانوني النهائي للإطلاق.",
+    acceptPolicy: "أوافق على هذه السياسة",
+    marketingConsent: "أوافق اختياريًا على رسائل وعروض رحال التسويقية",
+    saveConsents: "احفظ الموافقات",
+    savingConsents: "جارٍ حفظ الموافقات...",
+    consentsSaved: "تم حفظ الموافقات المطلوبة",
+    consentsFailed: "تعذر حفظ الموافقات. راجع النسخة وحاول مرة أخرى.",
+    policiesLoading: "جارٍ تحميل السياسات...",
+    policiesFailed: "تعذر تحميل حزمة السياسات الحالية.",
+    documentsNext: "الخطوة التالية هي المستندات الخاصة. المسودة لم تُرسل للمبيعات بعد.",
     title: "ابدأ طلب الحجز",
     copy: "راجع اختيار العربية والمواعيد ونظام السائق، وبعدها احفظ الخطوة الأولى بأمان في حسابك.",
     step: "الخطوة 1 من 6: المواعيد",
@@ -89,6 +102,20 @@ const requestCopy = {
     detailsSaved: "Customer details saved securely",
     detailsFailed: "Customer details could not be saved. Please try again.",
     protectedContact: "Saved contact details",
+    stepThree: "Step 3 of 6: consent",
+    consentsTitle: "Review the policy version and consent clearly",
+    consentsCopy:
+      "Every required consent is separate and recorded with its version. Marketing consent is always optional.",
+    developmentPolicy: "Development preview only; this is not the final production legal text.",
+    acceptPolicy: "I agree to this policy",
+    marketingConsent: "I optionally agree to Rahal marketing messages and offers",
+    saveConsents: "Save consents",
+    savingConsents: "Saving consents...",
+    consentsSaved: "Required consents saved",
+    consentsFailed: "Consents could not be saved. Review the version and try again.",
+    policiesLoading: "Loading policies...",
+    policiesFailed: "The current policy bundle could not be loaded.",
+    documentsNext: "Private documents are next. The draft has not been sent to sales yet.",
     title: "Start reservation request",
     copy: "Review the selected vehicle, dates, and driver option, then securely save this first step to your account.",
     step: "Step 1 of 6: rental dates",
@@ -194,6 +221,20 @@ export function ReservationStart({
     phoneMasked: string;
     emergencyContactPhoneMasked: string;
   } | null>(null);
+  const [consentBundle, setConsentBundle] = useState<{
+    version: string;
+    developmentOnly: boolean;
+    policies: Array<{ key: string; title: string; body: string }>;
+  } | null>(null);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [acceptedPolicies, setAcceptedPolicies] = useState<Record<string, boolean>>({});
+  const [marketingAccepted, setMarketingAccepted] = useState(false);
+  const [savingConsents, setSavingConsents] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [savedConsents, setSavedConsents] = useState<{
+    policyVersion: string;
+    marketingAccepted: boolean;
+  } | null>(null);
   const selectionParams = new URLSearchParams({
     vehicle: vehicle.id,
     pickup,
@@ -204,6 +245,30 @@ export function ReservationStart({
   const backParams = new URLSearchParams(selectionParams);
   backParams.delete("vehicle");
   const backHref = `${localizedPath(locale, "/cars")}/${vehicle.id}?${backParams.toString()}`;
+
+  useEffect(() => {
+    if (!savedDetails) return;
+    const controller = new AbortController();
+    setPolicyError(null);
+    fetch(`/api/reservations/consent-policies/${locale}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          data?: {
+            version: string;
+            developmentOnly: boolean;
+            policies: Array<{ key: string; title: string; body: string }>;
+          };
+        };
+        if (!response.ok || !payload.data) throw new Error("policy bundle unavailable");
+        setConsentBundle(payload.data);
+        setAcceptedPolicies({});
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setPolicyError(copy.policiesFailed);
+      });
+    return () => controller.abort();
+  }, [copy.policiesFailed, locale, savedDetails]);
 
   function resetSavedDraft() {
     setReviewing(false);
@@ -292,6 +357,45 @@ export function ReservationStart({
     }
   }
 
+  async function savePolicyConsents(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!savedDraft || !consentBundle) return;
+    setSavingConsents(true);
+    setConsentError(null);
+    const accepted = (key: string) => acceptedPolicies[key] === true;
+    try {
+      const response = await fetch(
+        `/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/consents`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            policyVersion: consentBundle.version,
+            termsAccepted: accepted("RENTAL_TERMS"),
+            privacyAccepted: accepted("PRIVACY"),
+            documentAccepted: accepted("DOCUMENT_PROCESSING"),
+            operationalAccepted: accepted("RESERVATION_PROCESS"),
+            marketingAccepted,
+          }),
+        },
+      );
+      const payload = (await response.json()) as {
+        data?: { policyVersion: string; marketingAccepted: boolean };
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.data) {
+        setConsentError(payload.error?.message ?? copy.consentsFailed);
+        return;
+      }
+      setSavedConsents(payload.data);
+    } catch {
+      setConsentError(copy.consentsFailed);
+    } finally {
+      setSavingConsents(false);
+    }
+  }
+
   return (
     <div
       className="public-site public-inner-page reservation-experience-page"
@@ -345,12 +449,17 @@ export function ReservationStart({
 
           <div className="reservation-stage__workspace">
             <header className="reservation-page__intro" data-reveal>
-              <span className="eyebrow">{savedDraft ? copy.stepTwo : copy.step}</span>
+              <span className="eyebrow">
+                {savedDetails ? copy.stepThree : savedDraft ? copy.stepTwo : copy.step}
+              </span>
               <h1>{copy.title}</h1>
               <p>{copy.copy}</p>
               <div className="reservation-progress" aria-label={copy.step}>
                 {Array.from({ length: 6 }, (_, index) => (
-                  <span className={index <= (savedDraft ? 1 : 0) ? "is-active" : ""} key={index}>
+                  <span
+                    className={index <= (savedDetails ? 2 : savedDraft ? 1 : 0) ? "is-active" : ""}
+                    key={index}
+                  >
                     <b>{String(index + 1).padStart(2, "0")}</b>
                   </span>
                 ))}
@@ -600,6 +709,77 @@ export function ReservationStart({
                         </div>
                       ) : null}
                       {detailsError ? <p>{detailsError}</p> : null}
+                    </form>
+                  ) : null}
+                  {savedDetails ? (
+                    <form className="reservation-form" onSubmit={savePolicyConsents}>
+                      <div className="reservation-form-heading">
+                        <span>03</span>
+                        <div>
+                          <h2>{copy.consentsTitle}</h2>
+                          <p>{copy.consentsCopy}</p>
+                        </div>
+                      </div>
+                      {!consentBundle && !policyError ? <p>{copy.policiesLoading}</p> : null}
+                      {policyError ? <p>{policyError}</p> : null}
+                      {consentBundle ? (
+                        <>
+                          {consentBundle.developmentOnly ? (
+                            <div className="reservation-assurance__notice">
+                              {copy.developmentPolicy} · {consentBundle.version}
+                            </div>
+                          ) : null}
+                          {consentBundle.policies.map((policy) => (
+                            <label className="reservation-assurance__notice" key={policy.key}>
+                              <strong>{policy.title}</strong>
+                              <p>{policy.body}</p>
+                              <span>
+                                <input
+                                  checked={acceptedPolicies[policy.key] === true}
+                                  onChange={(event) => {
+                                    setAcceptedPolicies((current) => ({
+                                      ...current,
+                                      [policy.key]: event.target.checked,
+                                    }));
+                                    setSavedConsents(null);
+                                  }}
+                                  required
+                                  type="checkbox"
+                                />{" "}
+                                {copy.acceptPolicy}
+                              </span>
+                            </label>
+                          ))}
+                          <label className="reservation-assurance__notice">
+                            <input
+                              checked={marketingAccepted}
+                              onChange={(event) => {
+                                setMarketingAccepted(event.target.checked);
+                                setSavedConsents(null);
+                              }}
+                              type="checkbox"
+                            />{" "}
+                            {copy.marketingConsent}
+                          </label>
+                          <button
+                            className="button button--dark"
+                            disabled={savingConsents}
+                            type="submit"
+                          >
+                            {savingConsents ? copy.savingConsents : copy.saveConsents}
+                            <Icon name="arrow" size={18} />
+                          </button>
+                        </>
+                      ) : null}
+                      {savedConsents ? (
+                        <div className="reservation-assurance__notice">
+                          <strong>{copy.consentsSaved}</strong>
+                          <p>
+                            {savedConsents.policyVersion} · {copy.documentsNext}
+                          </p>
+                        </div>
+                      ) : null}
+                      {consentError ? <p>{consentError}</p> : null}
                     </form>
                   ) : null}
                 </div>

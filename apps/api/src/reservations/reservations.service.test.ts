@@ -176,4 +176,67 @@ describe("reservation draft service", () => {
       }),
     ).rejects.toThrow("The reservation draft was not found.");
   });
+
+  it("builds a consent bundle only when every policy has the same version", async () => {
+    const policyKeys = ["RENTAL_TERMS", "PRIVACY", "DOCUMENT_PROCESSING", "RESERVATION_PROCESS"];
+    const service = new ReservationsService(
+      {} as never,
+      {
+        findConsentPolicies: vi.fn().mockResolvedValue(
+          policyKeys.map((policyKey) => ({
+            policyKey,
+            version: "DEV-2026-07-19",
+            title: `${policyKey} title`,
+            body: `${policyKey} body`,
+          })),
+        ),
+      } as never,
+    );
+
+    await expect(service.getConsentBundle("en")).resolves.toMatchObject({
+      version: "DEV-2026-07-19",
+      developmentOnly: true,
+      policies: expect.arrayContaining([expect.objectContaining({ key: "PRIVACY" })]),
+    });
+  });
+
+  it("rejects stale consent versions and requires completed customer details", async () => {
+    const user = {
+      id: "customer-1",
+      role: "CUSTOMER",
+      preferredLocale: "en",
+    };
+    const service = new ReservationsService(
+      { getSession: vi.fn().mockResolvedValue({ user }) } as never,
+      {
+        findOwnedDraft: vi.fn().mockResolvedValue({
+          id: "draft-1",
+          reference: "RHL-2026-123456",
+          customerDetailsCompletedAt: new Date(),
+        }),
+        findConsentPolicies: vi.fn().mockResolvedValue(
+          ["RENTAL_TERMS", "PRIVACY", "DOCUMENT_PROCESSING", "RESERVATION_PROCESS"].map(
+            (policyKey) => ({
+              policyKey,
+              version: "DEV-2026-07-19",
+              title: "Policy",
+              body: "Development policy body",
+            }),
+          ),
+        ),
+        saveConsents: vi.fn(),
+      } as never,
+    );
+
+    await expect(
+      service.saveConsents("session-token", "draft-1", {
+        policyVersion: "OLD-VERSION",
+        termsAccepted: true,
+        privacyAccepted: true,
+        documentAccepted: true,
+        operationalAccepted: true,
+        marketingAccepted: false,
+      }),
+    ).rejects.toThrow("The policy version changed.");
+  });
 });

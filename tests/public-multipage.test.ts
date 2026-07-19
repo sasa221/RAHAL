@@ -90,6 +90,8 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("event.preventDefault()");
     expect(reservation).toContain('fetch("/api/reservations/drafts"');
     expect(reservation).toContain("/customer-details`");
+    expect(reservation).toContain("/consent-policies/${locale}");
+    expect(reservation).toContain("/consents`");
     expect(reservation).toContain('credentials: "include"');
     expect(reservation).toContain("This is only a draft");
     expect(reservation).toContain("It is not a submitted request or a confirmed booking");
@@ -99,6 +101,9 @@ describe("public multi-page experience", () => {
     expect(reservation).not.toContain("passportNumber");
     expect(reservation).toContain("emailMasked");
     expect(reservation).toContain("phoneMasked");
+    expect(reservation).toContain("marketingAccepted");
+    expect(reservation).toContain("developmentOnly");
+    expect(reservation).toContain('type="checkbox"');
     expect(reservation).toContain("requestedPickup");
     expect(reservation).toContain("requestedReturn");
     expect(reservation).toContain("addDays(pickup || minimumDate, vehicle.minimumDays)");

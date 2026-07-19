@@ -6,6 +6,45 @@ const prisma = createPrismaClient(
 );
 
 const branchId = "demo-branch-cairo";
+const consentVersion = "DEV-2026-07-19";
+
+const consentPolicies = [
+  {
+    policyKey: "RENTAL_TERMS",
+    titleAr: "ملخص شروط الطلب — نسخة تطويرية",
+    titleEn: "Request terms summary — development version",
+    bodyAr:
+      "إرسال الطلب لا يؤكد الحجز. التأكيد النهائي يحتاج مراجعة المبيعات والحضور للفرع وتسجيل العربون وتوقيع المستندات.",
+    bodyEn:
+      "Submitting a request does not confirm a booking. Final confirmation requires sales review, branch attendance, deposit recording, and signed documents.",
+  },
+  {
+    policyKey: "PRIVACY",
+    titleAr: "ملخص الخصوصية — نسخة تطويرية",
+    titleEn: "Privacy summary — development version",
+    bodyAr:
+      "تستخدم رحال بيانات الحساب والطلب لتشغيل ومراجعة طلب التأجير، مع تقييد الوصول حسب الدور والصلاحيات.",
+    bodyEn:
+      "Rahal uses account and request data to operate and review the rental request, with access restricted by role and permission.",
+  },
+  {
+    policyKey: "DOCUMENT_PROCESSING",
+    titleAr: "معالجة المستندات — نسخة تطويرية",
+    titleEn: "Document processing — development version",
+    bodyAr:
+      "تُرفع المستندات المطلوبة لاحقًا إلى تخزين خاص، ولا تظهر أرقام الهوية الكاملة في الشاشات العادية.",
+    bodyEn:
+      "Required documents will be uploaded later to private storage, and full identity numbers are not shown in normal screens.",
+  },
+  {
+    policyKey: "RESERVATION_PROCESS",
+    titleAr: "إجراءات الطلب — نسخة تطويرية",
+    titleEn: "Request process — development version",
+    bodyAr: "الاستلام والإرجاع من فرع رحال فقط، والأسعار بالجنيه المصري، ولا يوجد دفع إلكتروني.",
+    bodyEn:
+      "Pickup and return are at the Rahal branch only, prices are in EGP, and no online payment is supported.",
+  },
+] as const;
 
 const vehicles = [
   [
@@ -115,6 +154,33 @@ const vehicles = [
 ] as const;
 
 async function main() {
+  for (const policy of consentPolicies) {
+    for (const locale of ["ar", "en"] as const) {
+      await prisma.policyVersion.upsert({
+        where: {
+          policyKey_version_locale: {
+            policyKey: policy.policyKey,
+            version: consentVersion,
+            locale,
+          },
+        },
+        update: {
+          title: locale === "ar" ? policy.titleAr : policy.titleEn,
+          body: locale === "ar" ? policy.bodyAr : policy.bodyEn,
+          retiredAt: null,
+        },
+        create: {
+          policyKey: policy.policyKey,
+          version: consentVersion,
+          locale,
+          title: locale === "ar" ? policy.titleAr : policy.titleEn,
+          body: locale === "ar" ? policy.bodyAr : policy.bodyEn,
+          effectiveAt: new Date("2026-07-19T00:00:00.000Z"),
+        },
+      });
+    }
+  }
+
   await prisma.branch.upsert({
     where: { id: branchId },
     update: {

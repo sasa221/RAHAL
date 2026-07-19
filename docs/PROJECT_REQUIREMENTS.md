@@ -89,6 +89,8 @@ Permissions must be enforced server-side. UI hiding is not authorization.
 
 An authenticated customer may save the dates/vehicle/driver selection as a `DRAFT` before completing verification. A draft is not a submitted request, does not notify sales, and does not reserve availability. Submission to `PENDING_REVIEW` remains blocked until both email and phone are verified and the required consent/document steps are complete.
 
+Required consent must be recorded separately for rental terms, privacy, private-document processing, and reservation operations against the exact active bilingual policy bundle version. Marketing consent is optional and must remain false unless the customer explicitly selects it. Development policy copy cannot enable production submission.
+
 The customer wizard contains:
 
 - Dates and Rahal branch pickup/return.

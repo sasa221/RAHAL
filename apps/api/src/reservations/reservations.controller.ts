@@ -1,8 +1,18 @@
-import { Body, Controller, Param, Post, Req } from "@nestjs/common";
-import type { ApiSuccess, ReservationCustomerDetails, ReservationDraft } from "@rahal/contracts";
+import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import type {
+  ApiSuccess,
+  ReservationConsentBundle,
+  ReservationConsents,
+  ReservationCustomerDetails,
+  ReservationDraft,
+} from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
-import { SaveReservationCustomerDetailsDto, SaveReservationDraftDto } from "./reservations.dto";
+import {
+  SaveReservationConsentsDto,
+  SaveReservationCustomerDetailsDto,
+  SaveReservationDraftDto,
+} from "./reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
 @Controller("reservations")
@@ -26,5 +36,21 @@ export class ReservationsController {
     return {
       data: await this.reservations.saveCustomerDetails(readAuthCookie(request), id, input),
     };
+  }
+
+  @Get("consent-policies/:locale")
+  async consentPolicies(
+    @Param("locale") locale: string,
+  ): Promise<ApiSuccess<ReservationConsentBundle>> {
+    return { data: await this.reservations.getConsentBundle(locale) };
+  }
+
+  @Post("drafts/:id/consents")
+  async saveConsents(
+    @Param("id") id: string,
+    @Body() input: SaveReservationConsentsDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<ReservationConsents>> {
+    return { data: await this.reservations.saveConsents(readAuthCookie(request), id, input) };
   }
 }
