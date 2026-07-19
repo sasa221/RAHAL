@@ -11,6 +11,7 @@ import {
 import type { AuthSession, AuthUser } from "@rahal/contracts";
 import type { VerificationPurpose } from "@rahal/database";
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import nodemailer from "nodemailer";
 import { loadApiConfig } from "../config";
 import { AuthRepository, type AuthUserRecord } from "./auth.repository";
 import type {
@@ -292,6 +293,10 @@ export class AuthService {
     code: string;
     expiresAt: Date;
   }) {
+    if (input.channel === "email" && this.config.verificationGmail) {
+      await this.deliverGmailVerification(input);
+      return;
+    }
     if (input.channel === "email" && this.config.verificationEmail) {
       await this.deliverEmailVerification(input);
       return;
@@ -330,8 +335,41 @@ export class AuthService {
 
   private hasVerificationDelivery(channel: "email" | "phone") {
     return channel === "email"
-      ? Boolean(this.config.verificationEmail || this.config.verificationDelivery)
+      ? Boolean(
+          this.config.verificationGmail ||
+          this.config.verificationEmail ||
+          this.config.verificationDelivery,
+        )
       : Boolean(this.config.verificationWhatsApp || this.config.verificationDelivery);
+  }
+
+  private async deliverGmailVerification(input: {
+    destination: string;
+    locale: string;
+    code: string;
+  }) {
+    const delivery = this.config.verificationGmail;
+    if (!delivery) return;
+    const email = buildVerificationEmail(input);
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: { user: delivery.user, pass: delivery.appPassword },
+      });
+      const result = await transporter.sendMail({
+        from: `RAHAL <${delivery.user}>`,
+        to: input.destination,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+      });
+      if (!result.accepted.length) throw new Error("Gmail rejected the recipient.");
+    } catch {
+      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
+    }
   }
 
   private async deliverEmailVerification(input: {

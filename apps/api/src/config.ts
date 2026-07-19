@@ -12,6 +12,10 @@ type ApiConfig = {
     apiKey: string;
     from: string;
   };
+  verificationGmail?: {
+    user: string;
+    appPassword: string;
+  };
   verificationWhatsApp?: {
     accessToken: string;
     phoneNumberId: string;
@@ -100,6 +104,11 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     ? { apiKey: emailDelivery[0]!, from: emailDelivery[1]! }
     : undefined;
 
+  const gmailDelivery = readCompleteGroup(env, ["GMAIL_SMTP_USER", "GMAIL_SMTP_APP_PASSWORD"]);
+  const verificationGmail = gmailDelivery
+    ? { user: gmailDelivery[0]!, appPassword: gmailDelivery[1]! }
+    : undefined;
+
   const whatsAppDelivery = readCompleteGroup(env, [
     "WHATSAPP_CLOUD_ACCESS_TOKEN",
     "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
@@ -128,6 +137,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     production,
     verificationDelivery,
     verificationEmail,
+    verificationGmail,
     verificationWhatsApp,
   };
 }

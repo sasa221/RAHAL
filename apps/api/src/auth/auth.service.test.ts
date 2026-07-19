@@ -3,9 +3,12 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
+import nodemailer from "nodemailer";
 import { AuthService, hashSessionToken } from "./auth.service";
 import type { AuthRepository, AuthUserRecord } from "./auth.repository";
 import { PasswordService } from "./password.service";
+
+vi.mock("nodemailer", () => ({ default: { createTransport: vi.fn() } }));
 
 const activeUser: AuthUserRecord = {
   id: "customer-1",
@@ -52,6 +55,8 @@ describe("AuthService", () => {
       "VERIFICATION_DELIVERY_WEBHOOK_SECRET",
       "RESEND_API_KEY",
       "VERIFICATION_EMAIL_FROM",
+      "GMAIL_SMTP_USER",
+      "GMAIL_SMTP_APP_PASSWORD",
       "WHATSAPP_CLOUD_ACCESS_TOKEN",
       "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
       "WHATSAPP_AUTH_TEMPLATE_NAME",
@@ -189,6 +194,38 @@ describe("AuthService", () => {
     expect(body.text).toMatch(/\d{6}/);
     expect(result).not.toHaveProperty("code");
     expect(result).not.toHaveProperty("developmentCode");
+  });
+
+  it("sends verification to any user address through Gmail SMTP when configured", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    delete process.env.RESEND_API_KEY;
+    delete process.env.VERIFICATION_EMAIL_FROM;
+    process.env.GMAIL_SMTP_USER = "sender@gmail.com";
+    process.env.GMAIL_SMTP_APP_PASSWORD = "test-app-password";
+    const sendMail = vi.fn().mockResolvedValue({ accepted: [activeUser.email] });
+    vi.mocked(nodemailer.createTransport).mockReturnValue({ sendMail } as never);
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: { ...activeUser, emailVerifiedAt: null },
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    const result = await service.requestVerification("session-token", { channel: "email" }, {});
+
+    expect(nodemailer.createTransport).toHaveBeenCalledWith(
+      expect.objectContaining({ host: "smtp.gmail.com", port: 465, secure: true }),
+    );
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "RAHAL <sender@gmail.com>",
+        to: activeUser.email,
+        html: expect.stringContaining("RAHAL | رحال"),
+      }),
+    );
+    expect(result).not.toHaveProperty("code");
   });
 
   it("sends phone verification through a Meta WhatsApp authentication template", async () => {
