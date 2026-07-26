@@ -608,6 +608,33 @@ Status: implemented and verified locally on 2026-07-26. Preference enforcement b
 - Unit coverage for customer-role boundaries, safe defaults, future birth dates, privacy-bounded audit input, quiet-hour validation, and essential in-app state.
 - Static coverage for owner scoping, immutable verified contacts, marketing separation, audit privacy, and shared bilingual routes.
 
+## Milestone 2D — Administration operations and audit center
+
+### Completed scope
+
+- Live administration overview aggregates open requests, confirmed bookings, active rentals, available fleet, and attention items from the database.
+- Four operational alert categories link administrators to the relevant workspace without exposing customer documents or identity data.
+- A 14-day request activity view and fleet-status distribution replace placeholder business charts.
+- The immutable audit reader is protected by `audit.view`, cursor-paginated, searchable, and filterable by action, entity, and outcome.
+- Audit responses deliberately exclude raw before/after payloads, IP hashes, user agents, customer documents, and full identity values.
+- Shared Arabic and English administration routes support desktop and mobile layouts.
+- Stitch exports remain visual references only; the implementation follows current Egypt/EGP and no-online-payment rules.
+
+### Acceptance criteria
+
+- Only administrators can access the command overview.
+- Audit access requires the explicit `audit.view` permission (administrators retain their global access).
+- The overview contains database-derived values and no hard-coded business totals or dates.
+- Each audit response contains at most 40 entries and exposes only bounded operational metadata.
+- Arabic RTL and English LTR provide equivalent capabilities on mobile and desktop.
+- Admin navigation separates the overview from the sales request queue.
+
+### Tests
+
+- Unit coverage for the administrator boundary, aggregate mapping, audit permission enforcement, pagination cap, and privacy-bounded output.
+- Full repository formatting, lint, tests, typecheck, and production build.
+- Browser verification at desktop and mobile sizes against the Stitch administration references.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

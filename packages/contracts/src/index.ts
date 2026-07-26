@@ -634,6 +634,57 @@ export type StaffAdminOverview = {
   };
 };
 
+export type AdminOperationsMetric = {
+  key:
+    | "OPEN_REQUESTS"
+    | "CONFIRMED_BOOKINGS"
+    | "ACTIVE_RENTALS"
+    | "AVAILABLE_VEHICLES"
+    | "ATTENTION_REQUIRED";
+  value: number;
+};
+
+export type AdminOperationsTrendPoint = {
+  date: string;
+  submitted: number;
+  completed: number;
+};
+
+export type AdminOperationsAlert = {
+  key: "OVERDUE_RENTALS" | "EXPIRING_PREAPPROVALS" | "FAILED_DELIVERIES" | "PENDING_REVIEWS";
+  count: number;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  href: string;
+};
+
+export type AdminAuditEntry = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  actorName: string;
+  actorRole: string | null;
+  reason: string | null;
+  succeeded: boolean;
+  createdAt: string;
+};
+
+export type AdminOperationsOverview = {
+  metrics: AdminOperationsMetric[];
+  trend: AdminOperationsTrendPoint[];
+  fleet: Array<{ status: VehicleOperationalStatus; count: number }>;
+  alerts: AdminOperationsAlert[];
+  recentActivity: AdminAuditEntry[];
+  generatedAt: string;
+};
+
+export type AdminAuditPage = {
+  items: AdminAuditEntry[];
+  nextCursor: string | null;
+  availableActions: string[];
+  availableEntityTypes: string[];
+};
+
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type CustomerReview = {

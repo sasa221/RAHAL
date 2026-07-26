@@ -10,6 +10,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { StaffModule } from "./staff/staff.module";
 import { ReviewsModule } from "./reviews/reviews.module";
 import { AccountModule } from "./account/account.module";
+import { AdminOperationsModule } from "./admin-operations/admin-operations.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AccountModule } from "./account/account.module";
     StaffModule,
     ReviewsModule,
     AccountModule,
+    AdminOperationsModule,
   ],
   controllers: [HealthController],
 })
