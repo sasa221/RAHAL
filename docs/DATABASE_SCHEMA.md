@@ -144,6 +144,8 @@ Password recovery uses the existing `VerificationCode` rows with `purpose = RESE
 
 Completed-rental feedback uses the existing unique `Review.reservationId` relationship. `ReviewStatus` separates `PENDING`, `APPROVED`, and `REJECTED`; moderator identity, note, and timestamp make the decision attributable, while `approvedAt` remains the explicit publication timestamp. Indexes support the moderation queue and approved vehicle review reads. The migration backfills legacy rows with `approvedAt` as approved and leaves all other legacy rows pending.
 
+Customer account preferences reuse the unique `NotificationPreference.userId` relationship. Self-service upserts keep `inAppEnabled = true`; Email, WhatsApp, Push, marketing consent, and optional paired quiet-hour strings remain independent. Profile defaults live on `User`, while submitted reservations continue using immutable customer snapshot fields so later account edits cannot rewrite operational history.
+
 `AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
 
 ## Constraints and indexes

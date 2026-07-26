@@ -175,6 +175,12 @@ Reviews start as `PENDING`. Only administrators and super administrators can con
 
 The public read model queries approved rows only and projects rating, comment, localized vehicle name, publication time, and a reduced customer display name. It never selects contact details, identity data, documents, storage keys, staff notes, or the reservation timeline. The administrator read model adds operational counts but remains metadata-only.
 
+## Customer profile and preference architecture
+
+Customer self-service is an owner-scoped read/update boundary separate from authentication and reservation snapshots. Verified email and phone are returned for the signed-in owner but are not accepted by the profile DTO. Profile changes update future account defaults only; previously submitted reservations retain their point-in-time customer snapshots.
+
+Sensitive profile audit events contain the names of changed fields, not their previous or new values. Communication preferences are less sensitive and use a bounded before/after audit record. In-app remains an essential operational channel. Email, WhatsApp, Push, marketing consent, and quiet hours are stored independently; delivery workers must read these settings before creating optional external attempts. Important legally or operationally required behavior still needs approved policy before provider rollout.
+
 ## Document security architecture
 
 - Browser uploads should use short-lived, server-authorized upload flows.

@@ -22,6 +22,7 @@ const shellCopy = {
     fleet: "السيارات",
     staff: "الفريق والصلاحيات",
     reviews: "تقييمات العملاء",
+    profile: "الملف والتفضيلات",
     security: "أمان الحساب",
     newRequest: "طلب جديد",
     publicSite: "الموقع الرئيسي",
@@ -44,6 +45,7 @@ const shellCopy = {
     fleet: "Fleet",
     staff: "Staff & access",
     reviews: "Customer reviews",
+    profile: "Profile & preferences",
     security: "Account security",
     newRequest: "New request",
     publicSite: "Public website",
@@ -65,7 +67,7 @@ export function WorkspaceShell({
   children: ReactNode;
   kind: WorkspaceKind;
   locale: PublicLocale;
-  activePage?: "overview" | "fleet" | "staff" | "reviews" | "security";
+  activePage?: "overview" | "fleet" | "staff" | "reviews" | "profile" | "security";
 }) {
   const text = shellCopy[locale];
   const isStaff = kind !== "customer";
@@ -87,7 +89,9 @@ export function WorkspaceShell({
                 : "/en/sales"
         : activePage === "security"
           ? "/en/account/security"
-          : "/en/account/requests"
+          : activePage === "profile"
+            ? "/en/account/profile"
+            : "/en/account/requests"
       : isStaff
         ? activePage === "fleet"
           ? "/fleet"
@@ -100,7 +104,9 @@ export function WorkspaceShell({
                 : "/sales"
         : activePage === "security"
           ? "/account/security"
-          : "/account/requests";
+          : activePage === "profile"
+            ? "/account/profile"
+            : "/account/requests";
   const navigation = isStaff
     ? [
         [text.overview, currentHref, "document"],
@@ -119,8 +125,27 @@ export function WorkspaceShell({
         [text.overview, currentHref, "document"],
         [text.requests, `${currentHref}#requests`, "calendar"],
         [text.fleet, localizedPath(locale, "/cars"), "car"],
+        [text.profile, localizedPath(locale, "/account/profile"), "users"],
         [text.security, localizedPath(locale, "/account/security"), "document"],
       ];
+  const activeTarget =
+    activePage === "fleet"
+      ? fleetHref
+      : activePage === "staff"
+        ? localizedPath(locale, "/admin/staff")
+        : activePage === "reviews"
+          ? localizedPath(locale, "/admin/reviews")
+          : activePage === "profile"
+            ? localizedPath(locale, "/account/profile")
+            : activePage === "security"
+              ? localizedPath(locale, "/account/security")
+              : currentHref;
+  const mobileNavigation =
+    activePage === "reviews"
+      ? navigation.filter((_, index) => index !== 3).slice(0, 4)
+      : activePage === "security" && !isStaff
+        ? navigation.filter((_, index) => index !== 3).slice(0, 4)
+        : navigation.slice(0, 4);
 
   useEffect(() => {
     if (!isStaff || kind === "admin") return;
@@ -172,16 +197,9 @@ export function WorkspaceShell({
         </a>
 
         <nav aria-label={kind === "sales" ? text.salesBrand : text.customerBrand}>
-          {navigation.map(([label, href, icon], index) => (
+          {navigation.map(([label, href, icon]) => (
             <a
-              className={
-                (activePage === "overview" && index === 0) ||
-                (activePage === "fleet" && index === 2) ||
-                ((activePage === "staff" || activePage === "security") && index === 3) ||
-                (activePage === "reviews" && index === 4)
-                  ? "is-active"
-                  : ""
-              }
+              className={href === activeTarget ? "is-active" : ""}
               href={href}
               key={`${label}-${href}`}
             >
@@ -219,7 +237,9 @@ export function WorkspaceShell({
             <NotificationCenter kind={isStaff ? "sales" : "customer"} locale={locale} />
             <a href={localizedPath(locale)}>{text.publicSite}</a>
             <a href={languageHref}>{text.language}</a>
-            <a href={localizedPath(locale, "/account/security")}>{text.account}</a>
+            <a href={localizedPath(locale, isStaff ? "/account/security" : "/account/profile")}>
+              {text.account}
+            </a>
           </nav>
         </header>
         <main>{children}</main>
@@ -229,19 +249,9 @@ export function WorkspaceShell({
         className="portal-bottom-nav"
         aria-label={kind === "sales" ? text.salesBrand : text.customerBrand}
       >
-        {(activePage === "reviews"
-          ? navigation.filter((_, index) => index !== 3).slice(0, 4)
-          : navigation.slice(0, 4)
-        ).map(([label, href, icon], index) => (
+        {mobileNavigation.map(([label, href, icon]) => (
           <a
-            className={
-              (activePage === "overview" && index === 0) ||
-              (activePage === "fleet" && index === 2) ||
-              ((activePage === "staff" || activePage === "security") && index === 3) ||
-              (activePage === "reviews" && index === 3)
-                ? "is-active"
-                : ""
-            }
+            className={href === activeTarget ? "is-active" : ""}
             href={href}
             key={`mobile-${label}-${href}`}
           >

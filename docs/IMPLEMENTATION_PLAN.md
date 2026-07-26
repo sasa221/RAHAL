@@ -574,6 +574,40 @@ Status: implemented locally on 2026-07-26. The included database migration must 
 - Unit coverage for completed-rental eligibility, duplicate rejection, incomplete-rental rejection, administrator boundary, required rejection reasons, and public name minimization.
 - Existing static content, directionality, forbidden-content, old-date, and mojibake checks cover the added bilingual routes and components.
 
+## Milestone 14: Customer profile and communication preferences
+
+Goal: complete the customer account workspace with safe self-service profile data and explicit, channel-specific communication choices.
+
+Status: implemented and verified locally on 2026-07-26. Preference enforcement by external delivery workers remains part of the provider integration milestone.
+
+### Completed scope
+
+- Owner-scoped customer account API returns personal profile, verified sign-in contacts, verification state, membership date, and communication preferences.
+- Customers may update names, preferred language, date of birth, nationality, address, and emergency contact details.
+- Verified email and phone remain read-only; changing either requires a future dedicated re-verification workflow.
+- Profile updates audit changed field names only, never old or new address, birth date, nationality, or emergency contact values.
+- In-app notifications remain an essential enabled channel; Email, WhatsApp, Push, and marketing choices are independent.
+- Marketing consent defaults off and remains separate from operational channel preferences.
+- Optional quiet hours require a valid paired `HH:mm` range with different start and end times.
+- Notification preference updates use an owner-keyed upsert and a bounded before/after audit record containing preferences only.
+- Shared `/account/profile` and `/en/account/profile` routes provide profile completeness, verification states, responsive forms, channel controls, quiet hours, and a bridge to account security.
+
+### Acceptance criteria
+
+- Staff accounts and other customers cannot read or change a customer's profile or preferences.
+- Email and phone cannot be changed through this endpoint.
+- In-app operational notifications cannot be disabled.
+- Marketing remains opt-in and can be withdrawn independently.
+- Quiet hours cannot be saved with only one boundary or an identical start/end.
+- Profile audit data contains changed field names only and no personal values.
+- Saving preferences does not claim Email, WhatsApp, or Push delivery when a production provider is not configured.
+- Arabic and English expose the same capabilities on mobile and desktop.
+
+### Tests
+
+- Unit coverage for customer-role boundaries, safe defaults, future birth dates, privacy-bounded audit input, quiet-hour validation, and essential in-app state.
+- Static coverage for owner scoping, immutable verified contacts, marketing separation, audit privacy, and shared bilingual routes.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

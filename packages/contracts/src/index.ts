@@ -701,3 +701,35 @@ export type ReviewModerationResult = {
   status: "APPROVED" | "REJECTED";
   moderatedAt: string;
 };
+
+export type CustomerAccountProfile = {
+  id: string;
+  fullNameAr: string | null;
+  fullNameEn: string;
+  email: string;
+  phone: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  preferredLocale: Locale;
+  dateOfBirth: string | null;
+  nationality: string | null;
+  address: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  memberSince: string;
+};
+
+export type CustomerNotificationPreferences = {
+  inAppEnabled: true;
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  pushEnabled: boolean;
+  marketingEnabled: boolean;
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+};
+
+export type CustomerAccountOverview = {
+  profile: CustomerAccountProfile;
+  notifications: CustomerNotificationPreferences;
+};
