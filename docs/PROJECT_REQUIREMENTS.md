@@ -30,6 +30,8 @@ Remaining configuration work includes maximum rental duration and final producti
 
 Staff access is now database-backed beyond the broad system role. A default Sales Agent role and explicit per-user overrides control reservation review, protected documents, deposits, confirmation, rental operations, and fleet visibility. Administrators have a bilingual staff/role/audit workspace; critical overrides and administrator management remain super-administrator-only, and access changes revoke affected sessions.
 
+Account security now includes non-enumerating password recovery, authenticated password changes, and owner-scoped active-session management. Reset codes are HMAC-only, short-lived, attempt-limited, and delivered through the configured email adapter. Recovery revokes all sessions, while an authenticated change preserves only the current browser session. Browser responses never contain refresh hashes, IP hashes, or raw user-agent strings.
+
 ## Product scope
 
 RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management platform for a car rental company in Egypt.

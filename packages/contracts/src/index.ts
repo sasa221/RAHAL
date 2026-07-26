@@ -418,6 +418,38 @@ export type AuthSession = {
   expiresAt: string;
 };
 
+export type AccountSession = {
+  id: string;
+  current: boolean;
+  deviceLabel: string;
+  browserLabel: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+};
+
+export type AccountSecurityOverview = {
+  sessions: AccountSession[];
+};
+
+export type PasswordResetRequestResult = {
+  accepted: true;
+};
+
+export type PasswordResetResult = {
+  passwordReset: true;
+};
+
+export type PasswordChangeResult = {
+  passwordChanged: true;
+  otherSessionsRevoked: number;
+};
+
+export type SessionRevocationResult = {
+  revoked: number;
+  currentSessionRevoked: boolean;
+};
+
 export type FleetCalendarEventKind =
   "PENDING" | "CONFIRMED" | "ACTIVE" | "MAINTENANCE" | "MANUAL_BLOCK";
 

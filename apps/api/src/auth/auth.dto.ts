@@ -46,3 +46,28 @@ export class ConfirmVerificationDto extends RequestVerificationDto {
   @Matches(/^\d{6}$/, { message: "code must contain exactly six digits" })
   code!: string;
 }
+
+export class RequestPasswordResetDto {
+  @IsString()
+  @MaxLength(254)
+  identifier!: string;
+}
+
+export class ConfirmPasswordResetDto extends RequestPasswordResetDto {
+  @Matches(/^\d{6}$/, { message: "code must contain exactly six digits" })
+  code!: string;
+
+  @IsString()
+  @Length(8, 128)
+  newPassword!: string;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  @Length(1, 128)
+  currentPassword!: string;
+
+  @IsString()
+  @Length(8, 128)
+  newPassword!: string;
+}

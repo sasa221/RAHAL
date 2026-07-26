@@ -21,6 +21,7 @@ const shellCopy = {
     requests: "الطلبات",
     fleet: "السيارات",
     staff: "الفريق والصلاحيات",
+    security: "أمان الحساب",
     newRequest: "طلب جديد",
     publicSite: "الموقع الرئيسي",
     account: "الحساب",
@@ -41,6 +42,7 @@ const shellCopy = {
     requests: "Requests",
     fleet: "Fleet",
     staff: "Staff & access",
+    security: "Account security",
     newRequest: "New request",
     publicSite: "Public website",
     account: "Account",
@@ -61,7 +63,7 @@ export function WorkspaceShell({
   children: ReactNode;
   kind: WorkspaceKind;
   locale: PublicLocale;
-  activePage?: "overview" | "fleet" | "staff";
+  activePage?: "overview" | "fleet" | "staff" | "security";
 }) {
   const text = shellCopy[locale];
   const isStaff = kind !== "customer";
@@ -76,29 +78,39 @@ export function WorkspaceShell({
           ? "/en/fleet"
           : activePage === "staff"
             ? "/en/admin/staff"
-            : "/en/sales"
-        : "/en/account/requests"
+            : activePage === "security"
+              ? "/en/account/security"
+              : "/en/sales"
+        : activePage === "security"
+          ? "/en/account/security"
+          : "/en/account/requests"
       : isStaff
         ? activePage === "fleet"
           ? "/fleet"
           : activePage === "staff"
             ? "/admin/staff"
-            : "/sales"
-        : "/account/requests";
+            : activePage === "security"
+              ? "/account/security"
+              : "/sales"
+        : activePage === "security"
+          ? "/account/security"
+          : "/account/requests";
   const navigation = isStaff
     ? [
         [text.overview, currentHref, "document"],
         [text.requests, `${currentHref}#requests`, "calendar"],
         [text.fleet, fleetHref, "car"],
-        ...(kind === "admin" || canManageStaff
-          ? [[text.staff, localizedPath(locale, "/admin/staff"), "document"]]
-          : [[text.publicSite, localizedPath(locale), "arrow"]]),
+        ...(activePage === "security"
+          ? [[text.security, localizedPath(locale, "/account/security"), "document"]]
+          : kind === "admin" || canManageStaff
+            ? [[text.staff, localizedPath(locale, "/admin/staff"), "document"]]
+            : [[text.publicSite, localizedPath(locale), "arrow"]]),
       ]
     : [
         [text.overview, currentHref, "document"],
         [text.requests, `${currentHref}#requests`, "calendar"],
         [text.fleet, localizedPath(locale, "/cars"), "car"],
-        [text.newRequest, localizedPath(locale, "/cars"), "arrow"],
+        [text.security, localizedPath(locale, "/account/security"), "document"],
       ];
 
   useEffect(() => {
@@ -156,7 +168,7 @@ export function WorkspaceShell({
               className={
                 (activePage === "overview" && index === 0) ||
                 (activePage === "fleet" && index === 2) ||
-                (activePage === "staff" && index === 3)
+                ((activePage === "staff" || activePage === "security") && index === 3)
                   ? "is-active"
                   : ""
               }
@@ -197,7 +209,7 @@ export function WorkspaceShell({
             <NotificationCenter kind={isStaff ? "sales" : "customer"} locale={locale} />
             <a href={localizedPath(locale)}>{text.publicSite}</a>
             <a href={languageHref}>{text.language}</a>
-            <a href={localizedPath(locale, "/auth")}>{text.account}</a>
+            <a href={localizedPath(locale, "/account/security")}>{text.account}</a>
           </nav>
         </header>
         <main>{children}</main>
@@ -212,7 +224,7 @@ export function WorkspaceShell({
             className={
               (activePage === "overview" && index === 0) ||
               (activePage === "fleet" && index === 2) ||
-              (activePage === "staff" && index === 3)
+              ((activePage === "staff" || activePage === "security") && index === 3)
                 ? "is-active"
                 : ""
             }

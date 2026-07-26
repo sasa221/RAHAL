@@ -1,11 +1,27 @@
-import { Body, Controller, Delete, Get, Post, Req, Res } from "@nestjs/common";
-import type { ApiSuccess, AuthSession } from "@rahal/contracts";
+import { Body, Controller, Delete, Get, Param, Post, Req, Res } from "@nestjs/common";
+import type {
+  AccountSecurityOverview,
+  ApiSuccess,
+  AuthSession,
+  PasswordChangeResult,
+  PasswordResetRequestResult,
+  PasswordResetResult,
+  SessionRevocationResult,
+} from "@rahal/contracts";
 import { createHmac } from "node:crypto";
 import type { Request, Response } from "express";
 import { loadApiConfig } from "../config";
 import { authCookieName, readAuthCookie } from "./auth-cookie";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
-import { ConfirmVerificationDto, LoginDto, RegisterDto, RequestVerificationDto } from "./auth.dto";
+import {
+  ChangePasswordDto,
+  ConfirmPasswordResetDto,
+  ConfirmVerificationDto,
+  LoginDto,
+  RegisterDto,
+  RequestPasswordResetDto,
+  RequestVerificationDto,
+} from "./auth.dto";
 import { AuthService, type AuthRequestContext } from "./auth.service";
 
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
@@ -58,6 +74,82 @@ export class AuthController {
     await this.auth.logout(readAuthCookie(request), this.context(request));
     response.clearCookie(authCookieName, this.cookieOptions());
     return { data: { loggedOut: true } };
+  }
+
+  @Get("security")
+  async security(@Req() request: Request): Promise<ApiSuccess<AccountSecurityOverview>> {
+    return { data: await this.auth.securityOverview(readAuthCookie(request)) };
+  }
+
+  @Post("password/change")
+  async changePassword(
+    @Body() input: ChangePasswordDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<PasswordChangeResult>> {
+    const context = this.context(request);
+    this.rateLimits.assertAllowed(
+      `password-change:${context.ipHash ?? "unknown"}`,
+      5,
+      15 * 60 * 1000,
+    );
+    return {
+      data: await this.auth.changePassword(readAuthCookie(request), input, context),
+    };
+  }
+
+  @Post("password-reset/request")
+  async requestPasswordReset(
+    @Body() input: RequestPasswordResetDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<PasswordResetRequestResult>> {
+    const context = this.context(request);
+    this.rateLimits.assertAllowed(
+      `password-reset-request:${context.ipHash ?? "unknown"}`,
+      3,
+      15 * 60 * 1000,
+    );
+    return { data: await this.auth.requestPasswordReset(input, context) };
+  }
+
+  @Post("password-reset/confirm")
+  async confirmPasswordReset(
+    @Body() input: ConfirmPasswordResetDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ApiSuccess<PasswordResetResult>> {
+    const context = this.context(request);
+    this.rateLimits.assertAllowed(
+      `password-reset-confirm:${context.ipHash ?? "unknown"}`,
+      8,
+      15 * 60 * 1000,
+    );
+    const result = await this.auth.confirmPasswordReset(input, context);
+    response.clearCookie(authCookieName, this.cookieOptions());
+    return { data: result };
+  }
+
+  @Delete("security/sessions/others")
+  async revokeOtherSessions(@Req() request: Request): Promise<ApiSuccess<SessionRevocationResult>> {
+    return {
+      data: await this.auth.revokeOtherSessions(readAuthCookie(request), this.context(request)),
+    };
+  }
+
+  @Delete("security/sessions/:id")
+  async revokeSession(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ApiSuccess<SessionRevocationResult>> {
+    const result = await this.auth.revokeOwnedSession(
+      readAuthCookie(request),
+      id,
+      this.context(request),
+    );
+    if (result.currentSessionRevoked) {
+      response.clearCookie(authCookieName, this.cookieOptions());
+    }
+    return { data: result };
   }
 
   @Post("verification/request")

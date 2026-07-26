@@ -156,7 +156,7 @@ Status: completed locally on 2026-07-18. The baseline migration and relative dem
 
 Goal: establish secure customer identity and browser sessions before reservation drafts can be persisted.
 
-Status: account verification slice completed locally on 2026-07-19. Registration, login, current-session lookup, logout, password hashing, opaque session cookies, basic rate limiting, authentication audit writes, bilingual customer access screens, and provider-gated phone/email verification are implemented. Approved production delivery and recovery remain pending.
+Status: account verification and account-security slices are completed locally. Registration, login, verification, password recovery/change, session/device management, opaque session cookies, rate limiting, audit writes, and bilingual access/security screens are implemented. Approved production delivery and staff MFA remain pending.
 
 ### Completed foundation scope
 
@@ -179,10 +179,8 @@ Status: account verification slice completed locally on 2026-07-19. Registration
 ### Remaining scope
 
 - Production Resend domain/API credentials and Meta WhatsApp Business credentials plus approved Arabic/English authentication templates.
-- Password reset and reset-session revocation.
-- Session/device listing and individual/all-device revocation.
-- Customer-facing bilingual password-recovery screens.
 - Shared production rate-limit storage and operational monitoring.
+- Mandatory staff/admin MFA and first-login temporary-password replacement.
 
 ### Acceptance criteria
 
@@ -507,6 +505,41 @@ Status: implemented and verified locally on 2026-07-26. Applying the included pe
 
 - Unit coverage for administrator boundaries, self-protection, critical permission overrides, and explicit-deny precedence.
 - Static coverage for the permission catalog, default role migration, server-side enforcement across sensitive sales operations, session revocation, audit redaction, and bilingual responsive routes.
+
+## Milestone 12: Account recovery and session security
+
+Goal: give every Rahal account a complete password-recovery and browser-session control flow without exposing account existence or sensitive session metadata.
+
+Status: implemented and verified locally on 2026-07-26. Real recovery email delivery uses the configured Gmail, Resend, or signed delivery adapter; production credentials remain an environment deployment requirement.
+
+### Completed scope
+
+- Public reset requests accept email or phone and always return the same accepted response whether the account exists, is blocked, or delivery is unavailable.
+- Known eligible accounts receive a six-digit email code through the existing provider-gated delivery adapters.
+- Reset codes are stored as HMAC digests only, expire after 10 minutes, allow at most five attempts, and are invalidated on resend or provider failure.
+- A successful reset requires a different 8–128 character password, consumes the code, updates the memory-hard password hash, and revokes every active session transactionally.
+- Authenticated password changes verify the current password, require a different new password, preserve the current session, and revoke every other active session.
+- Authenticated users can list safe active-session summaries, end one owned session, or end all other sessions.
+- Session responses expose opaque IDs and derived device/browser labels only; refresh-token hashes, IP hashes, and raw user-agent strings remain server-side.
+- Reset request, confirmation, and password change endpoints have separate rate-limit buckets and immutable audit events.
+- Shared Arabic/English recovery routes at `/auth/recover` and `/en/auth/recover` provide request, code confirmation, mismatch/error, resend, and completion states.
+- Shared Arabic/English security routes at `/account/security` and `/en/account/security` provide password change, active sessions, current-device state, individual/all-other revocation, and mobile-first layouts for customer and staff accounts.
+
+### Acceptance criteria
+
+- Public reset responses cannot be used to determine whether an email or phone is registered.
+- Plaintext recovery codes, passwords, raw session tokens, and IP hashes never appear in API responses or browser state; raw user-agent metadata remains restricted server-side and is projected only into generic device labels.
+- Invalid/expired/reused codes and attempts beyond the limit cannot change a password.
+- Password reset revokes all sessions; authenticated password change preserves only the current session.
+- A user cannot list or revoke another user's session.
+- Revoking the current session clears the browser cookie and returns the user to sign-in.
+- Arabic and English share the same responsive component trees and expose the same security controls.
+
+### Tests
+
+- Unit coverage for safe session projection, hashed-token lookup, current-password verification, other-session revocation, owner-scoped revocation, and generic unknown-account recovery responses.
+- Template coverage for bilingual code-only recovery email content.
+- Static security coverage for endpoint throttling, HMAC-only reset storage, attempt limits, transactional session revocation, metadata exclusions, and bilingual routes.
 
 ## Decisions not blocking Milestone 1
 

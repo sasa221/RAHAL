@@ -140,6 +140,8 @@ The in-app inbox uses `Notification(userId, readAt, createdAt)` and never reads 
 
 The staff-access slice activates the existing `StaffRole`, `Permission`, `StaffRolePermission`, and `UserPermissionOverride` models with a fixed permission catalog. A data migration creates the safe default `Sales Agent` role and attaches only legacy sales users without an assigned role. Role grants are additive; a per-user override is authoritative. Access changes revoke active `Session` rows and append a redacted `AuditLog` in the same transaction. Password hashes and session hashes never enter audit JSON.
 
+Password recovery uses the existing `VerificationCode` rows with `purpose = RESET_PASSWORD`; `codeHash`, `expiresAt`, `attempts`, and `usedAt` provide one-time bounded verification without a new plaintext-token table. Successful recovery updates `User.passwordHash` and revokes every active `Session` transactionally. Authenticated changes revoke every active session except the current row. Session read models select timestamps and user-agent only long enough to derive generic labels; they never select `refreshTokenHash` or `ipHash`.
+
 `AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
 
 ## Constraints and indexes

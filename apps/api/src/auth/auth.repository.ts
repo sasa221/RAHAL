@@ -83,6 +83,92 @@ export class AuthRepository {
     });
   }
 
+  listSessions(userId: string) {
+    return this.prisma.client.session.findMany({
+      where: { userId, status: "ACTIVE", expiresAt: { gt: new Date() } },
+      orderBy: { lastSeenAt: "desc" },
+      select: {
+        id: true,
+        userAgent: true,
+        expiresAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  revokeOwnedSession(userId: string, id: string) {
+    return this.prisma.client.session.updateMany({
+      where: { id, userId, status: "ACTIVE" },
+      data: { status: "REVOKED", revokedAt: new Date() },
+    });
+  }
+
+  revokeOtherSessions(userId: string, currentSessionId: string) {
+    return this.prisma.client.session.updateMany({
+      where: { userId, id: { not: currentSessionId }, status: "ACTIVE" },
+      data: { status: "REVOKED", revokedAt: new Date() },
+    });
+  }
+
+  changePassword(
+    userId: string,
+    passwordHash: string,
+    currentSessionId: string,
+    audit: { ipHash?: string; userAgent?: string },
+  ) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      await transaction.user.update({ where: { id: userId }, data: { passwordHash } });
+      const revoked = await transaction.session.updateMany({
+        where: { userId, id: { not: currentSessionId }, status: "ACTIVE" },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: userId,
+          action: "AUTH_PASSWORD_CHANGE",
+          entityType: "USER",
+          entityId: userId,
+          reason: "ACCOUNT_SECURITY",
+          ...audit,
+          succeeded: true,
+        },
+      });
+      return revoked;
+    });
+  }
+
+  resetPassword(
+    userId: string,
+    verificationId: string,
+    passwordHash: string,
+    audit: { ipHash?: string; userAgent?: string },
+  ) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      await transaction.verificationCode.update({
+        where: { id: verificationId },
+        data: { usedAt: new Date() },
+      });
+      await transaction.user.update({ where: { id: userId }, data: { passwordHash } });
+      const revoked = await transaction.session.updateMany({
+        where: { userId, status: "ACTIVE" },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: userId,
+          action: "AUTH_PASSWORD_RESET_COMPLETE",
+          entityType: "USER",
+          entityId: userId,
+          reason: "ALL_SESSIONS_REVOKED",
+          ...audit,
+          succeeded: true,
+        },
+      });
+      return revoked;
+    });
+  }
+
   invalidateVerificationCodes(userId: string, purpose: VerificationPurpose) {
     return this.prisma.client.verificationCode.updateMany({
       where: { userId, purpose, usedAt: null },

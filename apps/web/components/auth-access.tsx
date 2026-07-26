@@ -30,6 +30,7 @@ const authCopy = {
     identifier: "البريد الإلكتروني أو رقم الهاتف",
     password: "كلمة المرور",
     passwordHint: "8 أحرف على الأقل",
+    forgotPassword: "نسيت كلمة المرور؟",
     loginAction: "دخول آمن",
     registerAction: "إنشاء الحساب",
     working: "جاري التأمين...",
@@ -81,6 +82,7 @@ const authCopy = {
     identifier: "Email address or phone number",
     password: "Password",
     passwordHint: "At least 8 characters",
+    forgotPassword: "Forgot password?",
     loginAction: "Sign in securely",
     registerAction: "Create account",
     working: "Securing session...",
@@ -522,6 +524,11 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                 />
                 {mode === "register" ? <small>{copy.passwordHint}</small> : null}
               </label>
+              {mode === "login" ? (
+                <a className="auth-form__forgot" href={localizedPath(locale, "/auth/recover")}>
+                  {copy.forgotPassword}
+                </a>
+              ) : null}
 
               {error ? (
                 <p className="auth-form__error" role="alert">

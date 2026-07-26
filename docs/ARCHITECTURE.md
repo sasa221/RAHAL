@@ -161,6 +161,12 @@ System roles establish the account boundary, while sales operations require a se
 
 Access changes run transactionally with a bounded `AuditLog` write and active-session revocation. The staff read model returns effective permission keys and a maximum of 100 relevant audit records, but excludes password hashes, session hashes, raw IP/device metadata, customer records, and unrelated audit payloads. Sensitive reservation, protected-document, deposit, confirmation, booking-operation, and fleet reads call the permission service on the backend; the UI is an explanatory control surface, never the authorization boundary.
 
+## Account recovery and session architecture
+
+Password recovery reuses `VerificationCode` with the dedicated `RESET_PASSWORD` purpose. The six-digit value is delivered only through a configured email adapter and stored only as an HMAC bound to user, purpose, and code. Public request responses are deliberately generic. Confirmation consumes the code, changes the password hash, and revokes all active sessions in one transaction. Authenticated password change verifies the current memory-hard hash and preserves only the current session.
+
+Session management reads active, unexpired rows by authenticated owner. Browser contracts receive an opaque session ID, timestamps, current-session flag, and server-derived generic device/browser labels. Refresh hashes, IP hashes, and raw user-agent strings remain private. Individual revocation includes both session ID and owner ID in its mutation predicate; all-other revocation excludes the current session explicitly.
+
 ## Document security architecture
 
 - Browser uploads should use short-lived, server-authorized upload flows.
