@@ -493,7 +493,9 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
         if (response.status === 403) return setError("FORBIDDEN");
         if (!response.ok || !payload.data) return setError("GENERAL");
         setQueue(payload.data);
-        if (payload.data.length > 0) void openReview(payload.data[0]!.id);
+        const requestedId = new URLSearchParams(window.location.search).get("request");
+        const initial = payload.data.find((item) => item.id === requestedId) ?? payload.data[0];
+        if (initial) void openReview(initial.id);
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === "AbortError") return;

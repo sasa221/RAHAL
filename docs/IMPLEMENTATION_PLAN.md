@@ -441,6 +441,38 @@ Status: completed locally on 2026-07-26 for the configured private-storage adapt
 
 - Static security coverage for POST-only streaming, no-store headers, assignment checks, access reasons, audit success/failure, safe path resolution, review transitions, replacement gating, and bilingual UI.
 
+## Milestone 10: In-app notification center
+
+Goal: surface the notifications already written by reservation, document, booking, and rental transactions in one secure bilingual workspace experience.
+
+Status: completed locally on 2026-07-26. External Email, WhatsApp, and Push delivery still requires the approved production providers and outbox worker.
+
+### Completed scope
+
+- Authenticated inbox API returns the latest 50 non-archived notifications for the session owner only.
+- Titles and bodies are localized on the server using the authenticated user's preferred locale.
+- Responses include only presentation fields, importance, read state, timestamp, and an optional reservation target; outbox payloads and provider delivery errors remain private.
+- Unread count is computed independently of the bounded list.
+- Individual and mark-all read actions are owner-scoped and idempotent.
+- The shared customer/sales/fleet shell includes one Arabic/English notification trigger, unread badge, drawer, important state, loading/empty/error states, and mark-all control.
+- The inbox refreshes every 30 seconds and when a background tab becomes visible, with no-store fetches and no aggressive polling.
+- Reservation notifications open the exact customer or staff request through an opaque reservation identifier.
+- Desktop uses a side drawer; mobile uses the same bounded, touch-friendly reading surface.
+
+### Acceptance criteria
+
+- A user cannot list or mark another user's notifications.
+- The API never returns another recipient, provider identifier, delivery error, outbox payload, or customer data.
+- Reading the same notification twice remains successful and does not change its original read timestamp.
+- The unread badge cannot grow beyond a readable `99+` display.
+- Polling stops when the shell unmounts and refreshes immediately when the tab becomes visible.
+- Email, WhatsApp, and Push are not shown as delivered unless their production worker and provider callbacks confirm delivery.
+
+### Tests
+
+- Service tests for localization, owner scoping, not-found privacy, individual read, and mark-all.
+- Static coverage for bounded queries, safe contracts, bilingual shared UI, polling cleanup, no-store requests, unread/important states, and exact request navigation.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

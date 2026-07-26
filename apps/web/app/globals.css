@@ -1546,6 +1546,318 @@ body {
   border-radius: 7px;
 }
 
+.notification-center {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.notification-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(24, 24, 21, 0.14);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.62);
+  color: #181815;
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.notification-trigger:hover,
+.notification-trigger[aria-expanded="true"] {
+  border-color: #a6741f;
+  color: #a6741f;
+  transform: translateY(-2px);
+}
+
+.notification-trigger svg {
+  width: 19px;
+  height: 19px;
+}
+
+.notification-trigger > span {
+  position: absolute;
+  inset-block-start: -5px;
+  inset-inline-end: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border: 2px solid #f5f1e8;
+  border-radius: 999px;
+  background: #a44e3d;
+  color: #fff;
+  padding-inline: 4px;
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.notification-backdrop {
+  position: fixed;
+  z-index: 89;
+  inset: 0;
+  border: 0;
+  background: rgba(13, 13, 11, 0.28);
+  cursor: default;
+  backdrop-filter: blur(2px);
+}
+
+.notification-drawer {
+  position: fixed;
+  z-index: 90;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: min(460px, 94vw);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(216, 184, 111, 0.15), transparent 30%), #f4f0e7;
+  color: #181815;
+  box-shadow: -28px 0 80px rgba(20, 18, 13, 0.2);
+  animation: notification-enter 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[dir="rtl"] .notification-drawer {
+  box-shadow: 28px 0 80px rgba(20, 18, 13, 0.2);
+}
+
+.notification-drawer > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 30px 28px 24px;
+  border-bottom: 1px solid rgba(24, 24, 21, 0.12);
+}
+
+.notification-drawer > header span {
+  color: #a6741f;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.notification-drawer h2 {
+  margin: 7px 0 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 2.3rem;
+  font-weight: 500;
+}
+
+[dir="rtl"] .notification-drawer h2 {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 800;
+}
+
+.notification-drawer > header > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(24, 24, 21, 0.17);
+  background: transparent;
+  color: #181815;
+  font: inherit;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.notification-drawer__tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 28px;
+  border-bottom: 1px solid rgba(24, 24, 21, 0.1);
+}
+
+.notification-drawer__tools strong {
+  color: #a6741f;
+  font-size: 0.7rem;
+}
+
+.notification-drawer__tools button {
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: #181815;
+  padding: 5px 0;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.notification-drawer__tools button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.notification-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 20px 32px;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.notification-list li {
+  position: relative;
+  border-bottom: 1px solid rgba(24, 24, 21, 0.1);
+}
+
+.notification-list li.is-unread::before {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 27px;
+  inset-inline-start: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a6741f;
+  content: "";
+}
+
+.notification-list li > button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #181815;
+  padding: 22px 12px 22px 18px;
+  text-align: start;
+  cursor: pointer;
+}
+
+[dir="rtl"] .notification-list li > button {
+  padding-inline: 18px 12px;
+}
+
+.notification-list li.is-unread > button {
+  background: rgba(216, 184, 111, 0.08);
+}
+
+.notification-list li.is-read > button {
+  opacity: 0.62;
+}
+
+.notification-list li > button:hover {
+  background: rgba(255, 255, 255, 0.72);
+  opacity: 1;
+}
+
+.notification-list li > button > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.notification-list time,
+.notification-list b {
+  color: #827d74;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.notification-list b {
+  color: #9a493b;
+  text-transform: uppercase;
+}
+
+.notification-list strong {
+  display: block;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+[dir="rtl"] .notification-list strong {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 800;
+}
+
+.notification-list p {
+  margin: 7px 0 0;
+  color: #666159;
+  font-size: 0.77rem;
+  line-height: 1.65;
+}
+
+.notification-state,
+.notification-error {
+  margin: 24px;
+  padding: 24px;
+  text-align: center;
+}
+
+.notification-state {
+  color: #777168;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.notification-error {
+  color: #7a2d24;
+  background: #f0e3dc;
+}
+
+@keyframes notification-enter {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[dir="rtl"] .notification-drawer {
+  animation-name: notification-enter-rtl;
+}
+
+@keyframes notification-enter-rtl {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .notification-drawer {
+    width: 100vw;
+  }
+
+  .notification-drawer > header {
+    padding: 24px 20px 19px;
+  }
+
+  .notification-drawer__tools {
+    padding-inline: 20px;
+  }
+
+  .notification-list {
+    padding-inline: 12px;
+    padding-bottom: 96px;
+  }
+
+  .notification-list li > button {
+    min-height: 118px;
+  }
+}
+
 .portal-mobile-brand {
   display: none;
 }
@@ -2052,7 +2364,7 @@ body {
     font-size: 0.78rem;
   }
 
-  .portal-topbar nav a:first-child {
+  .portal-topbar nav > a:first-of-type {
     display: none;
   }
 

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { Icon } from "./public-home";
+import { NotificationCenter } from "./notification-center";
 
 type WorkspaceKind = "customer" | "sales";
 
@@ -143,6 +144,7 @@ export function WorkspaceShell({
             <strong>{kind === "sales" ? text.salesBrand : text.customerBrand}</strong>
           </a>
           <nav>
+            <NotificationCenter kind={kind} locale={locale} />
             <a href={localizedPath(locale)}>{text.publicSite}</a>
             <a href={languageHref}>{text.language}</a>
             <a href={localizedPath(locale, "/auth")}>{text.account}</a>

@@ -6,6 +6,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
 import { AuthModule } from "./auth/auth.module";
 import { ReservationsModule } from "./reservations/reservations.module";
 import { FleetModule } from "./fleet/fleet.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { FleetModule } from "./fleet/fleet.module";
     AuthModule,
     ReservationsModule,
     FleetModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })

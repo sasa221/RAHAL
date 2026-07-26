@@ -502,3 +502,24 @@ export type VehicleAdminCatalog = {
   vehicles: ManagedVehicle[];
   branches: Array<{ id: string; nameAr: string; nameEn: string }>;
 };
+
+export type InAppNotification = {
+  id: string;
+  eventKey: string;
+  title: string;
+  body: string;
+  important: boolean;
+  readAt: string | null;
+  createdAt: string;
+  target: { kind: "RESERVATION"; id: string } | null;
+};
+
+export type NotificationInbox = {
+  items: InAppNotification[];
+  unreadCount: number;
+};
+
+export type NotificationReadResult = {
+  id: string;
+  readAt: string;
+};

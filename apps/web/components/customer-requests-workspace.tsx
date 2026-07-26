@@ -292,7 +292,11 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
       const payload = (await response.json()) as { data: CustomerReservationSummary[] };
       setRequests(payload.data);
       setState("READY");
-      if (payload.data.length === 1) void openRequest(payload.data[0]!.id);
+      const requestedId = new URLSearchParams(window.location.search).get("request");
+      const initial =
+        payload.data.find((request) => request.id === requestedId) ??
+        (payload.data.length === 1 ? payload.data[0] : undefined);
+      if (initial) void openRequest(initial.id);
     } catch {
       setState("ERROR");
     } finally {

@@ -153,6 +153,8 @@ Use an outbox pattern:
 - Webhook callbacks update delivery state idempotently.
 - Read status is recorded only when the product or provider can verify it.
 
+The in-app channel reads directly from owner-scoped `Notification` rows rather than exposing `NotificationEvent` payloads or delivery attempts. The inbox is bounded to 50 presentation records, while unread count is calculated separately. Read mutations use conditional owner-scoped updates and preserve the first read timestamp. The shared shell uses 30-second no-store polling plus visibility refresh; external channel delivery remains the responsibility of the outbox worker.
+
 ## Document security architecture
 
 - Browser uploads should use short-lived, server-authorized upload flows.
