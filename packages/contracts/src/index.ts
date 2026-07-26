@@ -523,3 +523,81 @@ export type NotificationReadResult = {
   id: string;
   readAt: string;
 };
+
+export type StaffPermissionKey =
+  | "reservations.view"
+  | "reservations.review"
+  | "documents.view"
+  | "documents.review"
+  | "deposits.record"
+  | "bookings.confirm"
+  | "bookings.operate"
+  | "fleet.view"
+  | "fleet.manage"
+  | "vehicles.manage"
+  | "staff.manage"
+  | "audit.view";
+
+export type StaffPermission = {
+  id: string;
+  key: StaffPermissionKey;
+  category: string;
+  description: string;
+  isCritical: boolean;
+};
+
+export type StaffRoleSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  permissionKeys: StaffPermissionKey[];
+  staffCount: number;
+};
+
+export type StaffPermissionOverride = {
+  permissionKey: StaffPermissionKey;
+  allowed: boolean;
+  reason: string;
+};
+
+export type StaffMember = {
+  id: string;
+  fullNameAr: string | null;
+  fullNameEn: string;
+  email: string;
+  phone: string;
+  systemRole: "SALES" | "ADMIN" | "SUPER_ADMIN";
+  status: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "BLOCKED" | "ARCHIVED";
+  preferredLocale: Locale;
+  staffRoleId: string | null;
+  staffRoleName: string | null;
+  effectivePermissionKeys: StaffPermissionKey[];
+  permissionOverrides: StaffPermissionOverride[];
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StaffAuditEntry = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  actorName: string;
+  actorRole: string | null;
+  reason: string | null;
+  succeeded: boolean;
+  createdAt: string;
+};
+
+export type StaffAdminOverview = {
+  staff: StaffMember[];
+  roles: StaffRoleSummary[];
+  permissions: StaffPermission[];
+  recentAudit: StaffAuditEntry[];
+  capabilities: {
+    canManageAdmins: boolean;
+    canManageRolePermissions: boolean;
+  };
+};

@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type ReactNode } from "react";
+import type { ApiSuccess, AuthSession } from "@rahal/contracts";
+import { useEffect, useState, type ReactNode } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { Icon } from "./public-home";
 import { NotificationCenter } from "./notification-center";
 
-type WorkspaceKind = "customer" | "sales";
+type WorkspaceKind = "customer" | "sales" | "admin";
 
 const shellCopy = {
   ar: {
@@ -14,9 +15,12 @@ const shellCopy = {
     customerRole: "مساحة العميل",
     salesBrand: "مبيعات رحال",
     salesRole: "مساحة فريق المبيعات",
+    adminBrand: "إدارة رحال",
+    adminRole: "مركز التحكم الإداري",
     overview: "نظرة عامة",
     requests: "الطلبات",
     fleet: "السيارات",
+    staff: "الفريق والصلاحيات",
     newRequest: "طلب جديد",
     publicSite: "الموقع الرئيسي",
     account: "الحساب",
@@ -31,9 +35,12 @@ const shellCopy = {
     customerRole: "Customer workspace",
     salesBrand: "Rahal Sales",
     salesRole: "Sales workspace",
+    adminBrand: "Rahal Admin",
+    adminRole: "Administration control center",
     overview: "Overview",
     requests: "Requests",
     fleet: "Fleet",
+    staff: "Staff & access",
     newRequest: "New request",
     publicSite: "Public website",
     account: "Account",
@@ -54,38 +61,62 @@ export function WorkspaceShell({
   children: ReactNode;
   kind: WorkspaceKind;
   locale: PublicLocale;
-  activePage?: "overview" | "fleet";
+  activePage?: "overview" | "fleet" | "staff";
 }) {
   const text = shellCopy[locale];
+  const isStaff = kind !== "customer";
+  const [canManageStaff, setCanManageStaff] = useState(kind === "admin");
   const [loggingOut, setLoggingOut] = useState(false);
-  const currentHref = localizedPath(locale, kind === "sales" ? "/sales" : "/account/requests");
-  const fleetHref = localizedPath(locale, kind === "sales" ? "/fleet" : "/cars");
+  const currentHref = localizedPath(locale, isStaff ? "/sales" : "/account/requests");
+  const fleetHref = localizedPath(locale, isStaff ? "/fleet" : "/cars");
   const languageHref =
     locale === "ar"
-      ? kind === "sales"
+      ? isStaff
         ? activePage === "fleet"
           ? "/en/fleet"
-          : "/en/sales"
+          : activePage === "staff"
+            ? "/en/admin/staff"
+            : "/en/sales"
         : "/en/account/requests"
-      : kind === "sales"
+      : isStaff
         ? activePage === "fleet"
           ? "/fleet"
-          : "/sales"
+          : activePage === "staff"
+            ? "/admin/staff"
+            : "/sales"
         : "/account/requests";
-  const navigation =
-    kind === "sales"
-      ? [
-          [text.overview, currentHref, "document"],
-          [text.requests, `${currentHref}#requests`, "calendar"],
-          [text.fleet, fleetHref, "car"],
-          [text.publicSite, localizedPath(locale), "arrow"],
-        ]
-      : [
-          [text.overview, currentHref, "document"],
-          [text.requests, `${currentHref}#requests`, "calendar"],
-          [text.fleet, localizedPath(locale, "/cars"), "car"],
-          [text.newRequest, localizedPath(locale, "/cars"), "arrow"],
-        ];
+  const navigation = isStaff
+    ? [
+        [text.overview, currentHref, "document"],
+        [text.requests, `${currentHref}#requests`, "calendar"],
+        [text.fleet, fleetHref, "car"],
+        ...(kind === "admin" || canManageStaff
+          ? [[text.staff, localizedPath(locale, "/admin/staff"), "document"]]
+          : [[text.publicSite, localizedPath(locale), "arrow"]]),
+      ]
+    : [
+        [text.overview, currentHref, "document"],
+        [text.requests, `${currentHref}#requests`, "calendar"],
+        [text.fleet, localizedPath(locale, "/cars"), "car"],
+        [text.newRequest, localizedPath(locale, "/cars"), "arrow"],
+      ];
+
+  useEffect(() => {
+    if (!isStaff || kind === "admin") return;
+    const controller = new AbortController();
+    fetch("/api/auth/session", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as ApiSuccess<AuthSession>;
+        setCanManageStaff(["ADMIN", "SUPER_ADMIN"].includes(payload.data.user.role));
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [isStaff, kind]);
 
   async function logout() {
     setLoggingOut(true);
@@ -102,8 +133,20 @@ export function WorkspaceShell({
         <a className="portal-brand" href={localizedPath(locale)}>
           <Image alt="" height={58} src="/images/rahal-logo.png" width={58} />
           <span>
-            <strong>{kind === "sales" ? text.salesBrand : text.customerBrand}</strong>
-            <small>{kind === "sales" ? text.salesRole : text.customerRole}</small>
+            <strong>
+              {kind === "admin"
+                ? text.adminBrand
+                : kind === "sales"
+                  ? text.salesBrand
+                  : text.customerBrand}
+            </strong>
+            <small>
+              {kind === "admin"
+                ? text.adminRole
+                : kind === "sales"
+                  ? text.salesRole
+                  : text.customerRole}
+            </small>
           </span>
         </a>
 
@@ -112,7 +155,8 @@ export function WorkspaceShell({
             <a
               className={
                 (activePage === "overview" && index === 0) ||
-                (activePage === "fleet" && index === 2)
+                (activePage === "fleet" && index === 2) ||
+                (activePage === "staff" && index === 3)
                   ? "is-active"
                   : ""
               }
@@ -141,10 +185,16 @@ export function WorkspaceShell({
         <header className="portal-topbar">
           <a className="portal-mobile-brand" href={localizedPath(locale)}>
             <Image alt="" height={42} src="/images/rahal-logo.png" width={42} />
-            <strong>{kind === "sales" ? text.salesBrand : text.customerBrand}</strong>
+            <strong>
+              {kind === "admin"
+                ? text.adminBrand
+                : kind === "sales"
+                  ? text.salesBrand
+                  : text.customerBrand}
+            </strong>
           </a>
           <nav>
-            <NotificationCenter kind={kind} locale={locale} />
+            <NotificationCenter kind={isStaff ? "sales" : "customer"} locale={locale} />
             <a href={localizedPath(locale)}>{text.publicSite}</a>
             <a href={languageHref}>{text.language}</a>
             <a href={localizedPath(locale, "/auth")}>{text.account}</a>
@@ -160,7 +210,9 @@ export function WorkspaceShell({
         {navigation.slice(0, 4).map(([label, href, icon], index) => (
           <a
             className={
-              (activePage === "overview" && index === 0) || (activePage === "fleet" && index === 2)
+              (activePage === "overview" && index === 0) ||
+              (activePage === "fleet" && index === 2) ||
+              (activePage === "staff" && index === 3)
                 ? "is-active"
                 : ""
             }

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type {
@@ -33,6 +34,7 @@ import type {
 } from "@rahal/contracts";
 import { basename } from "node:path";
 import { AuthService } from "../auth/auth.service";
+import { StaffAccessService } from "../staff/staff-access.service";
 import { PrivateDocumentStorage } from "./private-document-storage";
 import type {
   CustomerAlternativeOfferDecisionDto,
@@ -63,6 +65,7 @@ export class ReservationsService {
     private readonly auth: AuthService,
     private readonly reservations: ReservationsRepository,
     private readonly documentStorage: PrivateDocumentStorage = new PrivateDocumentStorage(),
+    @Optional() private readonly staffAccess?: StaffAccessService,
   ) {}
 
   async saveDraft(
@@ -478,8 +481,7 @@ export class ReservationsService {
   }
 
   async getSalesQueue(token: string | undefined): Promise<SalesReservationQueueItem[]> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "reservations.view");
     const canSeeAll = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
     const records = await this.reservations.findSalesQueue(session.user.id, canSeeAll);
     return records.map((record) =>
@@ -491,8 +493,7 @@ export class ReservationsService {
     token: string | undefined,
     reservationId: string,
   ): Promise<SalesReservationReview> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "reservations.view");
     const record = await this.reservations.findSalesReview(reservationId);
     if (!record) throw new NotFoundException("The reservation request was not found.");
     if (
@@ -587,8 +588,7 @@ export class ReservationsService {
     token: string | undefined,
     reservationId: string,
   ): Promise<SalesReservationReview> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "reservations.review");
     const result = await this.reservations.claimSalesReview({
       reservationId,
       actorId: session.user.id,
@@ -610,8 +610,7 @@ export class ReservationsService {
     input: SalesDocumentAccessDto,
     ipHash?: string,
   ) {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "documents.view");
     const document = await this.reservations.findSalesDocument(reservationId, documentId);
     if (!document) throw new NotFoundException("The protected document was not found.");
     const allowed =
@@ -661,8 +660,7 @@ export class ReservationsService {
     input: SalesDocumentReviewDto,
     ipHash?: string,
   ): Promise<SalesDocumentReviewResult> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "documents.review");
     const document = await this.reservations.findSalesDocument(reservationId, documentId);
     if (!document) throw new NotFoundException("The protected document was not found.");
     if (session.user.role === "SALES" && document.reservation.assignedSalesId !== session.user.id) {
@@ -690,8 +688,7 @@ export class ReservationsService {
     reservationId: string,
     input: SalesReservationDecisionDto,
   ): Promise<SalesReservationDecisionResult> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "reservations.review");
     const result = await this.reservations.decideSalesReview({
       reservationId,
       actorId: session.user.id,
@@ -714,8 +711,7 @@ export class ReservationsService {
     reservationId: string,
     input: SalesAlternativeOfferDto,
   ): Promise<SalesAlternativeOfferResult> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "reservations.review");
     const pickupAt = parseDate(input.pickupDate);
     const returnAt = parseDate(input.returnDate);
     if (pickupAt.getTime() <= Date.now() || returnAt <= pickupAt) {
@@ -754,8 +750,7 @@ export class ReservationsService {
     reservationId: string,
     input: SalesBranchChecklistDto,
   ): Promise<SalesBranchChecklistResult> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "deposits.record");
     const result = await this.reservations.recordBranchChecklist({
       reservationId,
       actorId: session.user.id,
@@ -797,8 +792,7 @@ export class ReservationsService {
     token: string | undefined,
     reservationId: string,
   ): Promise<SalesBookingConfirmationResult> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "bookings.confirm");
     const result = await this.reservations.confirmBooking({
       reservationId,
       actorId: session.user.id,
@@ -830,8 +824,7 @@ export class ReservationsService {
     reservationId: string,
     input: SalesBookingOperationDto,
   ): Promise<SalesBookingOperationResult> {
-    const session = await this.auth.getSession(token);
-    assertSalesAccess(session.user.role);
+    const session = await this.requireStaffPermission(token, "bookings.operate");
     const result = await this.reservations.recordBookingOperation({
       reservationId,
       actorId: session.user.id,
@@ -982,6 +975,19 @@ export class ReservationsService {
       throw new ConflictException("Document processing consent is required before upload.");
     }
     return { session, draft: { ...draft, customerCategorySnapshot: customerCategory } };
+  }
+
+  private async requireStaffPermission(
+    token: string | undefined,
+    permission: import("@rahal/contracts").StaffPermissionKey,
+  ) {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    if (session.user.role === "SALES" && !this.staffAccess) {
+      throw new ForbiddenException("Staff permission verification is unavailable.");
+    }
+    if (this.staffAccess) await this.staffAccess.require(session, permission);
+    return session;
   }
 }
 

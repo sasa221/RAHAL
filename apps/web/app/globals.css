@@ -886,6 +886,854 @@
   }
 }
 
+/* Staff and access control */
+.staff-admin {
+  min-height: calc(100vh - 72px);
+  padding: clamp(28px, 4vw, 68px);
+  background:
+    radial-gradient(circle at 90% 0%, rgb(196 157 75 / 12%), transparent 28%),
+    linear-gradient(180deg, #f7f3ea 0%, #eee8dc 100%);
+  color: #1a1916;
+}
+
+.staff-admin__hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  max-width: 1440px;
+  margin: 0 auto 34px;
+}
+
+.staff-admin__hero > div {
+  max-width: 780px;
+}
+
+.staff-admin__hero span,
+.staff-role-matrix header span,
+.staff-audit > header span,
+.staff-editor > header span,
+.staff-create-panel header span {
+  color: #9c6f22;
+  font-size: 0.69rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+[dir="rtl"] .staff-admin__hero span,
+[dir="rtl"] .staff-role-matrix header span,
+[dir="rtl"] .staff-audit > header span,
+[dir="rtl"] .staff-editor > header span,
+[dir="rtl"] .staff-create-panel header span {
+  letter-spacing: 0;
+}
+
+.staff-admin__hero h1 {
+  max-width: 720px;
+  margin: 10px 0 12px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(2.8rem, 5.6vw, 6.5rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+}
+
+[dir="rtl"] .staff-admin__hero h1 {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.staff-admin__hero p {
+  max-width: 680px;
+  margin: 0;
+  color: #6d685f;
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.staff-admin__hero > button,
+.staff-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 54px;
+  border: 0;
+  background: #1a1916;
+  color: #fff;
+  padding: 0 24px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.staff-admin__hero > button span {
+  color: #d5b468;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.staff-admin__hero > button:hover,
+.staff-primary-action:hover:not(:disabled) {
+  background: #9c6f22;
+}
+
+.staff-primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.staff-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 1440px;
+  margin: 0 auto 24px;
+  border: 1px solid rgb(26 25 22 / 13%);
+  background: rgb(255 255 255 / 52%);
+}
+
+.staff-metrics article {
+  display: flex;
+  align-items: flex-end;
+  gap: 13px;
+  min-height: 104px;
+  padding: 22px 24px;
+  border-inline-end: 1px solid rgb(26 25 22 / 10%);
+}
+
+.staff-metrics article:last-child {
+  border-inline-end: 0;
+}
+
+.staff-metrics strong {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 2.7rem;
+  font-weight: 500;
+  line-height: 0.9;
+}
+
+.staff-metrics span {
+  color: #777168;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.staff-tabs {
+  display: flex;
+  max-width: 1440px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgb(26 25 22 / 15%);
+}
+
+.staff-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #777168;
+  padding: 0 24px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.staff-tabs button.is-active {
+  border-color: #9c6f22;
+  color: #1a1916;
+}
+
+.staff-tabs b {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgb(156 111 34 / 12%);
+  color: #9c6f22;
+  font-size: 0.62rem;
+}
+
+.staff-members-layout {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.68fr) minmax(0, 1.55fr);
+  gap: 20px;
+  max-width: 1440px;
+  margin: 24px auto 0;
+}
+
+.staff-directory,
+.staff-editor,
+.staff-role-matrix,
+.staff-audit {
+  border: 1px solid rgb(26 25 22 / 12%);
+  background: rgb(255 255 255 / 68%);
+  box-shadow: 0 18px 50px rgb(45 38 23 / 5%);
+}
+
+.staff-directory > label {
+  display: block;
+  padding: 18px;
+  border-bottom: 1px solid rgb(26 25 22 / 10%);
+}
+
+.staff-directory > label span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.staff-directory input,
+.staff-editor select,
+.staff-editor textarea,
+.staff-role-grid textarea,
+.staff-create-panel input,
+.staff-create-panel select,
+.staff-create-panel textarea {
+  width: 100%;
+  border: 1px solid rgb(26 25 22 / 16%);
+  border-radius: 0;
+  background: #f8f5ee;
+  color: #1a1916;
+  padding: 13px 14px;
+  font: inherit;
+  font-size: 0.78rem;
+  outline: none;
+}
+
+.staff-directory input:focus,
+.staff-editor select:focus,
+.staff-editor textarea:focus,
+.staff-role-grid textarea:focus,
+.staff-create-panel input:focus,
+.staff-create-panel select:focus,
+.staff-create-panel textarea:focus {
+  border-color: #9c6f22;
+  box-shadow: 0 0 0 3px rgb(156 111 34 / 10%);
+}
+
+.staff-directory > div {
+  max-height: 720px;
+  overflow-y: auto;
+}
+
+.staff-directory > div > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 82px;
+  border: 0;
+  border-bottom: 1px solid rgb(26 25 22 / 9%);
+  background: transparent;
+  color: inherit;
+  padding: 14px 17px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.staff-directory > div > button:hover,
+.staff-directory > div > button.is-active {
+  background: #fff;
+}
+
+.staff-directory > div > button.is-active {
+  box-shadow: inset 3px 0 #9c6f22;
+}
+
+[dir="rtl"] .staff-directory > div > button.is-active {
+  box-shadow: inset -3px 0 #9c6f22;
+}
+
+.staff-directory strong,
+.staff-directory small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-directory strong {
+  margin-bottom: 4px;
+  font-size: 0.78rem;
+}
+
+.staff-directory small {
+  color: #827d74;
+  font-size: 0.64rem;
+}
+
+.staff-directory > div > p {
+  margin: 0;
+  padding: 32px 20px;
+  color: #777168;
+  text-align: center;
+}
+
+.staff-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  background: #1a1916;
+  color: #d8b86f;
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.staff-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a34d3c;
+}
+
+.staff-status--active {
+  background: #3f8255;
+}
+
+.staff-status--pending_verification {
+  background: #bc852b;
+}
+
+.staff-editor {
+  padding: clamp(22px, 3vw, 40px);
+}
+
+.staff-editor > header {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgb(26 25 22 / 10%);
+}
+
+.staff-editor > header .staff-avatar {
+  width: 58px;
+  height: 58px;
+  flex-basis: 58px;
+}
+
+.staff-editor h2,
+.staff-role-matrix h2,
+.staff-audit h2,
+.staff-create-panel h2 {
+  margin: 5px 0 2px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+[dir="rtl"] .staff-editor h2,
+[dir="rtl"] .staff-role-matrix h2,
+[dir="rtl"] .staff-audit h2,
+[dir="rtl"] .staff-create-panel h2 {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 800;
+}
+
+.staff-editor > header p,
+.staff-role-matrix header p,
+.staff-create-panel header p {
+  margin: 7px 0 0;
+  color: #777168;
+  font-size: 0.7rem;
+}
+
+.staff-editor__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 20px 0;
+  background: rgb(26 25 22 / 10%);
+}
+
+.staff-editor__facts span {
+  display: grid;
+  gap: 7px;
+  background: #f8f5ee;
+  padding: 16px;
+  font-size: 0.72rem;
+}
+
+.staff-editor__facts b,
+.staff-editor__form label > span,
+.staff-reason > span,
+.staff-create-panel form label > span {
+  color: #827d74;
+  font-size: 0.62rem;
+  font-weight: 850;
+}
+
+.staff-editor__form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.staff-editor__form label,
+.staff-create-panel form label {
+  display: grid;
+  gap: 8px;
+}
+
+.staff-reason {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.staff-reason textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.staff-session-warning {
+  margin: 14px 0 30px;
+  color: #8a6330;
+  font-size: 0.66rem;
+  line-height: 1.6;
+}
+
+.staff-permissions {
+  margin-top: 30px;
+  border-top: 1px solid rgb(26 25 22 / 12%);
+  padding-top: 24px;
+}
+
+.staff-permissions > header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.staff-permissions > header span {
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.staff-permissions > header strong {
+  color: #9c6f22;
+  font-size: 0.75rem;
+}
+
+.staff-permissions > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid rgb(26 25 22 / 10%);
+  border-inline-start: 1px solid rgb(26 25 22 / 10%);
+}
+
+.staff-permissions article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 14px;
+  min-height: 82px;
+  border-inline-end: 1px solid rgb(26 25 22 / 10%);
+  border-bottom: 1px solid rgb(26 25 22 / 10%);
+  padding: 14px;
+}
+
+.staff-permissions article strong,
+.staff-permissions article small {
+  display: block;
+}
+
+.staff-permissions article strong {
+  font-size: 0.7rem;
+}
+
+.staff-permissions article small {
+  margin-top: 5px;
+  color: #827d74;
+  font-size: 0.58rem;
+}
+
+.staff-permissions select {
+  padding: 9px;
+  font-size: 0.65rem;
+}
+
+.staff-permissions > .staff-primary-action {
+  margin-top: 18px;
+}
+
+.staff-notice {
+  max-width: 1440px;
+  margin: 16px auto 0;
+  padding: 14px 18px;
+  font-size: 0.72rem;
+}
+
+.staff-notice--saved {
+  background: #e2ecdf;
+  color: #315c3e;
+}
+
+.staff-notice--error {
+  background: #f0dfda;
+  color: #7b3429;
+}
+
+.staff-role-matrix,
+.staff-audit {
+  max-width: 1440px;
+  margin: 24px auto 0;
+  padding: clamp(22px, 3vw, 40px);
+}
+
+.staff-role-matrix__layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.staff-role-matrix__layout > nav {
+  border: 1px solid rgb(26 25 22 / 10%);
+}
+
+.staff-role-matrix__layout > nav button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgb(26 25 22 / 10%);
+  background: transparent;
+  color: inherit;
+  padding: 17px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.staff-role-matrix__layout > nav button.is-active {
+  background: #1a1916;
+  color: #fff;
+}
+
+.staff-role-matrix__layout > nav small {
+  color: #8c857b;
+  font-size: 0.62rem;
+}
+
+.staff-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.staff-role-grid > label:not(.staff-reason) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  border: 1px solid rgb(26 25 22 / 10%);
+  padding: 14px;
+}
+
+.staff-role-grid input {
+  width: 18px;
+  height: 18px;
+  accent-color: #9c6f22;
+}
+
+.staff-role-grid strong,
+.staff-role-grid small {
+  display: block;
+}
+
+.staff-role-grid strong {
+  font-size: 0.7rem;
+}
+
+.staff-role-grid small {
+  margin-top: 5px;
+  color: #827d74;
+  font-size: 0.58rem;
+}
+
+.staff-role-grid .staff-reason,
+.staff-role-grid .staff-primary-action {
+  grid-column: 1 / -1;
+}
+
+.staff-audit > div {
+  margin-top: 24px;
+  border-top: 1px solid rgb(26 25 22 / 12%);
+}
+
+.staff-audit article {
+  display: grid;
+  grid-template-columns: 160px minmax(180px, 1fr) 180px minmax(180px, 1fr);
+  gap: 18px;
+  align-items: center;
+  min-height: 84px;
+  border-bottom: 1px solid rgb(26 25 22 / 10%);
+  font-size: 0.68rem;
+}
+
+.staff-audit time,
+.staff-audit small,
+.staff-audit p {
+  color: #777168;
+}
+
+.staff-audit strong,
+.staff-audit small {
+  display: block;
+}
+
+.staff-audit small {
+  margin-top: 5px;
+}
+
+.staff-audit b {
+  display: block;
+  margin-bottom: 5px;
+  color: #8c857b;
+  font-size: 0.57rem;
+}
+
+.staff-audit p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.staff-panel-backdrop {
+  position: fixed;
+  z-index: 91;
+  inset: 0;
+  border: 0;
+  background: rgb(15 14 12 / 35%);
+  backdrop-filter: blur(3px);
+}
+
+.staff-create-panel {
+  position: fixed;
+  z-index: 92;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(580px, 96vw);
+  overflow-y: auto;
+  background: #f5f1e8;
+  color: #1a1916;
+  box-shadow: -30px 0 90px rgb(20 18 13 / 22%);
+  animation: notification-enter 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[dir="rtl"] .staff-create-panel {
+  box-shadow: 30px 0 90px rgb(20 18 13 / 22%);
+  animation-name: notification-enter-rtl;
+}
+
+.staff-create-panel > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 34px;
+  border-bottom: 1px solid rgb(26 25 22 / 12%);
+}
+
+.staff-create-panel > header > button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgb(26 25 22 / 18%);
+  background: transparent;
+  font: inherit;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.staff-create-panel form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+  padding: 30px 34px 80px;
+}
+
+.staff-create-panel form label:first-child,
+.staff-create-panel form label:nth-child(2),
+.staff-create-panel .staff-reason,
+.staff-create-panel .staff-primary-action {
+  grid-column: 1 / -1;
+}
+
+.staff-admin__state {
+  max-width: 900px;
+  margin: 50px auto;
+  border: 1px solid rgb(26 25 22 / 12%);
+  background: rgb(255 255 255 / 65%);
+  padding: 48px;
+  text-align: center;
+}
+
+.staff-skeleton {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  max-width: 1440px;
+  margin: 40px auto;
+}
+
+.staff-skeleton i {
+  height: 220px;
+  background: linear-gradient(90deg, #eee8dd, #faf8f3, #eee8dd);
+  background-size: 200% 100%;
+  animation: staff-shimmer 1.4s linear infinite;
+}
+
+@keyframes staff-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 1050px) {
+  .staff-members-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-directory > div {
+    display: flex;
+    max-height: none;
+    overflow-x: auto;
+  }
+
+  .staff-directory > div > button {
+    min-width: 260px;
+    border-inline-end: 1px solid rgb(26 25 22 / 9%);
+  }
+
+  .staff-permissions > div {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-audit article {
+    grid-template-columns: 140px 1fr 160px;
+  }
+
+  .staff-audit article p {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .staff-admin {
+    padding: 24px 15px 100px;
+  }
+
+  .staff-admin__hero {
+    display: grid;
+  }
+
+  .staff-admin__hero h1 {
+    font-size: clamp(2.5rem, 13vw, 4.4rem);
+  }
+
+  .staff-admin__hero > button {
+    width: 100%;
+  }
+
+  .staff-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .staff-metrics article:nth-child(2) {
+    border-inline-end: 0;
+  }
+
+  .staff-metrics article:nth-child(-n + 2) {
+    border-bottom: 1px solid rgb(26 25 22 / 10%);
+  }
+
+  .staff-tabs {
+    overflow-x: auto;
+  }
+
+  .staff-tabs button {
+    min-width: max-content;
+    padding-inline: 16px;
+  }
+
+  .staff-editor {
+    padding: 20px 15px;
+  }
+
+  .staff-editor__form,
+  .staff-editor__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-permissions article {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-role-matrix,
+  .staff-audit {
+    padding: 22px 15px;
+  }
+
+  .staff-role-matrix__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-role-matrix__layout > nav {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .staff-role-matrix__layout > nav button {
+    min-width: 190px;
+  }
+
+  .staff-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-audit article {
+    grid-template-columns: 1fr 1fr;
+    padding: 16px 0;
+  }
+
+  .staff-audit article p {
+    grid-column: 1 / -1;
+  }
+
+  .staff-create-panel {
+    width: 100vw;
+  }
+
+  .staff-create-panel > header {
+    padding: 25px 20px;
+  }
+
+  .staff-create-panel form {
+    grid-template-columns: 1fr;
+    padding: 24px 20px 90px;
+  }
+
+  .staff-create-panel form label,
+  .staff-create-panel .staff-reason,
+  .staff-create-panel .staff-primary-action {
+    grid-column: 1;
+  }
+}
+
 /* Customer request journey */
 .customer-requests-workspace {
   min-height: 100vh;

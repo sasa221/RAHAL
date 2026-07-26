@@ -11,6 +11,7 @@ import { hashSessionToken } from "./auth/auth.service";
 import { AuthRateLimitService } from "./auth/auth-rate-limit.service";
 import { ReservationsRepository } from "./reservations/reservations.repository";
 import { PrivateDocumentStorage } from "./reservations/private-document-storage";
+import { StaffRepository } from "./staff/staff.repository";
 
 const fakeVehicles = [
   {
@@ -541,6 +542,13 @@ describe("RAHAL API", () => {
       .useValue({
         put: async () => "reservations/reservation-draft-e2e/private-document.png",
         remove: async () => undefined,
+      })
+      .overrideProvider(StaffRepository)
+      .useValue({
+        permissionAccess: async () => ({
+          permissionOverrides: [],
+          staffRole: { permissions: [{ permissionId: "e2e-permission" }] },
+        }),
       })
       .compile();
 

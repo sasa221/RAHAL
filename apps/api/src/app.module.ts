@@ -7,6 +7,7 @@ import { AuthModule } from "./auth/auth.module";
 import { ReservationsModule } from "./reservations/reservations.module";
 import { FleetModule } from "./fleet/fleet.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { StaffModule } from "./staff/staff.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
     ReservationsModule,
     FleetModule,
     NotificationsModule,
+    StaffModule,
   ],
   controllers: [HealthController],
 })

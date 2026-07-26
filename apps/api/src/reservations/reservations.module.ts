@@ -5,9 +5,10 @@ import { PrivateDocumentStorage } from "./private-document-storage";
 import { ReservationsRepository } from "./reservations.repository";
 import { ReservationsService } from "./reservations.service";
 import { ReservationExpiryService } from "./reservation-expiry.service";
+import { StaffModule } from "../staff/staff.module";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, StaffModule],
   controllers: [ReservationsController],
   providers: [
     PrivateDocumentStorage,

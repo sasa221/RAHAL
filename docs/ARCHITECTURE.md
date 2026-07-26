@@ -155,6 +155,12 @@ Use an outbox pattern:
 
 The in-app channel reads directly from owner-scoped `Notification` rows rather than exposing `NotificationEvent` payloads or delivery attempts. The inbox is bounded to 50 presentation records, while unread count is calculated separately. Read mutations use conditional owner-scoped updates and preserve the first read timestamp. The shared shell uses 30-second no-store polling plus visibility refresh; external channel delivery remains the responsibility of the outbox worker.
 
+## Staff authorization architecture
+
+System roles establish the account boundary, while sales operations require a second database-backed permission decision. `StaffRolePermission` supplies inherited grants and `UserPermissionOverride` supplies the final explicit allow/deny; an override always wins. Administrators and super administrators retain their product-level operational authority, but staff-management escalation is separately constrained: only a super administrator can manage administrators, shared role permissions, or critical overrides.
+
+Access changes run transactionally with a bounded `AuditLog` write and active-session revocation. The staff read model returns effective permission keys and a maximum of 100 relevant audit records, but excludes password hashes, session hashes, raw IP/device metadata, customer records, and unrelated audit payloads. Sensitive reservation, protected-document, deposit, confirmation, booking-operation, and fleet reads call the permission service on the backend; the UI is an explanatory control surface, never the authorization boundary.
+
 ## Document security architecture
 
 - Browser uploads should use short-lived, server-authorized upload flows.

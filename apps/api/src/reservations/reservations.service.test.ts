@@ -448,6 +448,8 @@ describe("reservation draft service", () => {
         }),
       } as never,
       { recordBranchChecklist } as never,
+      undefined,
+      { require: vi.fn() } as never,
     );
 
     await expect(
@@ -489,6 +491,8 @@ describe("reservation draft service", () => {
         }),
       } as never,
       { confirmBooking } as never,
+      undefined,
+      { require: vi.fn() } as never,
     );
 
     await expect(service.confirmBooking("session-token", "reservation-1")).resolves.toMatchObject({
@@ -515,6 +519,8 @@ describe("reservation draft service", () => {
         }),
       } as never,
       { recordBookingOperation } as never,
+      undefined,
+      { require: vi.fn() } as never,
     );
 
     await expect(

@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import type { FleetBlockResult, FleetCalendar, FleetCalendarEvent } from "@rahal/contracts";
 import { AuthService } from "../auth/auth.service";
+import { StaffAccessService } from "../staff/staff-access.service";
 import type { CreateFleetBlockDto, FleetCalendarQueryDto } from "./fleet.dto";
 import { FleetRepository } from "./fleet.repository";
 
@@ -19,6 +20,7 @@ export class FleetService {
   constructor(
     private readonly auth: AuthService,
     private readonly fleet: FleetRepository,
+    private readonly staffAccess: StaffAccessService,
   ) {}
 
   async calendar(token: string | undefined, query: FleetCalendarQueryDto): Promise<FleetCalendar> {
@@ -26,6 +28,7 @@ export class FleetService {
     if (!staffRoles.has(session.user.role)) {
       throw new ForbiddenException("Only Rahal staff can access the fleet calendar.");
     }
+    await this.staffAccess.require(session, "fleet.view");
 
     const { from, toExclusive } = parseRange(query.from, query.to);
     const locale = session.user.preferredLocale === "ar" ? "ar" : "en";

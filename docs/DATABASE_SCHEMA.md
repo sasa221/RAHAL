@@ -138,6 +138,8 @@ Protected review uses the existing `ReservationDocument` verification fields and
 
 The in-app inbox uses `Notification(userId, readAt, createdAt)` and never reads provider fields from `NotificationDelivery` or payloads from `NotificationEvent`. Owner-scoped conditional updates set `readAt` once; repeated reads return the existing timestamp. Archived notifications are excluded, and list size is bounded independently from the unread count.
 
+The staff-access slice activates the existing `StaffRole`, `Permission`, `StaffRolePermission`, and `UserPermissionOverride` models with a fixed permission catalog. A data migration creates the safe default `Sales Agent` role and attaches only legacy sales users without an assigned role. Role grants are additive; a per-user override is authoritative. Access changes revoke active `Session` rows and append a redacted `AuditLog` in the same transaction. Password hashes and session hashes never enter audit JSON.
+
 `AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
 
 ## Constraints and indexes

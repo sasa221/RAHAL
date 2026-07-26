@@ -219,7 +219,86 @@ const vehicles = [
   ],
 ] as const;
 
+const staffPermissions = [
+  ["perm-reservations-view", "reservations.view", "Reservations", "View reservation queues"],
+  ["perm-reservations-review", "reservations.review", "Reservations", "Review requests"],
+  ["perm-documents-view", "documents.view", "Documents", "View protected documents"],
+  ["perm-documents-review", "documents.review", "Documents", "Decide document reviews"],
+  ["perm-deposits-record", "deposits.record", "Branch", "Record branch deposits"],
+  ["perm-bookings-confirm", "bookings.confirm", "Bookings", "Confirm eligible bookings"],
+  ["perm-bookings-operate", "bookings.operate", "Bookings", "Record delivery and return"],
+  ["perm-fleet-view", "fleet.view", "Fleet", "View the private fleet calendar"],
+  ["perm-fleet-manage", "fleet.manage", "Fleet", "Manage fleet blocks"],
+  ["perm-vehicles-manage", "vehicles.manage", "Fleet", "Manage vehicle registry"],
+  ["perm-staff-manage", "staff.manage", "Administration", "Manage staff accounts"],
+  ["perm-audit-view", "audit.view", "Administration", "View audit records"],
+] as const;
+
+const defaultSalesPermissionKeys = [
+  "reservations.view",
+  "reservations.review",
+  "documents.view",
+  "documents.review",
+  "deposits.record",
+  "bookings.confirm",
+  "bookings.operate",
+  "fleet.view",
+] as const;
+
 async function main() {
+  for (const [id, key, category, description] of staffPermissions) {
+    await prisma.permission.upsert({
+      where: { key },
+      update: {
+        category,
+        description,
+        isCritical: [
+          "documents.view",
+          "documents.review",
+          "bookings.confirm",
+          "staff.manage",
+          "audit.view",
+        ].includes(key),
+      },
+      create: {
+        id,
+        key,
+        category,
+        description,
+        isCritical: [
+          "documents.view",
+          "documents.review",
+          "bookings.confirm",
+          "staff.manage",
+          "audit.view",
+        ].includes(key),
+      },
+    });
+  }
+  const salesRole = await prisma.staffRole.upsert({
+    where: { name: "Sales Agent" },
+    update: { description: "Default operational sales role", isSystem: true },
+    create: {
+      id: "role-sales-agent",
+      name: "Sales Agent",
+      description: "Default operational sales role",
+      isSystem: true,
+    },
+  });
+  const defaultPermissions = await prisma.permission.findMany({
+    where: { key: { in: [...defaultSalesPermissionKeys] } },
+    select: { id: true },
+  });
+  await prisma.staffRolePermission.deleteMany({ where: { staffRoleId: salesRole.id } });
+  await prisma.staffRolePermission.createMany({
+    data: defaultPermissions.map(({ id }) => ({ staffRoleId: salesRole.id, permissionId: id })),
+    skipDuplicates: true,
+  });
+  await prisma.user.updateMany({
+    where: { systemRole: "SALES", staffRoleId: null },
+    data: { staffRoleId: salesRole.id },
+  });
+
   for (const [
     key,
     customerCategory,

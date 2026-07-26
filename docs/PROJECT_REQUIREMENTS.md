@@ -28,6 +28,8 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 
 Remaining configuration work includes maximum rental duration and final production media metadata. Required-document rules are now database-backed with separate Egyptian/foreign and self-drive conditions; an administrator UI for those rules remains pending.
 
+Staff access is now database-backed beyond the broad system role. A default Sales Agent role and explicit per-user overrides control reservation review, protected documents, deposits, confirmation, rental operations, and fleet visibility. Administrators have a bilingual staff/role/audit workspace; critical overrides and administrator management remain super-administrator-only, and access changes revoke affected sessions.
+
 ## Product scope
 
 RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management platform for a car rental company in Egypt.

@@ -473,6 +473,41 @@ Status: completed locally on 2026-07-26. External Email, WhatsApp, and Push deli
 - Service tests for localization, owner scoping, not-found privacy, individual read, and mark-all.
 - Static coverage for bounded queries, safe contracts, bilingual shared UI, polling cleanup, no-store requests, unread/important states, and exact request navigation.
 
+## Milestone 11: Staff roles, permissions, and audit control
+
+Goal: replace broad sales-role trust with administrator-managed operational access and an auditable bilingual control center.
+
+Status: implemented and verified locally on 2026-07-26. Applying the included permission-catalog migration still requires the local PostgreSQL service. Production staff MFA and mandatory first-login password replacement remain launch gates.
+
+### Completed scope
+
+- A versioned catalog defines reservation, document, deposit, booking, fleet, vehicle, staff, and audit permissions.
+- Existing unassigned sales accounts receive a safe default Sales Agent role during migration; explicit user overrides take precedence over inherited role access.
+- Sales queue, review, protected-document, deposit, confirmation, booking-operation, and fleet-calendar boundaries enforce their corresponding permission server-side.
+- Administrators can create sales accounts, update operational role/status, and replace non-critical permission overrides with a required audit reason.
+- Only super administrators can create/manage administrators, change shared role permissions, or override critical permissions.
+- Administrators cannot mutate their own access through the staff workspace, and super-administrator accounts cannot be modified there.
+- Status, system-role, staff-role, override, and shared-role changes revoke affected active sessions.
+- Staff mutations write privacy-bounded append-only audit records without passwords, raw sessions, IP addresses, device strings, or customer data.
+- The overview returns at most 100 recent staff/access audit entries with actor, action, target, reason, result, and timestamp.
+- Shared Arabic/English routes at `/admin/staff` and `/en/admin/staff` provide staff directory, account editor, effective permissions, override controls, role matrix, recent audit, loading/error/forbidden/success states, and a mobile-first layout.
+
+### Acceptance criteria
+
+- Customer and sales accounts cannot open staff administration.
+- An administrator cannot create or modify another administrator; a super administrator is required.
+- No administrator can suspend themselves or alter their own role/permissions through this workflow.
+- An explicit deny always wins over a role grant, and missing sales permission denies the protected operation.
+- Critical document, confirmation, staff-management, and audit permissions require super-administrator authority to override.
+- Every access change has a 10–300 character reason and revokes sessions affected by the change.
+- Staff API responses and audit views never contain password hashes, raw session tokens, customer data, raw IP addresses, or user-agent strings.
+- Arabic and English use the same responsive component tree and expose the same operational capabilities.
+
+### Tests
+
+- Unit coverage for administrator boundaries, self-protection, critical permission overrides, and explicit-deny precedence.
+- Static coverage for the permission catalog, default role migration, server-side enforcement across sensitive sales operations, session revocation, audit redaction, and bilingual responsive routes.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.
