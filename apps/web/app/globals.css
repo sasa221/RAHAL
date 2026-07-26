@@ -2057,6 +2057,247 @@ body {
   }
 }
 
+.sales-branch-panel,
+.customer-branch-progress {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gold) 38%, var(--border));
+  background:
+    radial-gradient(circle at 100% 0%, rgba(197, 160, 89, 0.14), transparent 42%), var(--surface);
+}
+
+.sales-branch-panel {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.1rem, 2vw, 1.65rem);
+}
+
+.sales-branch-panel__heading,
+.customer-branch-progress > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.sales-branch-panel__heading > span,
+.customer-branch-progress > div:first-child > span {
+  display: grid;
+  width: 2.3rem;
+  height: 2.3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  color: var(--gold-strong);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.sales-branch-panel__heading h3,
+.customer-branch-progress h3 {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+}
+
+.sales-branch-panel__heading p,
+.customer-branch-progress p {
+  max-width: 46rem;
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.sales-branch-checklist,
+.customer-branch-progress ol {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sales-branch-checklist li,
+.customer-branch-progress li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 3.7rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, var(--warm));
+}
+
+.sales-branch-checklist li > span,
+.customer-branch-progress li > span {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.sales-branch-checklist li.is-complete,
+.customer-branch-progress li.is-complete {
+  border-color: rgba(77, 121, 91, 0.42);
+  background: rgba(77, 121, 91, 0.08);
+}
+
+.sales-branch-checklist li.is-complete > span,
+.customer-branch-progress li.is-complete > span {
+  border-color: #4d795b;
+  background: #4d795b;
+  color: #fff;
+}
+
+.sales-branch-checklist strong,
+.sales-branch-checklist small,
+.customer-branch-progress strong,
+.customer-branch-progress small {
+  display: block;
+}
+
+.sales-branch-checklist small,
+.customer-branch-progress small {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.sales-branch-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.sales-branch-form > label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.sales-branch-form input[type="text"],
+.sales-branch-form textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  padding: 0.8rem;
+}
+
+.sales-branch-form textarea,
+.sales-branch-form > button,
+.sales-confirmation-check {
+  grid-column: 1 / -1;
+}
+
+.sales-confirmation-check {
+  grid-template-columns: auto 1fr !important;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink) !important;
+  cursor: pointer;
+}
+
+.sales-confirmation-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--gold-strong);
+}
+
+.sales-final-confirmation {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(77, 121, 91, 0.4);
+  background: rgba(77, 121, 91, 0.08);
+}
+
+.sales-final-confirmation p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.sales-final-confirmation button {
+  min-height: 3.35rem;
+  border: 0;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sales-final-confirmation button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.sales-booking-confirmed {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--ink);
+  color: #fff;
+}
+
+.sales-booking-confirmed > span {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.sales-booking-confirmed small,
+.sales-booking-confirmed p {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.sales-booking-confirmed h3,
+.sales-booking-confirmed p {
+  margin: 0.18rem 0 0;
+}
+
+.sales-branch-feedback {
+  margin: 0;
+  color: #385b43;
+  font-weight: 750;
+}
+
+.customer-branch-progress {
+  padding: clamp(1rem, 2vw, 1.5rem) !important;
+}
+
+.customer-branch-progress ol {
+  margin-top: 1.1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .sales-branch-form,
+  .customer-branch-progress ol {
+    grid-template-columns: 1fr;
+  }
+}
+
 body,
 button,
 input,

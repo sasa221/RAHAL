@@ -22,6 +22,8 @@ import type {
   ReservationAlternativeOffer,
   ReservationSubmissionBlocker,
   SalesAlternativeOfferResult,
+  SalesBranchChecklistResult,
+  SalesBookingConfirmationResult,
   SalesReservationQueueItem,
   SalesReservationDecisionResult,
   SalesReservationReview,
@@ -37,6 +39,7 @@ import type {
   SaveReservationConsentsDto,
   SaveReservationDraftDto,
   SalesAlternativeOfferDto,
+  SalesBranchChecklistDto,
   SalesReservationDecisionDto,
 } from "./reservations.dto";
 import { ReservationsRepository } from "./reservations.repository";
@@ -526,6 +529,30 @@ export class ReservationsService {
         record.alternativeOffers[0] ?? null,
         session.user.preferredLocale,
       ),
+      branchProgress: {
+        expectedDepositEgp: record.vehicle.depositAmount?.toNumber?.() ?? null,
+        attendedAt: record.branchAttendedAt?.toISOString() ?? null,
+        deposit: record.deposit
+          ? {
+              amountEgp: record.deposit.amount.toNumber(),
+              receiptNumber: record.deposit.receiptNumber,
+              recordedAt: record.deposit.recordedAt.toISOString(),
+            }
+          : null,
+        contract: record.contracts?.[0]
+          ? {
+              status: record.contracts[0].status,
+              signedAt: record.contracts[0].signedAt?.toISOString() ?? null,
+            }
+          : null,
+        booking: record.booking
+          ? {
+              reference: record.booking.reference,
+              status: record.booking.status,
+              confirmedAt: record.booking.confirmedAt.toISOString(),
+            }
+          : null,
+      },
     };
   }
 
@@ -613,6 +640,82 @@ export class ReservationsService {
     return result.data;
   }
 
+  async recordBranchChecklist(
+    token: string | undefined,
+    reservationId: string,
+    input: SalesBranchChecklistDto,
+  ): Promise<SalesBranchChecklistResult> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const result = await this.reservations.recordBranchChecklist({
+      reservationId,
+      actorId: session.user.id,
+      canOverrideAssignment: ["ADMIN", "SUPER_ADMIN"].includes(session.user.role),
+      locale: session.user.preferredLocale,
+      depositAmountEgp: input.depositAmountEgp,
+      receiptNumber: input.receiptNumber.trim(),
+      note: input.note?.trim() || null,
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("A valid pre-approved request was not found.");
+    }
+    if (result.kind === "NOT_ASSIGNED") {
+      throw new ForbiddenException("Only the assigned sales employee can record branch steps.");
+    }
+    if (result.kind === "PRE_APPROVAL_EXPIRED") {
+      throw new ConflictException("The pre-approval expired before branch completion.");
+    }
+    if (result.kind === "DEPOSIT_NOT_CONFIGURED") {
+      throw new ConflictException("The vehicle deposit must be configured before recording it.");
+    }
+    if (result.kind === "DEPOSIT_MISMATCH") {
+      throw new ConflictException(
+        `The recorded deposit must equal the configured EGP ${result.expectedDeposit}.`,
+      );
+    }
+    if (result.kind === "ALREADY_RECORDED") {
+      throw new ConflictException(
+        "Branch requirements were already recorded with another receipt.",
+      );
+    }
+    if (result.kind === "RECEIPT_IN_USE") {
+      throw new ConflictException("This branch receipt number is already in use.");
+    }
+    return result.data;
+  }
+
+  async confirmBooking(
+    token: string | undefined,
+    reservationId: string,
+  ): Promise<SalesBookingConfirmationResult> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const result = await this.reservations.confirmBooking({
+      reservationId,
+      actorId: session.user.id,
+      canOverrideAssignment: ["ADMIN", "SUPER_ADMIN"].includes(session.user.role),
+      locale: session.user.preferredLocale,
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("A pre-approved reservation request was not found.");
+    }
+    if (result.kind === "NOT_ASSIGNED") {
+      throw new ForbiddenException("Only the assigned sales employee can confirm this booking.");
+    }
+    if (result.kind === "PRE_APPROVAL_EXPIRED") {
+      throw new ConflictException("The pre-approval expired before booking confirmation.");
+    }
+    if (result.kind === "BRANCH_REQUIREMENTS_INCOMPLETE") {
+      throw new ConflictException(
+        "Branch attendance, deposit, and a signed contract are required before confirmation.",
+      );
+    }
+    if (result.kind === "VEHICLE_UNAVAILABLE") {
+      throw new ConflictException("The vehicle is no longer available for the requested period.");
+    }
+    return result.data;
+  }
+
   async getCustomerRequests(token: string | undefined): Promise<CustomerReservationSummary[]> {
     const session = await this.auth.getSession(token);
     assertCustomerAccess(session.user.role);
@@ -645,6 +748,13 @@ export class ReservationsService {
         record.alternativeOffers[0] ?? null,
         session.user.preferredLocale,
       ),
+      branchProgress: {
+        attended: Boolean(record.branchAttendedAt),
+        depositRecorded: Boolean(record.deposit),
+        contractSigned: Boolean(record.contracts?.length),
+        bookingReference: record.booking?.reference ?? null,
+        confirmedAt: record.booking?.confirmedAt.toISOString() ?? null,
+      },
     };
   }
 
@@ -789,7 +899,12 @@ function toSalesQueueItem(
     customerNameSnapshot: string | null;
     customerEmailSnapshot: string | null;
     customerPhoneSnapshot: string | null;
-    vehicle: { id: string; nameAr: string; nameEn: string };
+    vehicle: {
+      id: string;
+      nameAr: string;
+      nameEn: string;
+      depositAmount: { toNumber(): number } | null;
+    };
     branch: { id: string; nameAr: string; nameEn: string };
   },
   actorId: string,

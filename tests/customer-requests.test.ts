@@ -32,11 +32,22 @@ describe("customer request follow-up", () => {
   });
 
   it("returns a requested-information response to review atomically without booking creation", () => {
+    const responseImplementation = repository
+      .split("async respondToInformationRequest")[1]!
+      .split("async respondToAlternativeOffer")[0]!;
     expect(repository).toContain('status: "MORE_INFORMATION_REQUIRED"');
     expect(repository).toContain('data: { status: "UNDER_REVIEW" }');
     expect(repository).toContain("transaction.customerMessage.create");
     expect(repository).toContain('eventKey: "RESERVATION_CUSTOMER_RESPONDED"');
-    expect(repository).not.toContain("booking.create");
+    expect(responseImplementation).not.toContain("booking.create");
+  });
+
+  it("shows branch progress and only a safe booking reference to the owner", () => {
+    expect(workspace).toContain('className="customer-branch-progress"');
+    expect(workspace).toContain("detail.branchProgress.depositRecorded");
+    expect(workspace).toContain("detail.branchProgress.contractSigned");
+    expect(workspace).toContain("detail.branchProgress.bookingReference");
+    expect(workspace).not.toContain("receiptNumber");
   });
 
   it("keeps replies bounded and final confirmation at the branch", () => {

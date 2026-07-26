@@ -22,6 +22,8 @@ import type {
   ReservationDocumentChecklist,
   ReservationReview,
   SalesReservationDecisionResult,
+  SalesBranchChecklistResult,
+  SalesBookingConfirmationResult,
   SalesAlternativeOfferResult,
   SalesReservationQueueItem,
   SalesReservationReview,
@@ -38,6 +40,7 @@ import {
   SaveReservationDraftDto,
   SalesReservationDecisionDto,
   SalesAlternativeOfferDto,
+  SalesBranchChecklistDto,
 } from "./reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
@@ -169,6 +172,27 @@ export class ReservationsController {
   ): Promise<ApiSuccess<SalesAlternativeOfferResult>> {
     return {
       data: await this.reservations.createAlternativeOffer(readAuthCookie(request), id, input),
+    };
+  }
+
+  @Post("sales/:id/branch-checklist")
+  async recordBranchChecklist(
+    @Param("id") id: string,
+    @Body() input: SalesBranchChecklistDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesBranchChecklistResult>> {
+    return {
+      data: await this.reservations.recordBranchChecklist(readAuthCookie(request), id, input),
+    };
+  }
+
+  @Post("sales/:id/confirm")
+  async confirmBooking(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesBookingConfirmationResult>> {
+    return {
+      data: await this.reservations.confirmBooking(readAuthCookie(request), id),
     };
   }
 

@@ -291,13 +291,19 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - The owning customer can accept or decline a pending offer. Both responses return the request to `UNDER_REVIEW`; acceptance applies the snapshots but never creates a booking.
 - A non-overlapping API worker sweeps once per minute: expired alternatives return to `UNDER_REVIEW`, while expired pre-approvals move to `EXPIRED`.
 - Expiry writes reservation events, bilingual in-app notifications, and privacy-minimized outbox events; alternative expiry also notifies the assigned reviewer.
+- Pre-approved requests remain visible in the sales queue for branch completion instead of disappearing after the review decision.
+- The assigned reviewer or an administrator override can record customer branch attendance, the configured EGP deposit with a unique branch receipt, and a signed contract record.
+- Branch requirements are recorded separately from final confirmation and keep the reservation in `PRE_APPROVED`.
+- Final confirmation rechecks pre-approval expiry, branch requirements, vehicle blocks, and overlapping confirmed/active bookings inside one transaction.
+- Successful confirmation creates a separate `Booking`, an immutable EGP price snapshot, links the signed contract, moves the reservation to `CONFIRMED`, and queues privacy-minimized customer notifications.
+- Customer request details expose safe branch-progress flags and the booking reference after confirmation, never internal receipt data or protected contract storage.
 
 ### Remaining scope
 
 - Permission-granular actions beyond the initial system-role boundary.
 - Protected document view/sign-url flow with access reason, explicit permission, and access audit.
-- Branch deposit receipt and signed-contract recording.
-- Final transactional availability check and separate `Booking` creation only after all branch requirements are complete.
+- Signed-contract private file upload and the approved production private-storage adapter.
+- Delivery, return, completion, cancellation, and no-show transitions for confirmed bookings.
 
 ### Acceptance criteria
 
@@ -312,6 +318,9 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - Only the assigned reviewer or administrator override can create an alternative, and only the request owner can respond before expiry.
 - Alternative creation and acceptance both recheck conflicts and never create a `Booking` or imply final confirmation.
 - Expiry processing is conditional and idempotent, does not overlap itself, and stops its timer during application shutdown.
+- Recording branch requirements cannot confirm a booking and must match the vehicle's configured EGP deposit.
+- Final confirmation is unavailable without attendance, a unique deposit receipt, and a signed contract record.
+- Confirmation creates one booking only after a transactional conflict check and remains idempotent for the same reservation.
 
 ### Tests
 
@@ -322,6 +331,7 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - API integration and static UI coverage for customer ownership, safe detail metadata, bounded replies, role rejection, and the `MORE_INFORMATION_REQUIRED` to `UNDER_REVIEW` transition.
 - API integration and static coverage for alternative creation, safe customer detail, acceptance back to review, conflict checks, and non-confirmation language.
 - Unit and static coverage for worker registration, overlap prevention, alternative expiry, pre-approval expiry, notifications, and continued absence of booking creation.
+- Service and static coverage for branch authorization, required steps, unique receipts, EGP price snapshots, safe customer progress, and conflict-protected booking creation.
 
 ## Decisions not blocking Milestone 1
 

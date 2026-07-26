@@ -25,11 +25,14 @@ describe("alternative reservation offers", () => {
   });
 
   it("snapshots the alternative and keeps customer acceptance under review", () => {
+    const alternativeImplementation = repository
+      .split("async createAlternativeOffer")[1]!
+      .split("async recordBranchChecklist")[0]!;
     expect(repository).toContain("dailyRateSnapshot: dailyRate");
     expect(repository).toContain("estimatedTotal");
     expect(repository).toContain('toStatus: "ALTERNATIVE_OFFERED"');
     expect(repository).toContain('reservationStatus: "UNDER_REVIEW"');
-    expect(repository).not.toContain("booking.create");
+    expect(alternativeImplementation).not.toContain("booking.create");
   });
 
   it("states that alternative offers never confirm a booking", () => {

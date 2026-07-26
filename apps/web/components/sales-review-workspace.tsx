@@ -5,7 +5,12 @@ import { formatEgp, localizedPath, type PublicLocale } from "../lib/public-conte
 import { WorkspaceShell } from "./workspace-shell";
 
 type QueueStatus =
-  "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED" | "ALTERNATIVE_OFFERED";
+  | "PENDING_REVIEW"
+  | "UNDER_REVIEW"
+  | "MORE_INFORMATION_REQUIRED"
+  | "PRE_APPROVED"
+  | "ALTERNATIVE_OFFERED"
+  | "CONFIRMED";
 
 type QueueItem = {
   id: string;
@@ -50,6 +55,24 @@ type Review = QueueItem & {
     expiresAt: string;
     respondedAt: string | null;
   } | null;
+  branchProgress: {
+    expectedDepositEgp: number | null;
+    attendedAt: string | null;
+    deposit: {
+      amountEgp: number;
+      receiptNumber: string;
+      recordedAt: string;
+    } | null;
+    contract: {
+      status: "DRAFT" | "READY_FOR_SIGNATURE" | "SIGNED" | "VOIDED";
+      signedAt: string | null;
+    } | null;
+    booking: {
+      reference: string;
+      status: "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+      confirmedAt: string;
+    } | null;
+  };
 };
 
 type OfferVehicle = {
@@ -67,6 +90,21 @@ type DecisionResult = {
   expiresAt: string | null;
 };
 
+type BranchChecklistResult = {
+  attendedAt: string;
+  depositRecordedAt: string;
+  contractSignedAt: string;
+};
+
+type BookingConfirmationResult = {
+  status: "CONFIRMED";
+  booking: {
+    reference: string;
+    status: "CONFIRMED";
+    confirmedAt: string;
+  };
+};
+
 const copy = {
   ar: {
     brand: "رحال / المبيعات",
@@ -79,12 +117,13 @@ const copy = {
     totalMetric: "كل الطلبات",
     pendingMetric: "بانتظار المراجعة",
     reviewingMetric: "قيد المراجعة",
-    actionMetric: "بانتظار العميل",
+    actionMetric: "جاهز لإجراءات الفرع",
     all: "الكل",
     pending: "بانتظار المراجعة",
     reviewing: "قيد المراجعة",
     moreInfo: "معلومات إضافية مطلوبة",
     alternativeStatus: "عرض بديل مرسل",
+    confirmedStatus: "حجز مؤكد",
     loading: "جارٍ تحميل طلبات المبيعات...",
     empty: "لا توجد طلبات في هذه القائمة الآن.",
     signIn: "سجّل الدخول بحساب موظف المبيعات",
@@ -151,6 +190,27 @@ const copy = {
     alternativeFailed: "تعذر إرسال العرض. راجع السيارة والمواعيد والرسالة.",
     currentAlternative: "العرض البديل الحالي",
     offerExpires: "ينتهي",
+    branchTitle: "إتمام إجراءات الفرع",
+    branchCopy:
+      "سجّل الحضور وإيصال العربون والعقد الموقع أولًا. التأكيد النهائي إجراء منفصل ويعيد فحص إتاحة السيارة.",
+    attendance: "حضور العميل للفرع",
+    attendanceConfirmed: "تم التأكد من حضور العميل",
+    deposit: "العربون",
+    depositAmount: "قيمة العربون المطلوبة",
+    receiptNumber: "رقم إيصال الفرع",
+    receiptPlaceholder: "مثال: RCP-2026-00124",
+    contract: "العقد",
+    contractConfirmed: "تم توقيع عقد الإيجار داخل الفرع",
+    recordBranch: "حفظ إجراءات الفرع",
+    recordingBranch: "جارٍ حفظ الإجراءات...",
+    branchRecorded: "تم تسجيل الحضور والعربون والعقد بنجاح.",
+    branchFailed: "تعذر حفظ إجراءات الفرع. راجع المبلغ ورقم الإيصال وحالة الطلب.",
+    confirmBooking: "تأكيد الحجز نهائيًا",
+    confirmingBooking: "جارٍ تأكيد الحجز...",
+    confirmationWarning: "هذا الإجراء ينشئ حجزًا مؤكدًا ويمنع تعارض السيارة في نفس المدة.",
+    bookingConfirmed: "تم تأكيد الحجز",
+    bookingReference: "رقم الحجز",
+    confirmationFailed: "تعذر تأكيد الحجز. قد تكون السيارة غير متاحة أو إجراءات الفرع غير مكتملة.",
   },
   en: {
     brand: "RAHAL / SALES",
@@ -164,12 +224,13 @@ const copy = {
     totalMetric: "All requests",
     pendingMetric: "Pending review",
     reviewingMetric: "Under review",
-    actionMetric: "Waiting on customer",
+    actionMetric: "Ready for branch",
     all: "All",
     pending: "Pending review",
     reviewing: "Under review",
     moreInfo: "More information required",
     alternativeStatus: "Alternative offered",
+    confirmedStatus: "Confirmed booking",
     loading: "Loading sales requests...",
     empty: "There are no requests in this queue right now.",
     signIn: "Sign in with a sales employee account",
@@ -239,6 +300,30 @@ const copy = {
     alternativeFailed: "The offer could not be sent. Check the vehicle, dates, and message.",
     currentAlternative: "Current alternative offer",
     offerExpires: "Expires",
+    branchTitle: "Complete branch requirements",
+    branchCopy:
+      "Record attendance, the deposit receipt, and the signed contract first. Final confirmation is separate and rechecks vehicle availability.",
+    attendance: "Customer branch attendance",
+    attendanceConfirmed: "Customer attendance was verified",
+    deposit: "Deposit",
+    depositAmount: "Required deposit amount",
+    receiptNumber: "Branch receipt number",
+    receiptPlaceholder: "Example: RCP-2026-00124",
+    contract: "Contract",
+    contractConfirmed: "The rental contract was signed at the branch",
+    recordBranch: "Save branch requirements",
+    recordingBranch: "Saving branch requirements...",
+    branchRecorded: "Attendance, deposit, and signed contract were recorded.",
+    branchFailed:
+      "Branch requirements could not be saved. Check the amount, receipt, and request status.",
+    confirmBooking: "Confirm booking",
+    confirmingBooking: "Confirming booking...",
+    confirmationWarning:
+      "This creates a confirmed booking and protects the vehicle period from conflicts.",
+    bookingConfirmed: "Booking confirmed",
+    bookingReference: "Booking reference",
+    confirmationFailed:
+      "The booking could not be confirmed. The vehicle may be unavailable or branch steps incomplete.",
   },
 } as const;
 
@@ -262,6 +347,8 @@ function statusLabel(status: QueueStatus, locale: PublicLocale) {
   if (status === "UNDER_REVIEW") return labels.reviewing;
   if (status === "MORE_INFORMATION_REQUIRED") return labels.moreInfo;
   if (status === "ALTERNATIVE_OFFERED") return labels.alternativeStatus;
+  if (status === "PRE_APPROVED") return labels.preApprovedStatus;
+  if (status === "CONFIRMED") return labels.confirmedStatus;
   return labels.pending;
 }
 
@@ -286,6 +373,13 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   const [offerNote, setOfferNote] = useState("");
   const [offering, setOffering] = useState(false);
   const [offerCreatedExpires, setOfferCreatedExpires] = useState<string | null>(null);
+  const [customerAttended, setCustomerAttended] = useState(false);
+  const [contractSigned, setContractSigned] = useState(false);
+  const [receiptNumber, setReceiptNumber] = useState("");
+  const [branchNote, setBranchNote] = useState("");
+  const [recordingBranch, setRecordingBranch] = useState(false);
+  const [confirmingBooking, setConfirmingBooking] = useState(false);
+  const [branchFeedback, setBranchFeedback] = useState<"RECORDED" | "CONFIRMED" | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -326,9 +420,12 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   );
   const pendingCount = queue.filter((item) => item.status === "PENDING_REVIEW").length;
   const reviewingCount = queue.filter((item) => item.status === "UNDER_REVIEW").length;
-  const customerActionCount = queue.filter((item) =>
-    ["MORE_INFORMATION_REQUIRED", "ALTERNATIVE_OFFERED"].includes(item.status),
-  ).length;
+  const customerActionCount = queue.filter((item) => item.status === "PRE_APPROVED").length;
+  const branchRequirementsComplete = Boolean(
+    review?.branchProgress.attendedAt &&
+    review.branchProgress.deposit &&
+    review.branchProgress.contract?.status === "SIGNED",
+  );
 
   async function openReview(id: string) {
     setSelectedId(id);
@@ -338,6 +435,11 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     setReviewLoading(true);
     setActionError(null);
     setOfferCreatedExpires(null);
+    setBranchFeedback(null);
+    setCustomerAttended(false);
+    setContractSigned(false);
+    setReceiptNumber("");
+    setBranchNote("");
     try {
       const response = await fetch(`/api/reservations/sales/${encodeURIComponent(id)}`, {
         credentials: "include",
@@ -348,6 +450,9 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       setOfferVehicleId(payload.data.vehicle.id);
       setOfferPickup(payload.data.pickupAt.slice(0, 10));
       setOfferReturn(payload.data.returnAt.slice(0, 10));
+      setCustomerAttended(Boolean(payload.data.branchProgress.attendedAt));
+      setContractSigned(payload.data.branchProgress.contract?.status === "SIGNED");
+      setReceiptNumber(payload.data.branchProgress.deposit?.receiptNumber ?? "");
     } catch {
       setActionError(text.unavailable);
     } finally {
@@ -406,17 +511,25 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       if (!response.ok || !payload.data) throw new Error("decision unavailable");
       setDecisionResult(payload.data);
       setQueue((current) =>
-        payload.data!.status === "MORE_INFORMATION_REQUIRED"
-          ? current.map((item) =>
+        payload.data!.status === "REJECTED"
+          ? current.filter((item) => item.id !== payload.data!.id)
+          : current.map((item) =>
               item.id === payload.data!.id
-                ? { ...item, status: "MORE_INFORMATION_REQUIRED" }
+                ? {
+                    ...item,
+                    status: payload.data!.status as "MORE_INFORMATION_REQUIRED" | "PRE_APPROVED",
+                  }
                 : item,
-            )
-          : current.filter((item) => item.id !== payload.data!.id),
+            ),
       );
-      if (payload.data.status === "MORE_INFORMATION_REQUIRED") {
+      if (payload.data.status !== "REJECTED") {
         setReview((current) =>
-          current ? { ...current, status: "MORE_INFORMATION_REQUIRED" } : current,
+          current
+            ? {
+                ...current,
+                status: payload.data!.status as "MORE_INFORMATION_REQUIRED" | "PRE_APPROVED",
+              }
+            : current,
         );
       }
     } catch {
@@ -467,6 +580,99 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       setActionError(text.alternativeFailed);
     } finally {
       setOffering(false);
+    }
+  }
+
+  async function recordBranchRequirements() {
+    if (
+      !review ||
+      !customerAttended ||
+      !contractSigned ||
+      !review.branchProgress.expectedDepositEgp ||
+      receiptNumber.trim().length < 3
+    ) {
+      setActionError(text.branchFailed);
+      return;
+    }
+    setRecordingBranch(true);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/branch-checklist`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            customerAttended: true,
+            depositAmountEgp: review.branchProgress.expectedDepositEgp,
+            receiptNumber: receiptNumber.trim(),
+            contractSigned: true,
+            note: branchNote.trim() || undefined,
+          }),
+        },
+      );
+      const payload = (await response.json()) as { data?: BranchChecklistResult };
+      if (!response.ok || !payload.data) throw new Error("branch checklist unavailable");
+      setReview((current) =>
+        current
+          ? {
+              ...current,
+              branchProgress: {
+                ...current.branchProgress,
+                attendedAt: payload.data!.attendedAt,
+                deposit: {
+                  amountEgp: current.branchProgress.expectedDepositEgp!,
+                  receiptNumber: receiptNumber.trim(),
+                  recordedAt: payload.data!.depositRecordedAt,
+                },
+                contract: {
+                  status: "SIGNED",
+                  signedAt: payload.data!.contractSignedAt,
+                },
+              },
+            }
+          : current,
+      );
+      setBranchFeedback("RECORDED");
+    } catch {
+      setActionError(text.branchFailed);
+    } finally {
+      setRecordingBranch(false);
+    }
+  }
+
+  async function confirmFinalBooking() {
+    if (!review) return;
+    setConfirmingBooking(true);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/confirm`,
+        { method: "POST", credentials: "include" },
+      );
+      const payload = (await response.json()) as { data?: BookingConfirmationResult };
+      if (!response.ok || !payload.data) throw new Error("confirmation unavailable");
+      setReview((current) =>
+        current
+          ? {
+              ...current,
+              status: "CONFIRMED",
+              branchProgress: {
+                ...current.branchProgress,
+                booking: payload.data!.booking,
+              },
+            }
+          : current,
+      );
+      setQueue((current) =>
+        current.map((item) => (item.id === review.id ? { ...item, status: "CONFIRMED" } : item)),
+      );
+      setBranchFeedback("CONFIRMED");
+    } catch {
+      setActionError(text.confirmationFailed);
+    } finally {
+      setConfirmingBooking(false);
     }
   }
 
@@ -542,6 +748,8 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                     ["UNDER_REVIEW", text.reviewing],
                     ["MORE_INFORMATION_REQUIRED", text.moreInfo],
                     ["ALTERNATIVE_OFFERED", text.alternativeStatus],
+                    ["PRE_APPROVED", text.preApprovedStatus],
+                    ["CONFIRMED", text.confirmedStatus],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -872,6 +1080,162 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                             {text.offerExpires}: {formatDate(offerCreatedExpires, locale)}
                           </small>
                         </div>
+                      ) : null}
+                      {["PRE_APPROVED", "CONFIRMED"].includes(review.status) ? (
+                        <section className="sales-branch-panel">
+                          <div className="sales-branch-panel__heading">
+                            <span>03</span>
+                            <div>
+                              <h3>{text.branchTitle}</h3>
+                              <p>{text.branchCopy}</p>
+                            </div>
+                          </div>
+                          <ol className="sales-branch-checklist">
+                            <li className={review.branchProgress.attendedAt ? "is-complete" : ""}>
+                              <span>{review.branchProgress.attendedAt ? "✓" : "1"}</span>
+                              <div>
+                                <strong>{text.attendance}</strong>
+                                <small>
+                                  {review.branchProgress.attendedAt
+                                    ? formatDate(review.branchProgress.attendedAt, locale)
+                                    : text.attendanceConfirmed}
+                                </small>
+                              </div>
+                            </li>
+                            <li className={review.branchProgress.deposit ? "is-complete" : ""}>
+                              <span>{review.branchProgress.deposit ? "✓" : "2"}</span>
+                              <div>
+                                <strong>{text.deposit}</strong>
+                                <small>
+                                  {review.branchProgress.deposit
+                                    ? `${formatEgp(review.branchProgress.deposit.amountEgp, locale)} · ${review.branchProgress.deposit.receiptNumber}`
+                                    : review.branchProgress.expectedDepositEgp
+                                      ? formatEgp(review.branchProgress.expectedDepositEgp, locale)
+                                      : "—"}
+                                </small>
+                              </div>
+                            </li>
+                            <li
+                              className={
+                                review.branchProgress.contract?.status === "SIGNED"
+                                  ? "is-complete"
+                                  : ""
+                              }
+                            >
+                              <span>
+                                {review.branchProgress.contract?.status === "SIGNED" ? "✓" : "3"}
+                              </span>
+                              <div>
+                                <strong>{text.contract}</strong>
+                                <small>
+                                  {review.branchProgress.contract?.signedAt
+                                    ? formatDate(review.branchProgress.contract.signedAt, locale)
+                                    : text.contractConfirmed}
+                                </small>
+                              </div>
+                            </li>
+                          </ol>
+
+                          {review.status === "PRE_APPROVED" && !branchRequirementsComplete ? (
+                            <div className="sales-branch-form">
+                              <label className="sales-confirmation-check">
+                                <input
+                                  checked={customerAttended}
+                                  onChange={(event) => setCustomerAttended(event.target.checked)}
+                                  type="checkbox"
+                                />
+                                <span>{text.attendanceConfirmed}</span>
+                              </label>
+                              <label>
+                                <span>{text.depositAmount}</span>
+                                <input
+                                  readOnly
+                                  type="text"
+                                  value={
+                                    review.branchProgress.expectedDepositEgp
+                                      ? formatEgp(review.branchProgress.expectedDepositEgp, locale)
+                                      : ""
+                                  }
+                                />
+                              </label>
+                              <label>
+                                <span>{text.receiptNumber}</span>
+                                <input
+                                  maxLength={80}
+                                  onChange={(event) => setReceiptNumber(event.target.value)}
+                                  placeholder={text.receiptPlaceholder}
+                                  type="text"
+                                  value={receiptNumber}
+                                />
+                              </label>
+                              <label className="sales-confirmation-check">
+                                <input
+                                  checked={contractSigned}
+                                  onChange={(event) => setContractSigned(event.target.checked)}
+                                  type="checkbox"
+                                />
+                                <span>{text.contractConfirmed}</span>
+                              </label>
+                              <label>
+                                <span>{text.decisionNote}</span>
+                                <textarea
+                                  maxLength={300}
+                                  onChange={(event) => setBranchNote(event.target.value)}
+                                  rows={3}
+                                  value={branchNote}
+                                />
+                              </label>
+                              <button
+                                className="sales-action sales-action--claim"
+                                disabled={
+                                  recordingBranch ||
+                                  !customerAttended ||
+                                  !contractSigned ||
+                                  receiptNumber.trim().length < 3 ||
+                                  !review.branchProgress.expectedDepositEgp
+                                }
+                                onClick={() => void recordBranchRequirements()}
+                                type="button"
+                              >
+                                {recordingBranch ? text.recordingBranch : text.recordBranch}
+                                <span>→</span>
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {review.status === "PRE_APPROVED" && branchRequirementsComplete ? (
+                            <div className="sales-final-confirmation">
+                              <p>{text.confirmationWarning}</p>
+                              <button
+                                disabled={confirmingBooking}
+                                onClick={() => void confirmFinalBooking()}
+                                type="button"
+                              >
+                                {confirmingBooking ? text.confirmingBooking : text.confirmBooking}
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {review.branchProgress.booking ? (
+                            <div className="sales-booking-confirmed">
+                              <span>✓</span>
+                              <div>
+                                <small>{text.bookingConfirmed}</small>
+                                <h3>{review.branchProgress.booking.reference}</h3>
+                                <p>
+                                  {text.bookingReference} ·{" "}
+                                  {formatDate(review.branchProgress.booking.confirmedAt, locale)}
+                                </p>
+                              </div>
+                            </div>
+                          ) : null}
+                          {branchFeedback === "RECORDED" ? (
+                            <p className="sales-branch-feedback">{text.branchRecorded}</p>
+                          ) : null}
+                          {branchFeedback === "CONFIRMED" ? (
+                            <p className="sales-branch-feedback">{text.bookingConfirmed}</p>
+                          ) : null}
+                        </section>
                       ) : null}
                     </>
                   ) : (

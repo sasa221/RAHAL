@@ -1,4 +1,16 @@
-import { Equals, IsBoolean, IsIn, IsString, Length, Matches, MaxLength } from "class-validator";
+import {
+  Equals,
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
 
 export class SaveReservationDraftDto {
   @IsString()
@@ -94,4 +106,27 @@ export class SalesAlternativeOfferDto {
 export class CustomerAlternativeOfferDecisionDto {
   @IsIn(["ACCEPT", "DECLINE"])
   action!: "ACCEPT" | "DECLINE";
+}
+
+export class SalesBranchChecklistDto {
+  @Equals(true)
+  customerAttended!: true;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(1)
+  @Max(100_000_000)
+  depositAmountEgp!: number;
+
+  @IsString()
+  @Length(3, 80)
+  @Matches(/^[\p{L}\p{N}][\p{L}\p{N}\-_/ ]+$/u)
+  receiptNumber!: string;
+
+  @Equals(true)
+  contractSigned!: true;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
 }

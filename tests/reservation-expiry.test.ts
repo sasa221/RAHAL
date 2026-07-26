@@ -26,12 +26,15 @@ describe("automatic reservation review expiry", () => {
   });
 
   it("expires stale pre-approvals without creating bookings", () => {
+    const expiryImplementation = repository
+      .split("async expireStaleReviewWindows")[1]!
+      .split("async replaceDocument")[0]!;
     expect(repository).toContain(
       'where: { status: "PRE_APPROVED", preApprovalExpiresAt: { lte: now } }',
     );
     expect(repository).toContain('fromStatus: "PRE_APPROVED"');
     expect(repository).toContain('toStatus: "EXPIRED"');
     expect(repository).toContain('eventKey: "RESERVATION_PRE_APPROVAL_EXPIRED"');
-    expect(repository).not.toContain("booking.create");
+    expect(expiryImplementation).not.toContain("booking.create");
   });
 });

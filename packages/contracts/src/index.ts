@@ -168,7 +168,13 @@ export type SubmittedReservation = {
 export type SalesReservationQueueItem = {
   id: string;
   reference: string;
-  status: "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED" | "ALTERNATIVE_OFFERED";
+  status:
+    | "PENDING_REVIEW"
+    | "UNDER_REVIEW"
+    | "MORE_INFORMATION_REQUIRED"
+    | "PRE_APPROVED"
+    | "ALTERNATIVE_OFFERED"
+    | "CONFIRMED";
   submittedAt: string;
   pickupAt: string;
   returnAt: string;
@@ -202,6 +208,45 @@ export type SalesReservationReview = SalesReservationQueueItem & {
     createdAt: string;
   }>;
   alternativeOffer: ReservationAlternativeOffer | null;
+  branchProgress: {
+    expectedDepositEgp: number | null;
+    attendedAt: string | null;
+    deposit: {
+      amountEgp: number;
+      receiptNumber: string;
+      recordedAt: string;
+    } | null;
+    contract: {
+      status: "DRAFT" | "READY_FOR_SIGNATURE" | "SIGNED" | "VOIDED";
+      signedAt: string | null;
+    } | null;
+    booking: {
+      reference: string;
+      status: "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+      confirmedAt: string;
+    } | null;
+  };
+};
+
+export type SalesBranchChecklistResult = {
+  id: string;
+  reference: string;
+  status: "PRE_APPROVED";
+  attendedAt: string;
+  depositRecordedAt: string;
+  contractSignedAt: string;
+};
+
+export type SalesBookingConfirmationResult = {
+  id: string;
+  reference: string;
+  status: "CONFIRMED";
+  booking: {
+    id: string;
+    reference: string;
+    status: "CONFIRMED";
+    confirmedAt: string;
+  };
 };
 
 export type SalesReservationDecisionResult = {
@@ -253,6 +298,13 @@ export type CustomerReservationDetail = CustomerReservationSummary & {
     createdAt: string;
   }>;
   alternativeOffer: ReservationAlternativeOffer | null;
+  branchProgress: {
+    attended: boolean;
+    depositRecorded: boolean;
+    contractSigned: boolean;
+    bookingReference: string | null;
+    confirmedAt: string | null;
+  };
 };
 
 export type ReservationAlternativeOffer = {

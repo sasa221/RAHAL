@@ -465,6 +465,7 @@ model Reservation {
   marketingConsentAt            DateTime?
   submittedAt                   DateTime?
   preApprovalExpiresAt          DateTime?
+  branchAttendedAt              DateTime?
   confirmedAt                   DateTime?
   deliveredAt                   DateTime?
   returnedAt                    DateTime?

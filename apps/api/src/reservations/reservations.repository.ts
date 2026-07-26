@@ -528,7 +528,9 @@ export class ReservationsRepository {
             "PENDING_REVIEW",
             "UNDER_REVIEW",
             "MORE_INFORMATION_REQUIRED",
+            "PRE_APPROVED",
             "ALTERNATIVE_OFFERED",
+            "CONFIRMED",
           ],
         },
         ...(canSeeAll
@@ -555,7 +557,9 @@ export class ReservationsRepository {
             "PENDING_REVIEW",
             "UNDER_REVIEW",
             "MORE_INFORMATION_REQUIRED",
+            "PRE_APPROVED",
             "ALTERNATIVE_OFFERED",
+            "CONFIRMED",
           ],
         },
       },
@@ -598,6 +602,26 @@ export class ReservationsRepository {
           orderBy: { createdAt: "desc" },
           take: 1,
           select: alternativeOfferSelect,
+        },
+        branchAttendedAt: true,
+        deposit: {
+          select: {
+            amount: true,
+            receiptNumber: true,
+            recordedAt: true,
+          },
+        },
+        contracts: {
+          orderBy: { version: "desc" },
+          take: 1,
+          select: { status: true, signedAt: true },
+        },
+        booking: {
+          select: {
+            reference: true,
+            status: true,
+            confirmedAt: true,
+          },
         },
       },
     });
@@ -940,6 +964,399 @@ export class ReservationsRepository {
     });
   }
 
+  async recordBranchChecklist(input: {
+    reservationId: string;
+    actorId: string;
+    canOverrideAssignment: boolean;
+    locale: "ar" | "en";
+    depositAmountEgp: number;
+    receiptNumber: string;
+    note: string | null;
+  }) {
+    try {
+      return await this.prisma.client.$transaction(async (transaction) => {
+        const reservation = await transaction.reservation.findFirst({
+          where: { id: input.reservationId, status: "PRE_APPROVED" },
+          select: {
+            id: true,
+            reference: true,
+            customerId: true,
+            assignedSalesId: true,
+            preApprovalExpiresAt: true,
+            branchAttendedAt: true,
+            vehicle: { select: { depositAmount: true } },
+            deposit: {
+              select: { amount: true, receiptNumber: true, recordedAt: true },
+            },
+            contracts: {
+              where: { status: "SIGNED" },
+              orderBy: { version: "desc" },
+              take: 1,
+              select: { signedAt: true },
+            },
+          },
+        });
+        if (!reservation) return { kind: "NOT_FOUND" as const };
+        if (!input.canOverrideAssignment && reservation.assignedSalesId !== input.actorId) {
+          return { kind: "NOT_ASSIGNED" as const };
+        }
+        if (
+          !reservation.preApprovalExpiresAt ||
+          reservation.preApprovalExpiresAt.getTime() <= Date.now()
+        ) {
+          return { kind: "PRE_APPROVAL_EXPIRED" as const };
+        }
+        const expectedDeposit = reservation.vehicle.depositAmount?.toNumber() ?? null;
+        if (expectedDeposit === null) return { kind: "DEPOSIT_NOT_CONFIGURED" as const };
+        if (expectedDeposit !== input.depositAmountEgp) {
+          return { kind: "DEPOSIT_MISMATCH" as const, expectedDeposit };
+        }
+
+        const existingContract = reservation.contracts[0];
+        if (reservation.deposit && existingContract?.signedAt && reservation.branchAttendedAt) {
+          if (
+            reservation.deposit.amount.toNumber() !== input.depositAmountEgp ||
+            reservation.deposit.receiptNumber !== input.receiptNumber
+          ) {
+            return { kind: "ALREADY_RECORDED" as const };
+          }
+          return {
+            kind: "RECORDED" as const,
+            data: {
+              id: reservation.id,
+              reference: reservation.reference,
+              status: "PRE_APPROVED" as const,
+              attendedAt: reservation.branchAttendedAt.toISOString(),
+              depositRecordedAt: reservation.deposit.recordedAt.toISOString(),
+              contractSignedAt: existingContract.signedAt.toISOString(),
+            },
+          };
+        }
+
+        const recordedAt = new Date();
+        const deposit = await transaction.deposit.upsert({
+          where: { reservationId: reservation.id },
+          create: {
+            reservationId: reservation.id,
+            amount: input.depositAmountEgp,
+            receiptNumber: input.receiptNumber,
+            recordedBy: input.actorId,
+            recordedAt,
+            notes: input.note,
+          },
+          update: {
+            amount: input.depositAmountEgp,
+            receiptNumber: input.receiptNumber,
+            recordedBy: input.actorId,
+            recordedAt,
+            notes: input.note,
+          },
+          select: { recordedAt: true },
+        });
+        const contract = await transaction.contract.upsert({
+          where: {
+            reservationId_version: {
+              reservationId: reservation.id,
+              version: 1,
+            },
+          },
+          create: {
+            reservationId: reservation.id,
+            version: 1,
+            status: "SIGNED",
+            signedAt: recordedAt,
+            recordedById: input.actorId,
+          },
+          update: {
+            status: "SIGNED",
+            signedAt: recordedAt,
+            recordedById: input.actorId,
+          },
+          select: { signedAt: true },
+        });
+        await transaction.reservation.update({
+          where: { id: reservation.id },
+          data: { branchAttendedAt: recordedAt },
+        });
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: reservation.id,
+            fromStatus: "PRE_APPROVED",
+            toStatus: "PRE_APPROVED",
+            actorId: input.actorId,
+            note: "Branch attendance, deposit receipt, and signed contract were recorded.",
+            metadata: {
+              depositAmountEgp: input.depositAmountEgp,
+              receiptNumber: input.receiptNumber,
+              contractVersion: 1,
+            },
+          },
+        });
+        await transaction.notification.create({
+          data: {
+            userId: reservation.customerId,
+            reservationId: reservation.id,
+            eventKey: "RESERVATION_DEPOSIT_RECORDED",
+            titleAr: "تم تسجيل إجراءات الفرع",
+            titleEn: "Branch requirements recorded",
+            bodyAr: `تم تسجيل الحضور والعربون والعقد الموقع للطلب ${reservation.reference}. الحجز لم يتأكد نهائيًا بعد.`,
+            bodyEn: `Attendance, deposit, and the signed contract were recorded for ${reservation.reference}. The booking is not final yet.`,
+            important: true,
+          },
+        });
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: "RESERVATION_DEPOSIT_RECORDED",
+            aggregateType: "RESERVATION",
+            aggregateId: reservation.id,
+            payload: {
+              reservationId: reservation.id,
+              reference: reservation.reference,
+              customerId: reservation.customerId,
+              locale: input.locale,
+              status: "PRE_APPROVED",
+            },
+          },
+        });
+        return {
+          kind: "RECORDED" as const,
+          data: {
+            id: reservation.id,
+            reference: reservation.reference,
+            status: "PRE_APPROVED" as const,
+            attendedAt: recordedAt.toISOString(),
+            depositRecordedAt: deposit.recordedAt.toISOString(),
+            contractSignedAt: contract.signedAt!.toISOString(),
+          },
+        };
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) return { kind: "RECEIPT_IN_USE" as const };
+      throw error;
+    }
+  }
+
+  async confirmBooking(input: {
+    reservationId: string;
+    actorId: string;
+    canOverrideAssignment: boolean;
+    locale: "ar" | "en";
+  }) {
+    try {
+      return await this.prisma.client.$transaction(async (transaction) => {
+        const reservation = await transaction.reservation.findFirst({
+          where: { id: input.reservationId, status: { in: ["PRE_APPROVED", "CONFIRMED"] } },
+          select: {
+            id: true,
+            reference: true,
+            customerId: true,
+            assignedSalesId: true,
+            vehicleId: true,
+            branchId: true,
+            pickupAt: true,
+            returnAt: true,
+            driverRequested: true,
+            vehicleRateSnapshot: true,
+            driverRateSnapshot: true,
+            estimatedTotal: true,
+            preApprovalExpiresAt: true,
+            branchAttendedAt: true,
+            status: true,
+            deposit: { select: { id: true } },
+            contracts: {
+              where: { status: "SIGNED", signedAt: { not: null } },
+              orderBy: { version: "desc" },
+              take: 1,
+              select: { id: true },
+            },
+            booking: {
+              select: { id: true, reference: true, status: true, confirmedAt: true },
+            },
+          },
+        });
+        if (!reservation) return { kind: "NOT_FOUND" as const };
+        if (!input.canOverrideAssignment && reservation.assignedSalesId !== input.actorId) {
+          return { kind: "NOT_ASSIGNED" as const };
+        }
+        if (reservation.booking) {
+          return {
+            kind: "CONFIRMED" as const,
+            data: {
+              id: reservation.id,
+              reference: reservation.reference,
+              status: "CONFIRMED" as const,
+              booking: {
+                id: reservation.booking.id,
+                reference: reservation.booking.reference,
+                status: "CONFIRMED" as const,
+                confirmedAt: reservation.booking.confirmedAt.toISOString(),
+              },
+            },
+          };
+        }
+        if (
+          !reservation.preApprovalExpiresAt ||
+          reservation.preApprovalExpiresAt.getTime() <= Date.now()
+        ) {
+          return { kind: "PRE_APPROVAL_EXPIRED" as const };
+        }
+        if (
+          !reservation.branchAttendedAt ||
+          !reservation.deposit ||
+          !reservation.contracts.length
+        ) {
+          return { kind: "BRANCH_REQUIREMENTS_INCOMPLETE" as const };
+        }
+        const [block, bookingConflict] = await Promise.all([
+          transaction.vehicleBlock.findFirst({
+            where: {
+              vehicleId: reservation.vehicleId,
+              startsAt: { lt: reservation.returnAt },
+              endsAt: { gt: reservation.pickupAt },
+            },
+            select: { id: true },
+          }),
+          transaction.booking.findFirst({
+            where: {
+              vehicleId: reservation.vehicleId,
+              status: { in: ["CONFIRMED", "ACTIVE"] },
+              pickupAt: { lt: reservation.returnAt },
+              returnAt: { gt: reservation.pickupAt },
+            },
+            select: { id: true },
+          }),
+        ]);
+        if (block || bookingConflict) return { kind: "VEHICLE_UNAVAILABLE" as const };
+
+        const confirmedAt = new Date();
+        const updated = await transaction.reservation.updateMany({
+          where: { id: reservation.id, status: "PRE_APPROVED" },
+          data: {
+            status: "CONFIRMED",
+            confirmedAt,
+            finalTotal: reservation.estimatedTotal,
+            preApprovalExpiresAt: null,
+          },
+        });
+        if (!updated.count) return { kind: "VEHICLE_UNAVAILABLE" as const };
+
+        const rentalDays = Math.ceil(
+          (reservation.returnAt.getTime() - reservation.pickupAt.getTime()) / 86_400_000,
+        );
+        const vehicleSubtotal = reservation.vehicleRateSnapshot.toNumber() * rentalDays;
+        const driverSubtotal = reservation.driverRequested
+          ? (reservation.driverRateSnapshot?.toNumber() ?? 0) * rentalDays
+          : 0;
+        const booking = await transaction.booking.create({
+          data: {
+            reference: `BKG-${reservation.reference.replace(/^RHL-/, "")}`,
+            reservationId: reservation.id,
+            customerId: reservation.customerId,
+            vehicleId: reservation.vehicleId,
+            branchId: reservation.branchId,
+            status: "CONFIRMED",
+            pickupAt: reservation.pickupAt,
+            returnAt: reservation.returnAt,
+            confirmedAt,
+            priceSnapshot: {
+              create: {
+                currency: "EGP",
+                rentalDays,
+                vehicleSubtotal,
+                driverSubtotal,
+                grandTotal: reservation.estimatedTotal,
+                items: {
+                  create: [
+                    {
+                      code: "VEHICLE_RENTAL",
+                      description: "Vehicle rental",
+                      quantity: rentalDays,
+                      unitAmount: reservation.vehicleRateSnapshot,
+                      totalAmount: vehicleSubtotal,
+                      sortOrder: 1,
+                    },
+                    ...(reservation.driverRequested
+                      ? [
+                          {
+                            code: "DRIVER",
+                            description: "Driver service",
+                            quantity: rentalDays,
+                            unitAmount: reservation.driverRateSnapshot ?? 0,
+                            totalAmount: driverSubtotal,
+                            sortOrder: 2,
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              },
+            },
+          },
+          select: { id: true, reference: true, confirmedAt: true },
+        });
+        await transaction.contract.updateMany({
+          where: { reservationId: reservation.id, status: "SIGNED" },
+          data: { bookingId: booking.id },
+        });
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: reservation.id,
+            fromStatus: "PRE_APPROVED",
+            toStatus: "CONFIRMED",
+            actorId: input.actorId,
+            note: "Authorized staff confirmed the booking after branch requirements.",
+            metadata: { bookingId: booking.id, bookingReference: booking.reference },
+          },
+        });
+        await transaction.notification.create({
+          data: {
+            userId: reservation.customerId,
+            reservationId: reservation.id,
+            eventKey: "RESERVATION_BOOKING_CONFIRMED",
+            titleAr: "تم تأكيد حجزك",
+            titleEn: "Your booking is confirmed",
+            bodyAr: `تم تأكيد الحجز ${booking.reference} للطلب ${reservation.reference}. ستجد التفاصيل داخل حسابك.`,
+            bodyEn: `Booking ${booking.reference} is confirmed for request ${reservation.reference}. View the details in your account.`,
+            important: true,
+          },
+        });
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: "RESERVATION_BOOKING_CONFIRMED",
+            aggregateType: "RESERVATION",
+            aggregateId: reservation.id,
+            payload: {
+              reservationId: reservation.id,
+              bookingId: booking.id,
+              reference: reservation.reference,
+              bookingReference: booking.reference,
+              customerId: reservation.customerId,
+              locale: input.locale,
+              status: "CONFIRMED",
+            },
+          },
+        });
+        return {
+          kind: "CONFIRMED" as const,
+          data: {
+            id: reservation.id,
+            reference: reservation.reference,
+            status: "CONFIRMED" as const,
+            booking: {
+              id: booking.id,
+              reference: booking.reference,
+              status: "CONFIRMED" as const,
+              confirmedAt: booking.confirmedAt.toISOString(),
+            },
+          },
+        };
+      });
+    } catch (error) {
+      if (isBookingConflictError(error)) return { kind: "VEHICLE_UNAVAILABLE" as const };
+      throw error;
+    }
+  }
+
   findCustomerRequests(customerId: string) {
     return this.prisma.client.reservation.findMany({
       where: { customerId, submittedAt: { not: null }, status: { not: "DRAFT" } },
@@ -973,6 +1390,16 @@ export class ReservationsRepository {
           orderBy: { createdAt: "desc" },
           take: 1,
           select: alternativeOfferSelect,
+        },
+        branchAttendedAt: true,
+        deposit: { select: { id: true } },
+        contracts: {
+          where: { status: "SIGNED", signedAt: { not: null } },
+          take: 1,
+          select: { id: true },
+        },
+        booking: {
+          select: { reference: true, confirmedAt: true },
         },
       },
     });
@@ -1513,7 +1940,7 @@ const salesQueueSelect = {
   customerNameSnapshot: true,
   customerEmailSnapshot: true,
   customerPhoneSnapshot: true,
-  vehicle: { select: { id: true, nameAr: true, nameEn: true } },
+  vehicle: { select: { id: true, nameAr: true, nameEn: true, depositAmount: true } },
   branch: { select: { id: true, nameAr: true, nameEn: true } },
 } as const;
 
@@ -1547,6 +1974,17 @@ const alternativeOfferSelect = {
 } as const;
 
 class AlternativeOfferRaceError extends Error {}
+
+function isUniqueConstraintError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
+}
+
+function isBookingConflictError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  if ("code" in error && ["P2002", "P2034", "23P01"].includes(String(error.code))) return true;
+  const message = "message" in error ? String(error.message) : "";
+  return message.includes("Booking_vehicle_period_no_overlap");
+}
 
 function salesDecisionNotification(
   action: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT",

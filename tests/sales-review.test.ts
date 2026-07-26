@@ -34,16 +34,26 @@ describe("sales review workspace", () => {
   });
 
   it("claims a request for review without creating or confirming a booking", () => {
+    const claimImplementation = repository
+      .split("async claimSalesReview")[1]!
+      .split("async decideSalesReview")[0]!;
     expect(repository).toContain(
       'data: { status: "UNDER_REVIEW", assignedSalesId: input.actorId }',
     );
     expect(repository).toContain('fromStatus: "PENDING_REVIEW"');
     expect(repository).toContain('eventKey: "RESERVATION_UNDER_REVIEW"');
-    expect(repository).not.toContain("booking.create");
+    expect(claimImplementation).not.toContain("booking.create");
     expect(workspace).toContain("Claiming starts review and never confirms a booking");
     expect(workspace).toContain(
       "Final booking requires branch attendance, deposit, and a signed contract",
     );
+  });
+
+  it("keeps pre-approved requests visible for branch completion", () => {
+    expect(repository).toContain('"PRE_APPROVED"');
+    expect(workspace).toContain('["PRE_APPROVED", text.preApprovedStatus]');
+    expect(workspace).toContain("recordBranchRequirements");
+    expect(workspace).toContain("confirmFinalBooking");
   });
 
   it("records explicit customer-facing decisions without exposing notes as outbox fields", () => {

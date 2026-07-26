@@ -79,6 +79,18 @@ const copy = {
     alternativeAccepted: "تم قبول العرض وعاد الطلب إلى مراجعة فريق رحال.",
     alternativeDeclined: "تم رفض العرض وعاد الطلب إلى فريق رحال.",
     alternativeFailed: "تعذر تسجيل ردك. ربما انتهت صلاحية العرض أو تغير التوافر.",
+    branchProgressTitle: "إجراءات الفرع",
+    branchProgressCopy:
+      "بعد الموافقة المبدئية تظهر هنا إجراءات الحضور والعربون والعقد حتى التأكيد النهائي.",
+    attended: "تم تسجيل حضورك",
+    attendancePending: "في انتظار حضورك للفرع",
+    depositRecorded: "تم تسجيل العربون",
+    depositPending: "في انتظار تسجيل العربون بالفرع",
+    contractSigned: "تم تسجيل العقد الموقع",
+    contractPending: "في انتظار توقيع العقد",
+    finalBooking: "تم إنشاء الحجز النهائي",
+    finalPending: "في انتظار التأكيد النهائي من الموظف المختص",
+    bookingReference: "رقم الحجز",
     status: {
       PENDING_REVIEW: "بانتظار المراجعة",
       UNDER_REVIEW: "قيد المراجعة",
@@ -163,6 +175,18 @@ const copy = {
     alternativeDeclined: "The alternative was declined and returned to the Rahal team.",
     alternativeFailed:
       "Your response could not be recorded. The offer may have expired or changed.",
+    branchProgressTitle: "Branch progress",
+    branchProgressCopy:
+      "After pre-approval, branch attendance, deposit, and contract progress appear here until final confirmation.",
+    attended: "Attendance recorded",
+    attendancePending: "Waiting for your branch visit",
+    depositRecorded: "Deposit recorded",
+    depositPending: "Waiting for the branch deposit",
+    contractSigned: "Signed contract recorded",
+    contractPending: "Waiting for contract signature",
+    finalBooking: "Final booking created",
+    finalPending: "Waiting for authorized staff confirmation",
+    bookingReference: "Booking reference",
     status: {
       PENDING_REVIEW: "Pending review",
       UNDER_REVIEW: "Under review",
@@ -574,6 +598,56 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                       </p>
                     )}
                   </section>
+                  {["PRE_APPROVED", "CONFIRMED", "ACTIVE", "COMPLETED"].includes(detail.status) && (
+                    <section className="customer-branch-progress">
+                      <div>
+                        <span>03</span>
+                        <div>
+                          <h3>{text.branchProgressTitle}</h3>
+                          <p>{text.branchProgressCopy}</p>
+                        </div>
+                      </div>
+                      <ol>
+                        <li className={detail.branchProgress.attended ? "is-complete" : ""}>
+                          <span>{detail.branchProgress.attended ? "✓" : "1"}</span>
+                          <strong>
+                            {detail.branchProgress.attended
+                              ? text.attended
+                              : text.attendancePending}
+                          </strong>
+                        </li>
+                        <li className={detail.branchProgress.depositRecorded ? "is-complete" : ""}>
+                          <span>{detail.branchProgress.depositRecorded ? "✓" : "2"}</span>
+                          <strong>
+                            {detail.branchProgress.depositRecorded
+                              ? text.depositRecorded
+                              : text.depositPending}
+                          </strong>
+                        </li>
+                        <li className={detail.branchProgress.contractSigned ? "is-complete" : ""}>
+                          <span>{detail.branchProgress.contractSigned ? "✓" : "3"}</span>
+                          <strong>
+                            {detail.branchProgress.contractSigned
+                              ? text.contractSigned
+                              : text.contractPending}
+                          </strong>
+                        </li>
+                        <li className={detail.branchProgress.bookingReference ? "is-complete" : ""}>
+                          <span>{detail.branchProgress.bookingReference ? "✓" : "4"}</span>
+                          <strong>
+                            {detail.branchProgress.bookingReference
+                              ? text.finalBooking
+                              : text.finalPending}
+                          </strong>
+                          {detail.branchProgress.bookingReference && (
+                            <small>
+                              {text.bookingReference}: {detail.branchProgress.bookingReference}
+                            </small>
+                          )}
+                        </li>
+                      </ol>
+                    </section>
+                  )}
                   <section>
                     <h3>{text.documents}</h3>
                     {detail.documents.length === 0 ? (

@@ -426,4 +426,72 @@ describe("reservation draft service", () => {
       locale: "en",
     });
   });
+
+  it("records branch requirements through the assigned sales boundary", async () => {
+    const recordBranchChecklist = vi.fn().mockResolvedValue({
+      kind: "RECORDED",
+      data: {
+        id: "reservation-1",
+        reference: "RHL-2026-123456",
+        status: "PRE_APPROVED",
+        attendedAt: "2026-07-26T18:00:00.000Z",
+        depositRecordedAt: "2026-07-26T18:00:00.000Z",
+        contractSignedAt: "2026-07-26T18:00:00.000Z",
+      },
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "sales-1", role: "SALES", preferredLocale: "en" },
+        }),
+      } as never,
+      { recordBranchChecklist } as never,
+    );
+
+    await expect(
+      service.recordBranchChecklist("session-token", "reservation-1", {
+        customerAttended: true,
+        depositAmountEgp: 10_000,
+        receiptNumber: "RCP-2026-001",
+        contractSigned: true,
+      }),
+    ).resolves.toMatchObject({ status: "PRE_APPROVED" });
+    expect(recordBranchChecklist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: "sales-1",
+        depositAmountEgp: 10_000,
+        receiptNumber: "RCP-2026-001",
+      }),
+    );
+  });
+
+  it("confirms a booking only through the protected repository transition", async () => {
+    const confirmBooking = vi.fn().mockResolvedValue({
+      kind: "CONFIRMED",
+      data: {
+        id: "reservation-1",
+        reference: "RHL-2026-123456",
+        status: "CONFIRMED",
+        booking: {
+          id: "booking-1",
+          reference: "BKG-2026-123456",
+          status: "CONFIRMED",
+          confirmedAt: "2026-07-26T18:05:00.000Z",
+        },
+      },
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "sales-1", role: "SALES", preferredLocale: "en" },
+        }),
+      } as never,
+      { confirmBooking } as never,
+    );
+
+    await expect(service.confirmBooking("session-token", "reservation-1")).resolves.toMatchObject({
+      status: "CONFIRMED",
+      booking: { reference: "BKG-2026-123456" },
+    });
+  });
 });

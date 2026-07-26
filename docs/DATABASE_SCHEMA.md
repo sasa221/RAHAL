@@ -77,6 +77,8 @@ The protected-document slice now records an explicit Egyptian/foreign customer c
 
 The submission slice adds nullable `Reservation.submittedAt`. A guarded transaction sets it only when a fully eligible `DRAFT` changes to `PENDING_REVIEW`, then writes the matching `ReservationEvent`, customer `Notification`, and privacy-minimized `NotificationEvent` outbox record. A `Booking` remains a separate later record and is never created by customer submission.
 
+The branch-confirmation slice adds nullable `Reservation.branchAttendedAt`. A `PRE_APPROVED` request stores branch attendance, one configured-EGP `Deposit` with a unique receipt reference, and a signed `Contract` before confirmation is allowed. Final confirmation performs a new vehicle-block and confirmed/active-booking conflict check inside the transaction, creates the separate `Booking` and immutable EGP `BookingPriceSnapshot`, links the signed contract, and only then exposes a safe booking reference to the customer. Receipt data and contract storage keys remain staff-side.
+
 ## Notifications
 
 - `notifications`: in-app notification records.
