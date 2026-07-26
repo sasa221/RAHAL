@@ -405,3 +405,54 @@ export type AuthSession = {
   user: AuthUser;
   expiresAt: string;
 };
+
+export type FleetCalendarEventKind =
+  "PENDING" | "CONFIRMED" | "ACTIVE" | "MAINTENANCE" | "MANUAL_BLOCK";
+
+export type FleetCalendarEvent = {
+  id: string;
+  vehicleId: string;
+  kind: FleetCalendarEventKind;
+  reference: string | null;
+  startsAt: string;
+  endsAt: string;
+  reason: string | null;
+  blocksAvailability: boolean;
+  removable: boolean;
+};
+
+export type FleetCalendarVehicle = {
+  id: string;
+  slug: string;
+  name: string;
+  registrationNumber: string;
+  status:
+    | "AVAILABLE"
+    | "PENDING_REQUEST"
+    | "CONFIRMED_BOOKING"
+    | "RENTED"
+    | "MAINTENANCE"
+    | "MANUALLY_BLOCKED"
+    | "OVERDUE"
+    | "INACTIVE"
+    | "ARCHIVED";
+  branch: { id: string; name: string };
+  events: FleetCalendarEvent[];
+};
+
+export type FleetCalendar = {
+  from: string;
+  to: string;
+  canManageBlocks: boolean;
+  vehicles: FleetCalendarVehicle[];
+};
+
+export type FleetBlockResult = {
+  id: string;
+  vehicleId: string;
+  type: "MAINTENANCE" | "MANUAL_BLOCK";
+  startsAt: string;
+  endsAt: string;
+  reason: string;
+  createdAt: string;
+};

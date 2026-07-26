@@ -342,6 +342,40 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - Service and static coverage for branch authorization, required steps, unique receipts, EGP price snapshots, safe customer progress, and conflict-protected booking creation.
 - Service and static coverage for allowed booking transitions, handover-reading constraints, vehicle status changes, safe customer lifecycle output, and operation notifications.
 
+## Milestone 7: Fleet operations calendar
+
+Goal: give sales and administrators one privacy-safe operational view of vehicle demand, bookings, rentals, maintenance, and manual holds.
+
+Status: completed locally on 2026-07-26. The API and responsive Arabic/English workspace are implemented; applying the existing database migrations still requires the local PostgreSQL service.
+
+### Completed scope
+
+- Staff-only calendar access for `SALES`, `ADMIN`, and `SUPER_ADMIN`; customer accounts receive `403`.
+- A bounded 63-day query window with active vehicle, branch, registration, and operational-status data.
+- Pending review requests are visible as non-blocking demand, while confirmed bookings, active rentals, maintenance, and manual holds are marked as blocking.
+- Calendar responses contain reservation or booking references only and never customer names, contact details, documents, identity data, or operational handover readings.
+- Administrators can create maintenance or manual-hold periods with validated dates and a required operational reason.
+- Block creation rejects past dates, ranges longer than 366 days, existing blocks, and confirmed/active booking conflicts.
+- Administrators can remove only future blocks; sales employees retain read-only access.
+- Block creation and removal write immutable `AuditLog` records without customer data.
+- Shared Arabic/English routes are available at `/fleet` and `/en/fleet`.
+- Desktop uses a 14-day vehicle timeline, while mobile uses a purpose-built agenda rather than a compressed desktop grid.
+- Filters, period navigation, utilization metrics, loading/error/empty states, and administrator controls are included.
+
+### Acceptance criteria
+
+- Customers cannot open the staff fleet calendar.
+- Sales employees cannot create or remove operational blocks.
+- A maintenance or manual hold cannot overlap an existing block or confirmed/active booking.
+- Pending requests remain visibly distinct and do not claim availability.
+- No customer identity or contact field appears in the fleet contract, database selection, or UI.
+- Every block mutation records the administrator, action, vehicle block, bounded dates, and operational reason in audit.
+- Arabic and English share the same responsive behavior and correct direction.
+
+### Tests
+
+- Static coverage for role boundaries, bounded date ranges, customer-data exclusions, blocking semantics, overlap validation, audit writes, bilingual routes, and responsive calendar/agenda views.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

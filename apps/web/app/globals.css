@@ -2057,6 +2057,470 @@ body {
   }
 }
 
+/* Fleet operations calendar */
+.fleet-workspace {
+  position: relative;
+  padding-bottom: 72px;
+}
+
+.fleet-hero {
+  align-items: end;
+}
+
+.fleet-range-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fleet-range-controls button,
+.fleet-toolbar button,
+.fleet-error button {
+  border: 1px solid rgba(24, 24, 21, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: #1a1a17;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.fleet-range-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 15px;
+}
+
+.fleet-range-controls button:hover,
+.fleet-toolbar button:hover,
+.fleet-toolbar button[aria-pressed="true"] {
+  border-color: #a6741f;
+  background: #181815;
+  color: #f8f2e7;
+  transform: translateY(-2px);
+}
+
+.fleet-range-controls button:first-child svg {
+  transform: rotate(180deg);
+}
+
+[dir="rtl"] .fleet-range-controls button:first-child svg {
+  transform: none;
+}
+
+[dir="rtl"] .fleet-range-controls button:last-child svg {
+  transform: rotate(180deg);
+}
+
+.fleet-metrics {
+  margin-block: 24px;
+}
+
+.fleet-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.fleet-toolbar button {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+}
+
+.fleet-state,
+.fleet-error {
+  min-height: 180px;
+  border: 1px solid rgba(24, 24, 21, 0.12);
+  background: rgba(255, 255, 255, 0.65);
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  text-align: center;
+}
+
+.fleet-error {
+  min-height: auto;
+  grid-template-columns: 1fr auto;
+  place-items: center start;
+  gap: 16px;
+  border-color: rgba(151, 55, 42, 0.25);
+  background: #f0e3dc;
+  color: #7a2d24;
+  margin-bottom: 18px;
+}
+
+.fleet-error button {
+  padding: 8px 12px;
+}
+
+.fleet-calendar-panel {
+  overflow: hidden;
+  border: 1px solid rgba(24, 24, 21, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 24px 64px rgba(42, 35, 24, 0.08);
+}
+
+.fleet-calendar-head,
+.fleet-calendar-row {
+  display: grid;
+  grid-template-columns: 215px minmax(760px, 1fr);
+}
+
+.fleet-calendar-head {
+  background: #181815;
+  color: #f8f2e7;
+}
+
+.fleet-calendar-head > div:first-child {
+  display: flex;
+  align-items: center;
+  padding: 18px;
+  color: #d8b86f;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fleet-day-heads {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(54px, 1fr));
+}
+
+.fleet-day-heads time {
+  display: grid;
+  place-items: center;
+  min-height: 68px;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fleet-day-heads span {
+  color: rgba(248, 242, 231, 0.58);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.fleet-day-heads strong {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.08rem;
+}
+
+.fleet-calendar-row {
+  min-height: 106px;
+  border-top: 1px solid rgba(24, 24, 21, 0.1);
+}
+
+.fleet-calendar-row > header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 18px;
+  border-inline-end: 1px solid rgba(24, 24, 21, 0.1);
+}
+
+.fleet-calendar-row > header strong {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.05rem;
+}
+
+[dir="rtl"] .fleet-calendar-row > header strong {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 800;
+}
+
+.fleet-calendar-row > header span {
+  color: #a6741f;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.fleet-calendar-row > header small {
+  color: #74716b;
+}
+
+.fleet-track {
+  position: relative;
+  min-width: 760px;
+  overflow: hidden;
+}
+
+.fleet-track-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+}
+
+.fleet-track-grid i {
+  border-inline-start: 1px solid rgba(24, 24, 21, 0.075);
+}
+
+.fleet-track-grid i:nth-child(7n),
+.fleet-track-grid i:nth-child(7n + 1) {
+  background: rgba(173, 132, 53, 0.035);
+}
+
+.fleet-event {
+  position: absolute;
+  top: 22px;
+  z-index: 1;
+  min-width: 54px;
+  min-height: 60px;
+  padding: 10px 11px;
+  overflow: hidden;
+  border-inline-start: 3px solid currentColor;
+  background: #ece7dc;
+  color: #5d5548;
+}
+
+.fleet-event strong,
+.fleet-event span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-event strong {
+  font-size: 0.68rem;
+}
+
+.fleet-event span {
+  margin-top: 4px;
+  font-size: 0.64rem;
+  opacity: 0.78;
+}
+
+.fleet-event button,
+.fleet-agenda-event button {
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.fleet-event--pending {
+  background: #e6e1d6;
+  color: #6c665b;
+}
+
+.fleet-event--confirmed {
+  background: #efe2bb;
+  color: #775713;
+}
+
+.fleet-event--active {
+  background: #d9eadf;
+  color: #255c3a;
+}
+
+.fleet-event--maintenance {
+  background: #e2e7eb;
+  color: #31576b;
+}
+
+.fleet-event--manual_block {
+  background: #eadbd7;
+  color: #8a3c31;
+}
+
+.fleet-agenda {
+  display: none;
+}
+
+.fleet-manage-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(420px, 1.3fr);
+  gap: 44px;
+  margin-top: 28px;
+  padding: clamp(24px, 4vw, 46px);
+  background: linear-gradient(120deg, rgba(214, 180, 105, 0.11), transparent 45%), #191917;
+  color: #f8f2e7;
+}
+
+.fleet-manage-panel > header > span {
+  color: #d8b86f;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.fleet-manage-panel h2 {
+  margin: 12px 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-weight: 500;
+}
+
+[dir="rtl"] .fleet-manage-panel h2 {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 800;
+}
+
+.fleet-manage-panel p {
+  max-width: 430px;
+  color: rgba(248, 242, 231, 0.66);
+  line-height: 1.8;
+}
+
+.fleet-manage-panel form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.fleet-manage-panel label {
+  display: grid;
+  gap: 7px;
+  color: rgba(248, 242, 231, 0.72);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.fleet-manage-panel select,
+.fleet-manage-panel input,
+.fleet-manage-panel textarea {
+  width: 100%;
+  border: 1px solid rgba(248, 242, 231, 0.2);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f8f2e7;
+  padding: 13px 14px;
+  font: inherit;
+  color-scheme: dark;
+}
+
+.fleet-manage-panel option {
+  background: #191917;
+}
+
+.fleet-reason {
+  grid-column: 1 / -1;
+}
+
+.fleet-manage-panel form > button {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  border: 0;
+  background: #d8b86f;
+  color: #191917;
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .fleet-calendar-panel {
+    overflow-x: auto;
+  }
+
+  .fleet-calendar-head,
+  .fleet-calendar-row {
+    min-width: 975px;
+  }
+}
+
+@media (max-width: 760px) {
+  .fleet-workspace {
+    padding-bottom: 104px;
+  }
+
+  .fleet-hero {
+    align-items: stretch;
+  }
+
+  .fleet-range-controls {
+    justify-content: stretch;
+  }
+
+  .fleet-range-controls button {
+    flex: 1 1 0;
+    justify-content: center;
+    padding-inline: 8px;
+  }
+
+  .fleet-calendar-panel {
+    display: none;
+  }
+
+  .fleet-agenda {
+    display: grid;
+    gap: 14px;
+  }
+
+  .fleet-agenda > article {
+    border: 1px solid rgba(24, 24, 21, 0.13);
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .fleet-agenda > article > header {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 15px 16px;
+    border-bottom: 1px solid rgba(24, 24, 21, 0.1);
+  }
+
+  .fleet-agenda > article > header span {
+    color: #a6741f;
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .fleet-agenda-event {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 16px;
+    margin: 12px;
+    padding: 14px;
+    border-inline-start: 3px solid currentColor;
+  }
+
+  .fleet-agenda-event > span,
+  .fleet-agenda-event > time {
+    font-size: 0.7rem;
+  }
+
+  .fleet-agenda-event > time {
+    grid-column: 1 / -1;
+    opacity: 0.7;
+  }
+
+  .fleet-manage-panel {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .fleet-manage-panel form {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-reason,
+  .fleet-manage-panel form > button {
+    grid-column: auto;
+  }
+}
+
 .sales-branch-panel,
 .customer-branch-progress {
   position: relative;

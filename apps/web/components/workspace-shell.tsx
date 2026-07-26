@@ -48,28 +48,35 @@ export function WorkspaceShell({
   children,
   kind,
   locale,
+  activePage = "overview",
 }: {
   children: ReactNode;
   kind: WorkspaceKind;
   locale: PublicLocale;
+  activePage?: "overview" | "fleet";
 }) {
   const text = shellCopy[locale];
   const [loggingOut, setLoggingOut] = useState(false);
   const currentHref = localizedPath(locale, kind === "sales" ? "/sales" : "/account/requests");
+  const fleetHref = localizedPath(locale, kind === "sales" ? "/fleet" : "/cars");
   const languageHref =
     locale === "ar"
       ? kind === "sales"
-        ? "/en/sales"
+        ? activePage === "fleet"
+          ? "/en/fleet"
+          : "/en/sales"
         : "/en/account/requests"
       : kind === "sales"
-        ? "/sales"
+        ? activePage === "fleet"
+          ? "/fleet"
+          : "/sales"
         : "/account/requests";
   const navigation =
     kind === "sales"
       ? [
           [text.overview, currentHref, "document"],
           [text.requests, `${currentHref}#requests`, "calendar"],
-          [text.fleet, localizedPath(locale, "/cars"), "car"],
+          [text.fleet, fleetHref, "car"],
           [text.publicSite, localizedPath(locale), "arrow"],
         ]
       : [
@@ -101,7 +108,16 @@ export function WorkspaceShell({
 
         <nav aria-label={kind === "sales" ? text.salesBrand : text.customerBrand}>
           {navigation.map(([label, href, icon], index) => (
-            <a className={index === 0 ? "is-active" : ""} href={href} key={`${label}-${href}`}>
+            <a
+              className={
+                (activePage === "overview" && index === 0) ||
+                (activePage === "fleet" && index === 2)
+                  ? "is-active"
+                  : ""
+              }
+              href={href}
+              key={`${label}-${href}`}
+            >
               <Icon name={icon as "arrow" | "calendar" | "car" | "document"} size={19} />
               <span>{label}</span>
             </a>
@@ -140,7 +156,15 @@ export function WorkspaceShell({
         aria-label={kind === "sales" ? text.salesBrand : text.customerBrand}
       >
         {navigation.slice(0, 4).map(([label, href, icon], index) => (
-          <a className={index === 0 ? "is-active" : ""} href={href} key={`mobile-${label}-${href}`}>
+          <a
+            className={
+              (activePage === "overview" && index === 0) || (activePage === "fleet" && index === 2)
+                ? "is-active"
+                : ""
+            }
+            href={href}
+            key={`mobile-${label}-${href}`}
+          >
             <Icon name={icon as "arrow" | "calendar" | "car" | "document"} size={19} />
             <span>{label}</span>
           </a>

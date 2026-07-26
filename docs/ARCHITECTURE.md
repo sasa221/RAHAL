@@ -139,6 +139,8 @@ Review-window expiry runs as a small non-overlapping worker inside the API proce
 
 Post-confirmation operations use an explicit server-owned state machine. Delivery and return create unique `BookingOperation` records with bounded odometer/fuel readings, a condition note, actor, and timestamp. Delivery atomically moves the reservation and booking to `ACTIVE` and the vehicle to `RENTED`; completion is unavailable until a return record exists and then releases only a currently rented vehicle. Cancellation and no-show apply only before delivery, and no-show is rejected before scheduled pickup. Customer APIs expose lifecycle timestamps but not staff notes or readings.
 
+The staff fleet calendar is a separate privacy-minimized read model. It joins active vehicle metadata with pending request references, confirmed/active booking references, and operational blocks for a bounded date window. It deliberately omits every customer field. Pending requests are informational and non-blocking; confirmed/active bookings and maintenance/manual blocks are blocking. Sales can read this model, while block mutations require an administrator role, reject booking/block overlaps, and write an immutable audit record.
+
 ## Notification architecture
 
 Use an outbox pattern:
