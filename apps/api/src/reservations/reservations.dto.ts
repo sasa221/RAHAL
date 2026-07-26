@@ -2,6 +2,7 @@ import {
   Equals,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -10,6 +11,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from "class-validator";
 
 export class SaveReservationDraftDto {
@@ -129,4 +131,25 @@ export class SalesBranchChecklistDto {
   @IsString()
   @MaxLength(300)
   note?: string;
+}
+
+export class SalesBookingOperationDto {
+  @IsIn(["DELIVER", "RETURN", "COMPLETE", "CANCEL", "NO_SHOW"])
+  action!: "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW";
+
+  @ValidateIf((input: SalesBookingOperationDto) => ["DELIVER", "RETURN"].includes(input.action))
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  odometerKm?: number;
+
+  @ValidateIf((input: SalesBookingOperationDto) => ["DELIVER", "RETURN"].includes(input.action))
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  fuelLevelPercent?: number;
+
+  @IsString()
+  @Length(10, 500)
+  note!: string;
 }

@@ -494,4 +494,41 @@ describe("reservation draft service", () => {
       booking: { reference: "BKG-2026-123456" },
     });
   });
+
+  it("records an assigned sales delivery through the lifecycle boundary", async () => {
+    const recordBookingOperation = vi.fn().mockResolvedValue({
+      kind: "RECORDED",
+      data: {
+        id: "reservation-1",
+        reference: "RHL-2026-123456",
+        status: "ACTIVE",
+        action: "DELIVER",
+        recordedAt: "2026-07-26T20:00:00.000Z",
+      },
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "sales-1", role: "SALES", preferredLocale: "en" },
+        }),
+      } as never,
+      { recordBookingOperation } as never,
+    );
+
+    await expect(
+      service.recordBookingOperation("session-token", "reservation-1", {
+        action: "DELIVER",
+        odometerKm: 42_100,
+        fuelLevelPercent: 75,
+        note: "Vehicle inspected and delivered in good condition.",
+      }),
+    ).resolves.toMatchObject({ status: "ACTIVE", action: "DELIVER" });
+    expect(recordBookingOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: "sales-1",
+        odometerKm: 42_100,
+        fuelLevelPercent: 75,
+      }),
+    );
+  });
 });

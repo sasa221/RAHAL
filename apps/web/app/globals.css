@@ -2298,6 +2298,220 @@ body {
   }
 }
 
+.sales-operations-panel {
+  display: grid;
+  gap: 1.1rem;
+  padding: clamp(1.1rem, 2vw, 1.65rem);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.sales-operation-readings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.sales-operation-readings article {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, var(--warm));
+}
+
+.sales-operation-readings article > span {
+  color: var(--gold-strong);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sales-operation-readings article > strong {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.sales-operation-readings dl,
+.sales-operation-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.sales-operation-readings dl {
+  margin: 1rem 0 0;
+}
+
+.sales-operation-readings dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.sales-operation-readings dd {
+  margin: 0.2rem 0 0;
+  font-weight: 800;
+}
+
+.sales-operation-readings p {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.sales-operation-form label,
+.sales-operation-note {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.sales-operation-form input,
+.sales-operation-note textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  padding: 0.82rem;
+}
+
+.sales-operation-note small {
+  justify-self: end;
+}
+
+.sales-operation-actions {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.sales-operation-actions button,
+.sales-operation-primary {
+  min-height: 3.35rem;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sales-operation-actions button.is-secondary {
+  background: transparent;
+  color: var(--ink);
+}
+
+.sales-operation-actions button.is-danger {
+  border-color: #8e3b32;
+  background: #8e3b32;
+}
+
+.sales-operation-actions button:disabled,
+.sales-operation-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.customer-rental-progress {
+  padding: clamp(1rem, 2vw, 1.5rem) !important;
+  background: var(--ink) !important;
+  color: #fff;
+}
+
+.customer-rental-progress h3 {
+  margin: 0 0 1rem;
+  color: var(--gold);
+}
+
+.customer-rental-progress ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.customer-rental-progress li {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+  padding-inline-end: 1rem;
+}
+
+.customer-rental-progress li:not(:last-child)::after {
+  position: absolute;
+  inset-block-start: 1rem;
+  inset-inline-start: 2.25rem;
+  width: calc(100% - 2.5rem);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  content: "";
+}
+
+.customer-rental-progress li > span {
+  z-index: 1;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  background: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.customer-rental-progress li.is-complete > span {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.customer-rental-progress strong,
+.customer-rental-progress small {
+  display: block;
+}
+
+.customer-rental-progress strong {
+  max-width: 13rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.customer-rental-progress small {
+  margin-top: 0.2rem;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+@media (max-width: 720px) {
+  .sales-operation-readings,
+  .sales-operation-form,
+  .sales-operation-actions,
+  .customer-rental-progress ol {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-rental-progress ol {
+    gap: 0.8rem;
+  }
+
+  .customer-rental-progress li {
+    grid-template-columns: 2rem 1fr;
+    align-items: center;
+  }
+
+  .customer-rental-progress li:not(:last-child)::after {
+    inset-block-start: 2.2rem;
+    inset-inline-start: 1rem;
+    width: 1px;
+    height: calc(100% - 0.25rem);
+  }
+}
+
 body,
 button,
 input,

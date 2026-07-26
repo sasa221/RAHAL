@@ -531,6 +531,7 @@ export class ReservationsRepository {
             "PRE_APPROVED",
             "ALTERNATIVE_OFFERED",
             "CONFIRMED",
+            "ACTIVE",
           ],
         },
         ...(canSeeAll
@@ -560,6 +561,7 @@ export class ReservationsRepository {
             "PRE_APPROVED",
             "ALTERNATIVE_OFFERED",
             "CONFIRMED",
+            "ACTIVE",
           ],
         },
       },
@@ -616,11 +618,24 @@ export class ReservationsRepository {
           take: 1,
           select: { status: true, signedAt: true },
         },
+        deliveredAt: true,
+        returnedAt: true,
+        completedAt: true,
         booking: {
           select: {
             reference: true,
             status: true,
             confirmedAt: true,
+            operations: {
+              orderBy: { recordedAt: "asc" },
+              select: {
+                type: true,
+                odometerKm: true,
+                fuelLevelPercent: true,
+                conditionNote: true,
+                recordedAt: true,
+              },
+            },
           },
         },
       },
@@ -1357,6 +1372,251 @@ export class ReservationsRepository {
     }
   }
 
+  async recordBookingOperation(input: {
+    reservationId: string;
+    actorId: string;
+    canOverrideAssignment: boolean;
+    locale: "ar" | "en";
+    action: "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW";
+    odometerKm: number | null;
+    fuelLevelPercent: number | null;
+    note: string;
+  }) {
+    try {
+      return await this.prisma.client.$transaction(async (transaction) => {
+        const reservation = await transaction.reservation.findFirst({
+          where: {
+            id: input.reservationId,
+            status: { in: ["CONFIRMED", "ACTIVE"] },
+          },
+          select: {
+            id: true,
+            reference: true,
+            customerId: true,
+            vehicleId: true,
+            assignedSalesId: true,
+            status: true,
+            pickupAt: true,
+            returnedAt: true,
+            booking: {
+              select: {
+                id: true,
+                reference: true,
+                status: true,
+                operations: {
+                  orderBy: { recordedAt: "asc" },
+                  select: {
+                    type: true,
+                    odometerKm: true,
+                    fuelLevelPercent: true,
+                    recordedAt: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+        if (!reservation?.booking) return { kind: "NOT_FOUND" as const };
+        if (!input.canOverrideAssignment && reservation.assignedSalesId !== input.actorId) {
+          return { kind: "NOT_ASSIGNED" as const };
+        }
+
+        const delivery = reservation.booking.operations.find(
+          (operation) => operation.type === "DELIVERY",
+        );
+        const vehicleReturn = reservation.booking.operations.find(
+          (operation) => operation.type === "RETURN",
+        );
+        const recordedAt = new Date();
+        let nextStatus: "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+        let expectedReservationStatus: "CONFIRMED" | "ACTIVE";
+        let expectedBookingStatus: "CONFIRMED" | "ACTIVE";
+
+        if (input.action === "DELIVER") {
+          if (
+            reservation.status !== "CONFIRMED" ||
+            reservation.booking.status !== "CONFIRMED" ||
+            delivery ||
+            input.odometerKm === null ||
+            input.fuelLevelPercent === null
+          ) {
+            return { kind: "INVALID_TRANSITION" as const };
+          }
+          nextStatus = "ACTIVE";
+          expectedReservationStatus = "CONFIRMED";
+          expectedBookingStatus = "CONFIRMED";
+        } else if (input.action === "RETURN") {
+          if (
+            reservation.status !== "ACTIVE" ||
+            reservation.booking.status !== "ACTIVE" ||
+            !delivery ||
+            vehicleReturn ||
+            input.odometerKm === null ||
+            input.fuelLevelPercent === null
+          ) {
+            return { kind: "INVALID_TRANSITION" as const };
+          }
+          if (input.odometerKm < delivery.odometerKm) {
+            return { kind: "INVALID_ODOMETER" as const };
+          }
+          nextStatus = "ACTIVE";
+          expectedReservationStatus = "ACTIVE";
+          expectedBookingStatus = "ACTIVE";
+        } else if (input.action === "COMPLETE") {
+          if (
+            reservation.status !== "ACTIVE" ||
+            reservation.booking.status !== "ACTIVE" ||
+            !vehicleReturn ||
+            !reservation.returnedAt
+          ) {
+            return { kind: "INVALID_TRANSITION" as const };
+          }
+          nextStatus = "COMPLETED";
+          expectedReservationStatus = "ACTIVE";
+          expectedBookingStatus = "ACTIVE";
+        } else if (input.action === "CANCEL") {
+          if (reservation.status !== "CONFIRMED" || reservation.booking.status !== "CONFIRMED") {
+            return { kind: "INVALID_TRANSITION" as const };
+          }
+          nextStatus = "CANCELLED";
+          expectedReservationStatus = "CONFIRMED";
+          expectedBookingStatus = "CONFIRMED";
+        } else {
+          if (reservation.status !== "CONFIRMED" || reservation.booking.status !== "CONFIRMED") {
+            return { kind: "INVALID_TRANSITION" as const };
+          }
+          if (recordedAt < reservation.pickupAt) return { kind: "TOO_EARLY" as const };
+          nextStatus = "NO_SHOW";
+          expectedReservationStatus = "CONFIRMED";
+          expectedBookingStatus = "CONFIRMED";
+        }
+
+        const reservationUpdate = await transaction.reservation.updateMany({
+          where: { id: reservation.id, status: expectedReservationStatus },
+          data: {
+            status: nextStatus,
+            ...(input.action === "DELIVER" ? { deliveredAt: recordedAt } : {}),
+            ...(input.action === "RETURN" ? { returnedAt: recordedAt } : {}),
+            ...(input.action === "COMPLETE" ? { completedAt: recordedAt } : {}),
+            ...(["CANCEL", "NO_SHOW"].includes(input.action)
+              ? { cancellationReason: input.note }
+              : {}),
+          },
+        });
+        const bookingUpdate = await transaction.booking.updateMany({
+          where: { id: reservation.booking.id, status: expectedBookingStatus },
+          data: {
+            status: nextStatus,
+            ...(input.action === "DELIVER" ? { activatedAt: recordedAt } : {}),
+            ...(input.action === "COMPLETE" ? { completedAt: recordedAt } : {}),
+            ...(["CANCEL", "NO_SHOW"].includes(input.action) ? { cancelledAt: recordedAt } : {}),
+          },
+        });
+        if (!reservationUpdate.count || !bookingUpdate.count) {
+          throw new BookingOperationRaceError();
+        }
+
+        if (input.action === "DELIVER" || input.action === "RETURN") {
+          await transaction.bookingOperation.create({
+            data: {
+              bookingId: reservation.booking.id,
+              type: input.action === "DELIVER" ? "DELIVERY" : "RETURN",
+              odometerKm: input.odometerKm!,
+              fuelLevelPercent: input.fuelLevelPercent!,
+              conditionNote: input.note,
+              actorId: input.actorId,
+              recordedAt,
+            },
+          });
+        }
+        if (input.action === "DELIVER") {
+          const vehicleUpdated = await transaction.vehicle.updateMany({
+            where: {
+              id: reservation.vehicleId,
+              status: { in: ["AVAILABLE", "CONFIRMED_BOOKING"] },
+            },
+            data: { status: "RENTED" },
+          });
+          if (!vehicleUpdated.count) throw new VehicleOperationUnavailableError();
+        }
+        if (input.action === "COMPLETE") {
+          await transaction.vehicle.updateMany({
+            where: { id: reservation.vehicleId, status: "RENTED" },
+            data: { status: "AVAILABLE" },
+          });
+        }
+
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: reservation.id,
+            fromStatus: expectedReservationStatus,
+            toStatus: nextStatus,
+            actorId: input.actorId,
+            note: `Sales recorded the ${input.action.toLowerCase()} operation.`,
+            metadata: {
+              action: input.action,
+              bookingId: reservation.booking.id,
+              ...(input.odometerKm === null ? {} : { odometerKm: input.odometerKm }),
+              ...(input.fuelLevelPercent === null
+                ? {}
+                : { fuelLevelPercent: input.fuelLevelPercent }),
+            },
+          },
+        });
+        const notificationCopy = bookingOperationNotification(
+          input.action,
+          reservation.reference,
+          reservation.booking.reference,
+        );
+        await transaction.notification.create({
+          data: {
+            userId: reservation.customerId,
+            reservationId: reservation.id,
+            eventKey: notificationCopy.eventKey,
+            titleAr: notificationCopy.titleAr,
+            titleEn: notificationCopy.titleEn,
+            bodyAr: notificationCopy.bodyAr,
+            bodyEn: notificationCopy.bodyEn,
+            important: true,
+          },
+        });
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: notificationCopy.eventKey,
+            aggregateType: "BOOKING",
+            aggregateId: reservation.booking.id,
+            payload: {
+              reservationId: reservation.id,
+              bookingId: reservation.booking.id,
+              customerId: reservation.customerId,
+              locale: input.locale,
+              action: input.action,
+              status: nextStatus,
+            },
+          },
+        });
+        return {
+          kind: "RECORDED" as const,
+          data: {
+            id: reservation.id,
+            reference: reservation.reference,
+            status: nextStatus,
+            action: input.action,
+            recordedAt: recordedAt.toISOString(),
+          },
+        };
+      });
+    } catch (error) {
+      if (error instanceof VehicleOperationUnavailableError) {
+        return { kind: "VEHICLE_UNAVAILABLE" as const };
+      }
+      if (error instanceof BookingOperationRaceError || isUniqueConstraintError(error)) {
+        return { kind: "INVALID_TRANSITION" as const };
+      }
+      throw error;
+    }
+  }
+
   findCustomerRequests(customerId: string) {
     return this.prisma.client.reservation.findMany({
       where: { customerId, submittedAt: { not: null }, status: { not: "DRAFT" } },
@@ -1401,6 +1661,9 @@ export class ReservationsRepository {
         booking: {
           select: { reference: true, confirmedAt: true },
         },
+        deliveredAt: true,
+        returnedAt: true,
+        completedAt: true,
       },
     });
   }
@@ -1974,6 +2237,8 @@ const alternativeOfferSelect = {
 } as const;
 
 class AlternativeOfferRaceError extends Error {}
+class BookingOperationRaceError extends Error {}
+class VehicleOperationUnavailableError extends Error {}
 
 function isUniqueConstraintError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002");
@@ -1984,6 +2249,56 @@ function isBookingConflictError(error: unknown) {
   if ("code" in error && ["P2002", "P2034", "23P01"].includes(String(error.code))) return true;
   const message = "message" in error ? String(error.message) : "";
   return message.includes("Booking_vehicle_period_no_overlap");
+}
+
+function bookingOperationNotification(
+  action: "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW",
+  requestReference: string,
+  bookingReference: string,
+) {
+  if (action === "DELIVER") {
+    return {
+      eventKey: "BOOKING_DELIVERED",
+      titleAr: "بدأت رحلتك مع رحال",
+      titleEn: "Your Rahal rental is active",
+      bodyAr: `تم تسجيل تسليم السيارة للحجز ${bookingReference}. نتمنى لك رحلة آمنة.`,
+      bodyEn: `Vehicle delivery was recorded for ${bookingReference}. Have a safe journey.`,
+    };
+  }
+  if (action === "RETURN") {
+    return {
+      eventKey: "BOOKING_RETURN_RECORDED",
+      titleAr: "تم تسجيل إرجاع السيارة",
+      titleEn: "Vehicle return recorded",
+      bodyAr: `تم تسجيل إرجاع السيارة للحجز ${bookingReference} وجارٍ إكمال إجراءات الفرع.`,
+      bodyEn: `The vehicle return was recorded for ${bookingReference}. Branch completion is in progress.`,
+    };
+  }
+  if (action === "COMPLETE") {
+    return {
+      eventKey: "BOOKING_COMPLETED",
+      titleAr: "اكتملت رحلتك مع رحال",
+      titleEn: "Your Rahal rental is complete",
+      bodyAr: `تم إكمال الحجز ${bookingReference}. شكرًا لاختيارك رحال.`,
+      bodyEn: `Booking ${bookingReference} is complete. Thank you for choosing Rahal.`,
+    };
+  }
+  if (action === "CANCEL") {
+    return {
+      eventKey: "BOOKING_CANCELLED",
+      titleAr: "تم إلغاء الحجز",
+      titleEn: "Booking cancelled",
+      bodyAr: `تم إلغاء الحجز ${bookingReference}. راجع تفاصيل الطلب ${requestReference} داخل حسابك.`,
+      bodyEn: `Booking ${bookingReference} was cancelled. Review request ${requestReference} in your account.`,
+    };
+  }
+  return {
+    eventKey: "BOOKING_NO_SHOW",
+    titleAr: "تم إغلاق الحجز لعدم الحضور",
+    titleEn: "Booking closed as no-show",
+    bodyAr: `تم إغلاق الحجز ${bookingReference} لعدم الحضور إلى الفرع في الموعد.`,
+    bodyEn: `Booking ${bookingReference} was closed because branch attendance was not recorded at pickup.`,
+  };
 }
 
 function salesDecisionNotification(

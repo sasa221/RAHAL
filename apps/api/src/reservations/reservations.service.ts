@@ -24,6 +24,7 @@ import type {
   SalesAlternativeOfferResult,
   SalesBranchChecklistResult,
   SalesBookingConfirmationResult,
+  SalesBookingOperationResult,
   SalesReservationQueueItem,
   SalesReservationDecisionResult,
   SalesReservationReview,
@@ -40,6 +41,7 @@ import type {
   SaveReservationDraftDto,
   SalesAlternativeOfferDto,
   SalesBranchChecklistDto,
+  SalesBookingOperationDto,
   SalesReservationDecisionDto,
 } from "./reservations.dto";
 import { ReservationsRepository } from "./reservations.repository";
@@ -552,6 +554,14 @@ export class ReservationsService {
               confirmedAt: record.booking.confirmedAt.toISOString(),
             }
           : null,
+        operations:
+          record.booking?.operations?.map((operation) => ({
+            type: operation.type,
+            odometerKm: operation.odometerKm,
+            fuelLevelPercent: operation.fuelLevelPercent,
+            conditionNote: operation.conditionNote,
+            recordedAt: operation.recordedAt.toISOString(),
+          })) ?? [],
       },
     };
   }
@@ -716,6 +726,46 @@ export class ReservationsService {
     return result.data;
   }
 
+  async recordBookingOperation(
+    token: string | undefined,
+    reservationId: string,
+    input: SalesBookingOperationDto,
+  ): Promise<SalesBookingOperationResult> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const result = await this.reservations.recordBookingOperation({
+      reservationId,
+      actorId: session.user.id,
+      canOverrideAssignment: ["ADMIN", "SUPER_ADMIN"].includes(session.user.role),
+      locale: session.user.preferredLocale,
+      action: input.action,
+      odometerKm: input.odometerKm ?? null,
+      fuelLevelPercent: input.fuelLevelPercent ?? null,
+      note: input.note.trim(),
+    });
+    if (result.kind === "NOT_FOUND") {
+      throw new NotFoundException("A confirmed or active booking was not found.");
+    }
+    if (result.kind === "NOT_ASSIGNED") {
+      throw new ForbiddenException("Only the assigned sales employee can operate this booking.");
+    }
+    if (result.kind === "TOO_EARLY") {
+      throw new ConflictException("No-show cannot be recorded before the scheduled pickup time.");
+    }
+    if (result.kind === "INVALID_ODOMETER") {
+      throw new ConflictException("Return odometer cannot be lower than the delivery reading.");
+    }
+    if (result.kind === "VEHICLE_UNAVAILABLE") {
+      throw new ConflictException(
+        "The vehicle cannot be delivered in its current operational state.",
+      );
+    }
+    if (result.kind === "INVALID_TRANSITION") {
+      throw new ConflictException("This booking operation is not allowed in the current state.");
+    }
+    return result.data;
+  }
+
   async getCustomerRequests(token: string | undefined): Promise<CustomerReservationSummary[]> {
     const session = await this.auth.getSession(token);
     assertCustomerAccess(session.user.role);
@@ -754,6 +804,11 @@ export class ReservationsService {
         contractSigned: Boolean(record.contracts?.length),
         bookingReference: record.booking?.reference ?? null,
         confirmedAt: record.booking?.confirmedAt.toISOString() ?? null,
+      },
+      rentalProgress: {
+        deliveredAt: record.deliveredAt?.toISOString() ?? null,
+        returnedAt: record.returnedAt?.toISOString() ?? null,
+        completedAt: record.completedAt?.toISOString() ?? null,
       },
     };
   }

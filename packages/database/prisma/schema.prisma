@@ -54,6 +54,11 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum BookingOperationType {
+  DELIVERY
+  RETURN
+}
+
 enum AlternativeOfferStatus {
   PENDING
   ACCEPTED
@@ -189,6 +194,7 @@ model User {
   documentAccesses       DocumentAccessLog[]      @relation("DocumentAccessActor")
   alternativeOffers      AlternativeOffer[]       @relation("AlternativeOfferCreator")
   contractsRecorded      Contract[]               @relation("ContractRecorder")
+  bookingOperations      BookingOperation[]        @relation("BookingOperationActor")
   bookings               Booking[]                @relation("CustomerBookings")
   reviews                Review[]
   createdAt              DateTime                 @default(now())
@@ -533,11 +539,28 @@ model Booking {
   cancelledAt   DateTime?
   priceSnapshot BookingPriceSnapshot?
   contracts     Contract[]
+  operations    BookingOperation[]
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
   @@index([vehicleId, status, pickupAt, returnAt])
   @@index([customerId, createdAt])
+}
+
+model BookingOperation {
+  id               String               @id @default(cuid())
+  bookingId        String
+  booking          Booking              @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  type             BookingOperationType
+  odometerKm       Int
+  fuelLevelPercent Int
+  conditionNote    String
+  actorId          String
+  actor            User                 @relation("BookingOperationActor", fields: [actorId], references: [id])
+  recordedAt       DateTime             @default(now())
+
+  @@unique([bookingId, type])
+  @@index([actorId, recordedAt])
 }
 
 model BookingPriceSnapshot {

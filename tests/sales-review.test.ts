@@ -56,6 +56,13 @@ describe("sales review workspace", () => {
     expect(workspace).toContain("confirmFinalBooking");
   });
 
+  it("keeps confirmed and active bookings visible for branch operations", () => {
+    expect(repository).toContain('"CONFIRMED"');
+    expect(repository).toContain('"ACTIVE"');
+    expect(workspace).toContain('["ACTIVE", text.activeStatus]');
+    expect(workspace).toContain('className="sales-operations-panel"');
+  });
+
   it("records explicit customer-facing decisions without exposing notes as outbox fields", () => {
     expect(repository).toContain('input.action === "REQUEST_INFORMATION"');
     expect(repository).toContain('input.action === "PRE_APPROVE"');

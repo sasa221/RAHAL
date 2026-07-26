@@ -50,6 +50,14 @@ describe("customer request follow-up", () => {
     expect(workspace).not.toContain("receiptNumber");
   });
 
+  it("shows delivery, return, and completion timestamps without staff readings", () => {
+    expect(workspace).toContain("detail.rentalProgress.deliveredAt");
+    expect(workspace).toContain("detail.rentalProgress.returnedAt");
+    expect(workspace).toContain("detail.rentalProgress.completedAt");
+    expect(workspace).not.toContain("fuelLevelPercent");
+    expect(workspace).not.toContain("odometerKm");
+  });
+
   it("keeps replies bounded and final confirmation at the branch", () => {
     expect(workspace).toContain("message.trim().length < 10");
     expect(workspace).toContain("maxLength={500}");

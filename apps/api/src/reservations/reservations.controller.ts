@@ -24,6 +24,7 @@ import type {
   SalesReservationDecisionResult,
   SalesBranchChecklistResult,
   SalesBookingConfirmationResult,
+  SalesBookingOperationResult,
   SalesAlternativeOfferResult,
   SalesReservationQueueItem,
   SalesReservationReview,
@@ -41,6 +42,7 @@ import {
   SalesReservationDecisionDto,
   SalesAlternativeOfferDto,
   SalesBranchChecklistDto,
+  SalesBookingOperationDto,
 } from "./reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
@@ -193,6 +195,17 @@ export class ReservationsController {
   ): Promise<ApiSuccess<SalesBookingConfirmationResult>> {
     return {
       data: await this.reservations.confirmBooking(readAuthCookie(request), id),
+    };
+  }
+
+  @Post("sales/:id/operations")
+  async recordBookingOperation(
+    @Param("id") id: string,
+    @Body() input: SalesBookingOperationDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesBookingOperationResult>> {
+    return {
+      data: await this.reservations.recordBookingOperation(readAuthCookie(request), id, input),
     };
   }
 

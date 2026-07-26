@@ -51,6 +51,7 @@ The production schema should support the entities below. Some already exist part
 - `reservation_status_history`: state transitions, actor, reason, metadata.
 - `alternative_offers`: alternate vehicle/date proposals, customer decision, expiry.
 - `bookings`: confirmed booking record distinct from request review state.
+- `booking_operations`: unique delivery/return handover readings with odometer, fuel percentage, condition note, staff actor, and timestamp.
 - `booking_price_snapshots`: immutable summary of estimate/final price basis.
 - `booking_price_snapshot_items`: line items for vehicle rate, driver charge, overtime, fees, discounts.
 - `deposits`: amount, receipt reference, staff, timestamp.
@@ -78,6 +79,8 @@ The protected-document slice now records an explicit Egyptian/foreign customer c
 The submission slice adds nullable `Reservation.submittedAt`. A guarded transaction sets it only when a fully eligible `DRAFT` changes to `PENDING_REVIEW`, then writes the matching `ReservationEvent`, customer `Notification`, and privacy-minimized `NotificationEvent` outbox record. A `Booking` remains a separate later record and is never created by customer submission.
 
 The branch-confirmation slice adds nullable `Reservation.branchAttendedAt`. A `PRE_APPROVED` request stores branch attendance, one configured-EGP `Deposit` with a unique receipt reference, and a signed `Contract` before confirmation is allowed. Final confirmation performs a new vehicle-block and confirmed/active-booking conflict check inside the transaction, creates the separate `Booking` and immutable EGP `BookingPriceSnapshot`, links the signed contract, and only then exposes a safe booking reference to the customer. Receipt data and contract storage keys remain staff-side.
+
+The booking-operation slice stores delivery and return readings in `BookingOperation`, unique per booking and operation type. Database constraints keep odometer readings non-negative and fuel between zero and 100 percent. The service permits only `CONFIRMED → ACTIVE`, an `ACTIVE` return record, and returned `ACTIVE → COMPLETED`; cancellation and no-show close only a not-yet-delivered confirmed booking. Customer responses expose lifecycle timestamps, never staff condition notes or vehicle readings.
 
 ## Notifications
 

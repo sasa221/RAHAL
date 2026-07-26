@@ -91,6 +91,12 @@ const copy = {
     finalBooking: "تم إنشاء الحجز النهائي",
     finalPending: "في انتظار التأكيد النهائي من الموظف المختص",
     bookingReference: "رقم الحجز",
+    rentalProgressTitle: "رحلة الإيجار",
+    readyForPickup: "الحجز جاهز للاستلام من الفرع",
+    vehicleDelivered: "تم تسليم السيارة وبدأ الإيجار",
+    waitingForReturn: "في انتظار إرجاع السيارة إلى فرع رحال",
+    vehicleReturned: "تم تسجيل إرجاع السيارة",
+    rentalCompleted: "اكتملت إجراءات الإيجار",
     status: {
       PENDING_REVIEW: "بانتظار المراجعة",
       UNDER_REVIEW: "قيد المراجعة",
@@ -187,6 +193,12 @@ const copy = {
     finalBooking: "Final booking created",
     finalPending: "Waiting for authorized staff confirmation",
     bookingReference: "Booking reference",
+    rentalProgressTitle: "Rental journey",
+    readyForPickup: "Booking ready for branch pickup",
+    vehicleDelivered: "Vehicle delivered and rental started",
+    waitingForReturn: "Waiting for return to the Rahal branch",
+    vehicleReturned: "Vehicle return recorded",
+    rentalCompleted: "Rental completion recorded",
     status: {
       PENDING_REVIEW: "Pending review",
       UNDER_REVIEW: "Under review",
@@ -598,7 +610,14 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                       </p>
                     )}
                   </section>
-                  {["PRE_APPROVED", "CONFIRMED", "ACTIVE", "COMPLETED"].includes(detail.status) && (
+                  {[
+                    "PRE_APPROVED",
+                    "CONFIRMED",
+                    "ACTIVE",
+                    "COMPLETED",
+                    "CANCELLED",
+                    "NO_SHOW",
+                  ].includes(detail.status) && (
                     <section className="customer-branch-progress">
                       <div>
                         <span>03</span>
@@ -648,6 +667,62 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                       </ol>
                     </section>
                   )}
+                  {detail.branchProgress.bookingReference &&
+                    ["CONFIRMED", "ACTIVE", "COMPLETED"].includes(detail.status) && (
+                      <section className="customer-rental-progress">
+                        <h3>{text.rentalProgressTitle}</h3>
+                        <ol>
+                          <li className="is-complete">
+                            <span>✓</span>
+                            <div>
+                              <strong>{text.readyForPickup}</strong>
+                              <small>{detail.branchProgress.bookingReference}</small>
+                            </div>
+                          </li>
+                          <li className={detail.rentalProgress.deliveredAt ? "is-complete" : ""}>
+                            <span>{detail.rentalProgress.deliveredAt ? "✓" : "2"}</span>
+                            <div>
+                              <strong>
+                                {detail.rentalProgress.deliveredAt
+                                  ? text.vehicleDelivered
+                                  : text.readyForPickup}
+                              </strong>
+                              {detail.rentalProgress.deliveredAt && (
+                                <small>
+                                  {formatDate(detail.rentalProgress.deliveredAt, locale)}
+                                </small>
+                              )}
+                            </div>
+                          </li>
+                          <li className={detail.rentalProgress.returnedAt ? "is-complete" : ""}>
+                            <span>{detail.rentalProgress.returnedAt ? "✓" : "3"}</span>
+                            <div>
+                              <strong>
+                                {detail.rentalProgress.returnedAt
+                                  ? text.vehicleReturned
+                                  : text.waitingForReturn}
+                              </strong>
+                              {detail.rentalProgress.returnedAt && (
+                                <small>
+                                  {formatDate(detail.rentalProgress.returnedAt, locale)}
+                                </small>
+                              )}
+                            </div>
+                          </li>
+                          <li className={detail.rentalProgress.completedAt ? "is-complete" : ""}>
+                            <span>{detail.rentalProgress.completedAt ? "✓" : "4"}</span>
+                            <div>
+                              <strong>{text.rentalCompleted}</strong>
+                              {detail.rentalProgress.completedAt && (
+                                <small>
+                                  {formatDate(detail.rentalProgress.completedAt, locale)}
+                                </small>
+                              )}
+                            </div>
+                          </li>
+                        </ol>
+                      </section>
+                    )}
                   <section>
                     <h3>{text.documents}</h3>
                     {detail.documents.length === 0 ? (

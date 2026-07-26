@@ -137,6 +137,8 @@ Alternative offers are separate persisted records rather than destructive edits 
 
 Review-window expiry runs as a small non-overlapping worker inside the API process once per minute and on startup. Conditional updates make repeated sweeps idempotent. Expired alternative offers return their reservation to `UNDER_REVIEW` and notify the customer and assigned reviewer; expired pre-approvals move to `EXPIRED` and notify the customer. Every expiry writes its event and outbox record in the same transaction, and the interval is unreferenced and cleared on application shutdown. A separately deployed worker can replace this process-local scheduler when horizontal API scaling is introduced.
 
+Post-confirmation operations use an explicit server-owned state machine. Delivery and return create unique `BookingOperation` records with bounded odometer/fuel readings, a condition note, actor, and timestamp. Delivery atomically moves the reservation and booking to `ACTIVE` and the vehicle to `RENTED`; completion is unavailable until a return record exists and then releases only a currently rented vehicle. Cancellation and no-show apply only before delivery, and no-show is rejected before scheduled pickup. Customer APIs expose lifecycle timestamps but not staff notes or readings.
+
 ## Notification architecture
 
 Use an outbox pattern:

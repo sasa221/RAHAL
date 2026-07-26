@@ -174,7 +174,8 @@ export type SalesReservationQueueItem = {
     | "MORE_INFORMATION_REQUIRED"
     | "PRE_APPROVED"
     | "ALTERNATIVE_OFFERED"
-    | "CONFIRMED";
+    | "CONFIRMED"
+    | "ACTIVE";
   submittedAt: string;
   pickupAt: string;
   returnAt: string;
@@ -225,6 +226,13 @@ export type SalesReservationReview = SalesReservationQueueItem & {
       status: "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
       confirmedAt: string;
     } | null;
+    operations: Array<{
+      type: "DELIVERY" | "RETURN";
+      odometerKm: number;
+      fuelLevelPercent: number;
+      conditionNote: string;
+      recordedAt: string;
+    }>;
   };
 };
 
@@ -247,6 +255,14 @@ export type SalesBookingConfirmationResult = {
     status: "CONFIRMED";
     confirmedAt: string;
   };
+};
+
+export type SalesBookingOperationResult = {
+  id: string;
+  reference: string;
+  status: "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  action: "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW";
+  recordedAt: string;
 };
 
 export type SalesReservationDecisionResult = {
@@ -304,6 +320,11 @@ export type CustomerReservationDetail = CustomerReservationSummary & {
     contractSigned: boolean;
     bookingReference: string | null;
     confirmedAt: string | null;
+  };
+  rentalProgress: {
+    deliveredAt: string | null;
+    returnedAt: string | null;
+    completedAt: string | null;
   };
 };
 

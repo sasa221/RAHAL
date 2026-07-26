@@ -10,7 +10,11 @@ type QueueStatus =
   | "MORE_INFORMATION_REQUIRED"
   | "PRE_APPROVED"
   | "ALTERNATIVE_OFFERED"
-  | "CONFIRMED";
+  | "CONFIRMED"
+  | "ACTIVE"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW";
 
 type QueueItem = {
   id: string;
@@ -72,6 +76,13 @@ type Review = QueueItem & {
       status: "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
       confirmedAt: string;
     } | null;
+    operations: Array<{
+      type: "DELIVERY" | "RETURN";
+      odometerKm: number;
+      fuelLevelPercent: number;
+      conditionNote: string;
+      recordedAt: string;
+    }>;
   };
 };
 
@@ -105,6 +116,12 @@ type BookingConfirmationResult = {
   };
 };
 
+type BookingOperationResult = {
+  status: "ACTIVE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  action: "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW";
+  recordedAt: string;
+};
+
 const copy = {
   ar: {
     brand: "رحال / المبيعات",
@@ -124,6 +141,10 @@ const copy = {
     moreInfo: "معلومات إضافية مطلوبة",
     alternativeStatus: "عرض بديل مرسل",
     confirmedStatus: "حجز مؤكد",
+    activeStatus: "إيجار نشط",
+    completedStatus: "مكتمل",
+    cancelledStatus: "ملغي",
+    noShowStatus: "عدم حضور",
     loading: "جارٍ تحميل طلبات المبيعات...",
     empty: "لا توجد طلبات في هذه القائمة الآن.",
     signIn: "سجّل الدخول بحساب موظف المبيعات",
@@ -211,6 +232,24 @@ const copy = {
     bookingConfirmed: "تم تأكيد الحجز",
     bookingReference: "رقم الحجز",
     confirmationFailed: "تعذر تأكيد الحجز. قد تكون السيارة غير متاحة أو إجراءات الفرع غير مكتملة.",
+    operationsTitle: "تشغيل الحجز",
+    operationsCopy:
+      "سجّل قراءة العداد والوقود وحالة السيارة عند التسليم والإرجاع. كل خطوة محفوظة باسم الموظف ووقتها.",
+    delivery: "تسليم السيارة",
+    vehicleReturn: "إرجاع السيارة",
+    completeRental: "إكمال الإيجار",
+    cancelBooking: "إلغاء الحجز",
+    markNoShow: "تسجيل عدم حضور",
+    odometer: "قراءة العداد بالكيلومتر",
+    fuelLevel: "مستوى الوقود %",
+    conditionNote: "ملاحظة حالة السيارة أو سبب الإجراء",
+    operationPlaceholder: "اكتب وصفًا واضحًا لا يقل عن 10 أحرف",
+    recordOperation: "تسجيل الإجراء",
+    recordingOperation: "جارٍ تسجيل الإجراء...",
+    operationFailed: "تعذر تسجيل الإجراء. راجع حالة الحجز والبيانات المدخلة.",
+    operationDone: "تم تسجيل الإجراء وتحديث حالة العميل.",
+    deliveryReading: "بيانات التسليم",
+    returnReading: "بيانات الإرجاع",
   },
   en: {
     brand: "RAHAL / SALES",
@@ -231,6 +270,10 @@ const copy = {
     moreInfo: "More information required",
     alternativeStatus: "Alternative offered",
     confirmedStatus: "Confirmed booking",
+    activeStatus: "Active rental",
+    completedStatus: "Completed",
+    cancelledStatus: "Cancelled",
+    noShowStatus: "No show",
     loading: "Loading sales requests...",
     empty: "There are no requests in this queue right now.",
     signIn: "Sign in with a sales employee account",
@@ -324,6 +367,24 @@ const copy = {
     bookingReference: "Booking reference",
     confirmationFailed:
       "The booking could not be confirmed. The vehicle may be unavailable or branch steps incomplete.",
+    operationsTitle: "Booking operations",
+    operationsCopy:
+      "Record odometer, fuel, and vehicle condition at delivery and return. Every step keeps its staff actor and time.",
+    delivery: "Deliver vehicle",
+    vehicleReturn: "Record vehicle return",
+    completeRental: "Complete rental",
+    cancelBooking: "Cancel booking",
+    markNoShow: "Mark no-show",
+    odometer: "Odometer in kilometres",
+    fuelLevel: "Fuel level %",
+    conditionNote: "Vehicle condition or operation reason",
+    operationPlaceholder: "Add a clear note of at least 10 characters",
+    recordOperation: "Record operation",
+    recordingOperation: "Recording operation...",
+    operationFailed: "The operation could not be recorded. Check the booking state and fields.",
+    operationDone: "Operation recorded and customer status updated.",
+    deliveryReading: "Delivery reading",
+    returnReading: "Return reading",
   },
 } as const;
 
@@ -349,6 +410,10 @@ function statusLabel(status: QueueStatus, locale: PublicLocale) {
   if (status === "ALTERNATIVE_OFFERED") return labels.alternativeStatus;
   if (status === "PRE_APPROVED") return labels.preApprovedStatus;
   if (status === "CONFIRMED") return labels.confirmedStatus;
+  if (status === "ACTIVE") return labels.activeStatus;
+  if (status === "COMPLETED") return labels.completedStatus;
+  if (status === "CANCELLED") return labels.cancelledStatus;
+  if (status === "NO_SHOW") return labels.noShowStatus;
   return labels.pending;
 }
 
@@ -380,6 +445,13 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   const [recordingBranch, setRecordingBranch] = useState(false);
   const [confirmingBooking, setConfirmingBooking] = useState(false);
   const [branchFeedback, setBranchFeedback] = useState<"RECORDED" | "CONFIRMED" | null>(null);
+  const [operationNote, setOperationNote] = useState("");
+  const [odometerKm, setOdometerKm] = useState("");
+  const [fuelLevelPercent, setFuelLevelPercent] = useState("");
+  const [operatingAction, setOperatingAction] = useState<
+    "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW" | null
+  >(null);
+  const [operationFeedback, setOperationFeedback] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -426,6 +498,9 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     review.branchProgress.deposit &&
     review.branchProgress.contract?.status === "SIGNED",
   );
+  const returnOperation = review?.branchProgress.operations.find(
+    (operation) => operation.type === "RETURN",
+  );
 
   async function openReview(id: string) {
     setSelectedId(id);
@@ -440,6 +515,10 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     setContractSigned(false);
     setReceiptNumber("");
     setBranchNote("");
+    setOperationNote("");
+    setOdometerKm("");
+    setFuelLevelPercent("");
+    setOperationFeedback(false);
     try {
       const response = await fetch(`/api/reservations/sales/${encodeURIComponent(id)}`, {
         credentials: "include",
@@ -676,6 +755,96 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     }
   }
 
+  async function submitBookingOperation(
+    action: "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW",
+  ) {
+    if (!review || operationNote.trim().length < 10) {
+      setActionError(text.operationFailed);
+      return;
+    }
+    const requiresReadings = action === "DELIVER" || action === "RETURN";
+    const parsedOdometer = Number(odometerKm);
+    const parsedFuel = Number(fuelLevelPercent);
+    if (
+      requiresReadings &&
+      (!Number.isInteger(parsedOdometer) ||
+        parsedOdometer < 0 ||
+        !Number.isInteger(parsedFuel) ||
+        parsedFuel < 0 ||
+        parsedFuel > 100)
+    ) {
+      setActionError(text.operationFailed);
+      return;
+    }
+    setOperatingAction(action);
+    setActionError(null);
+    setOperationFeedback(false);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/operations`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action,
+            ...(requiresReadings
+              ? { odometerKm: parsedOdometer, fuelLevelPercent: parsedFuel }
+              : {}),
+            note: operationNote.trim(),
+          }),
+        },
+      );
+      const payload = (await response.json()) as { data?: BookingOperationResult };
+      if (!response.ok || !payload.data) throw new Error("operation unavailable");
+      const terminal = ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(payload.data.status);
+      setReview((current) =>
+        current
+          ? {
+              ...current,
+              status: payload.data!.status,
+              branchProgress: {
+                ...current.branchProgress,
+                booking: current.branchProgress.booking
+                  ? {
+                      ...current.branchProgress.booking,
+                      status: payload.data!.status,
+                    }
+                  : null,
+                operations: requiresReadings
+                  ? [
+                      ...current.branchProgress.operations,
+                      {
+                        type: action === "DELIVER" ? "DELIVERY" : "RETURN",
+                        odometerKm: parsedOdometer,
+                        fuelLevelPercent: parsedFuel,
+                        conditionNote: operationNote.trim(),
+                        recordedAt: payload.data!.recordedAt,
+                      },
+                    ]
+                  : current.branchProgress.operations,
+              },
+            }
+          : current,
+      );
+      setQueue((current) =>
+        terminal
+          ? current.filter((item) => item.id !== review.id)
+          : current.map((item) =>
+              item.id === review.id ? { ...item, status: payload.data!.status } : item,
+            ),
+      );
+      setOperationFeedback(true);
+      setOperationNote("");
+      setOdometerKm("");
+      setFuelLevelPercent("");
+    } catch {
+      setActionError(text.operationFailed);
+    } finally {
+      setOperatingAction(null);
+    }
+  }
+
   return (
     <WorkspaceShell kind="sales" locale={locale}>
       <div className="sales-workspace" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
@@ -750,6 +919,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                     ["ALTERNATIVE_OFFERED", text.alternativeStatus],
                     ["PRE_APPROVED", text.preApprovedStatus],
                     ["CONFIRMED", text.confirmedStatus],
+                    ["ACTIVE", text.activeStatus],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -1234,6 +1404,167 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                           ) : null}
                           {branchFeedback === "CONFIRMED" ? (
                             <p className="sales-branch-feedback">{text.bookingConfirmed}</p>
+                          ) : null}
+                        </section>
+                      ) : null}
+                      {["CONFIRMED", "ACTIVE", "COMPLETED", "CANCELLED", "NO_SHOW"].includes(
+                        review.status,
+                      ) ? (
+                        <section className="sales-operations-panel">
+                          <div className="sales-branch-panel__heading">
+                            <span>04</span>
+                            <div>
+                              <h3>{text.operationsTitle}</h3>
+                              <p>{text.operationsCopy}</p>
+                            </div>
+                          </div>
+
+                          {review.branchProgress.operations.length ? (
+                            <div className="sales-operation-readings">
+                              {review.branchProgress.operations.map((operation) => (
+                                <article key={operation.type}>
+                                  <span>
+                                    {operation.type === "DELIVERY"
+                                      ? text.deliveryReading
+                                      : text.returnReading}
+                                  </span>
+                                  <strong>{formatDate(operation.recordedAt, locale)}</strong>
+                                  <dl>
+                                    <div>
+                                      <dt>{text.odometer}</dt>
+                                      <dd>{operation.odometerKm.toLocaleString()} km</dd>
+                                    </div>
+                                    <div>
+                                      <dt>{text.fuelLevel}</dt>
+                                      <dd>{operation.fuelLevelPercent}%</dd>
+                                    </div>
+                                  </dl>
+                                  <p>{operation.conditionNote}</p>
+                                </article>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {review.status === "CONFIRMED" ||
+                          (review.status === "ACTIVE" && !returnOperation) ? (
+                            <div className="sales-operation-form">
+                              <label>
+                                <span>{text.odometer}</span>
+                                <input
+                                  min="0"
+                                  onChange={(event) => setOdometerKm(event.target.value)}
+                                  step="1"
+                                  type="number"
+                                  value={odometerKm}
+                                />
+                              </label>
+                              <label>
+                                <span>{text.fuelLevel}</span>
+                                <input
+                                  max="100"
+                                  min="0"
+                                  onChange={(event) => setFuelLevelPercent(event.target.value)}
+                                  step="1"
+                                  type="number"
+                                  value={fuelLevelPercent}
+                                />
+                              </label>
+                            </div>
+                          ) : null}
+
+                          {["CONFIRMED", "ACTIVE"].includes(review.status) ? (
+                            <label className="sales-operation-note">
+                              <span>{text.conditionNote}</span>
+                              <textarea
+                                maxLength={500}
+                                minLength={10}
+                                onChange={(event) => setOperationNote(event.target.value)}
+                                placeholder={text.operationPlaceholder}
+                                rows={4}
+                                value={operationNote}
+                              />
+                              <small>{operationNote.length}/500</small>
+                            </label>
+                          ) : null}
+
+                          {review.status === "CONFIRMED" ? (
+                            <div className="sales-operation-actions">
+                              <button
+                                disabled={
+                                  operatingAction !== null ||
+                                  operationNote.trim().length < 10 ||
+                                  odometerKm === "" ||
+                                  fuelLevelPercent === ""
+                                }
+                                onClick={() => void submitBookingOperation("DELIVER")}
+                                type="button"
+                              >
+                                {operatingAction === "DELIVER"
+                                  ? text.recordingOperation
+                                  : text.delivery}
+                              </button>
+                              <button
+                                className="is-secondary"
+                                disabled={
+                                  operatingAction !== null || operationNote.trim().length < 10
+                                }
+                                onClick={() => void submitBookingOperation("CANCEL")}
+                                type="button"
+                              >
+                                {operatingAction === "CANCEL"
+                                  ? text.recordingOperation
+                                  : text.cancelBooking}
+                              </button>
+                              <button
+                                className="is-danger"
+                                disabled={
+                                  operatingAction !== null || operationNote.trim().length < 10
+                                }
+                                onClick={() => void submitBookingOperation("NO_SHOW")}
+                                type="button"
+                              >
+                                {operatingAction === "NO_SHOW"
+                                  ? text.recordingOperation
+                                  : text.markNoShow}
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {review.status === "ACTIVE" && !returnOperation ? (
+                            <button
+                              className="sales-operation-primary"
+                              disabled={
+                                operatingAction !== null ||
+                                operationNote.trim().length < 10 ||
+                                odometerKm === "" ||
+                                fuelLevelPercent === ""
+                              }
+                              onClick={() => void submitBookingOperation("RETURN")}
+                              type="button"
+                            >
+                              {operatingAction === "RETURN"
+                                ? text.recordingOperation
+                                : text.vehicleReturn}
+                            </button>
+                          ) : null}
+
+                          {review.status === "ACTIVE" && returnOperation ? (
+                            <button
+                              className="sales-operation-primary"
+                              disabled={
+                                operatingAction !== null || operationNote.trim().length < 10
+                              }
+                              onClick={() => void submitBookingOperation("COMPLETE")}
+                              type="button"
+                            >
+                              {operatingAction === "COMPLETE"
+                                ? text.recordingOperation
+                                : text.completeRental}
+                            </button>
+                          ) : null}
+
+                          {operationFeedback ? (
+                            <p className="sales-branch-feedback">{text.operationDone}</p>
                           ) : null}
                         </section>
                       ) : null}

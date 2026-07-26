@@ -297,13 +297,19 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - Final confirmation rechecks pre-approval expiry, branch requirements, vehicle blocks, and overlapping confirmed/active bookings inside one transaction.
 - Successful confirmation creates a separate `Booking`, an immutable EGP price snapshot, links the signed contract, moves the reservation to `CONFIRMED`, and queues privacy-minimized customer notifications.
 - Customer request details expose safe branch-progress flags and the booking reference after confirmation, never internal receipt data or protected contract storage.
+- Confirmed requests stay visible to the assigned sales employee for pickup operations, and active rentals remain visible through return.
+- Delivery and return store unique auditable odometer, fuel-percentage, condition-note, actor, and timestamp records.
+- The operation state machine permits delivery only from confirmed, return only from active after delivery, and completion only after return.
+- Cancellation and no-show close only a not-yet-delivered confirmed booking; no-show is blocked before scheduled pickup.
+- Delivery moves the vehicle to `RENTED`, while completion releases only a currently rented vehicle back to `AVAILABLE`.
+- Customer request details show safe delivery, return, and completion timestamps without staff notes or vehicle readings.
 
 ### Remaining scope
 
 - Permission-granular actions beyond the initial system-role boundary.
 - Protected document view/sign-url flow with access reason, explicit permission, and access audit.
 - Signed-contract private file upload and the approved production private-storage adapter.
-- Delivery, return, completion, cancellation, and no-show transitions for confirmed bookings.
+- Deposit settlement/refund reconciliation and approved operational policy for cancellation/no-show outcomes.
 
 ### Acceptance criteria
 
@@ -321,6 +327,8 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - Recording branch requirements cannot confirm a booking and must match the vehicle's configured EGP deposit.
 - Final confirmation is unavailable without attendance, a unique deposit receipt, and a signed contract record.
 - Confirmation creates one booking only after a transactional conflict check and remains idempotent for the same reservation.
+- Delivery/return readings are bounded, return odometer cannot be lower than delivery, and one booking cannot have duplicate delivery or return records.
+- Customers see operational progress but never staff condition notes, fuel readings, or odometer values.
 
 ### Tests
 
@@ -332,6 +340,7 @@ Status: the queue, protected review detail, atomic claim, staff decisions, custo
 - API integration and static coverage for alternative creation, safe customer detail, acceptance back to review, conflict checks, and non-confirmation language.
 - Unit and static coverage for worker registration, overlap prevention, alternative expiry, pre-approval expiry, notifications, and continued absence of booking creation.
 - Service and static coverage for branch authorization, required steps, unique receipts, EGP price snapshots, safe customer progress, and conflict-protected booking creation.
+- Service and static coverage for allowed booking transitions, handover-reading constraints, vehicle status changes, safe customer lifecycle output, and operation notifications.
 
 ## Decisions not blocking Milestone 1
 
