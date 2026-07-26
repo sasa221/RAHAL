@@ -8,6 +8,7 @@ describe("sales review workspace", () => {
   const workspace = read("apps/web/components/sales-review-workspace.tsx");
   const controller = read("apps/api/src/reservations/reservations.controller.ts");
   const repository = read("apps/api/src/reservations/reservations.repository.ts");
+  const shell = read("apps/web/components/workspace-shell.tsx");
 
   it("provides shared Arabic and English staff routes", () => {
     expect(existsSync(join(root, "apps/web/app/sales/page.tsx"))).toBe(true);
@@ -15,6 +16,9 @@ describe("sales review workspace", () => {
     expect(read("apps/web/app/sales/page.tsx")).toContain('locale="ar"');
     expect(read("apps/web/app/en/sales/page.tsx")).toContain('locale="en"');
     expect(workspace).toContain('dir={locale === "ar" ? "rtl" : "ltr"}');
+    expect(workspace).toContain('<WorkspaceShell kind="sales" locale={locale}>');
+    expect(workspace).toContain('className="portal-metrics"');
+    expect(shell).toContain('className="portal-sidebar"');
   });
 
   it("keeps queue access role-gated and customer data masked", () => {

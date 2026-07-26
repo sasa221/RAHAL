@@ -126,6 +126,7 @@ describe("public multi-page experience", () => {
     const arabicRoute = read("apps/web/app/auth/page.tsx");
     const englishRoute = read("apps/web/app/en/auth/page.tsx");
     const home = read("apps/web/components/public-home.tsx");
+    const accountEntry = read("apps/web/components/account-entry-link.tsx");
     const nextConfig = read("apps/web/next.config.ts");
 
     expect(arabicRoute).toMatch(/<AuthAccess\s+locale="ar"/);
@@ -142,7 +143,9 @@ describe("public multi-page experience", () => {
     expect(auth).toContain("Phone and email verification are required");
     expect(auth).not.toContain("identityNumber");
     expect(auth).not.toContain('type="file"');
-    expect(home).toContain('localizedPath(locale, "/auth")');
+    expect(home).toContain("AccountEntryLink");
+    expect(accountEntry).toContain('localizedPath(locale, "/auth")');
+    expect(accountEntry).toContain('session.user.role === "CUSTOMER"');
     expect(home).not.toContain('aria-disabled="true"');
     expect(nextConfig).toContain('source: "/api/:path*"');
     expect(nextConfig).toContain("devIndicators: false");

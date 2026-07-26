@@ -8,6 +8,7 @@ import {
   type PublicLocale,
 } from "../lib/public-content";
 import { AvailabilitySearch } from "./availability-search";
+import { AccountEntryLink } from "./account-entry-link";
 import { ExperienceMotion } from "./experience-motion";
 
 type PublicHomeProps = {
@@ -153,9 +154,11 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
             </span>
             {content.languageLabel}
           </a>
-          <a className="button button--dark header-sign-in" href={localizedPath(locale, "/auth")}>
-            {content.signIn}
-          </a>
+          <AccountEntryLink
+            className="button button--dark header-sign-in"
+            locale={locale}
+            signInLabel={content.signIn}
+          />
           <details className="mobile-menu">
             <summary aria-label={content.menuLabel}>
               <Icon name="menu" />
@@ -167,7 +170,7 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
                 </a>
               ))}
               <a href={languageHref ?? content.languageHref}>{content.languageLabel}</a>
-              <a href={localizedPath(locale, "/auth")}>{content.signIn}</a>
+              <AccountEntryLink locale={locale} signInLabel={content.signIn} />
             </nav>
           </details>
         </div>

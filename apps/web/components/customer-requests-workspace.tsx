@@ -9,6 +9,7 @@ import type {
 } from "@rahal/contracts";
 import { useEffect, useMemo, useState } from "react";
 import { formatEgp, localizedPath, type PublicLocale } from "../lib/public-content";
+import { WorkspaceShell } from "./workspace-shell";
 
 type Filter = "ALL" | "ACTION" | "OPEN" | "CLOSED";
 
@@ -22,6 +23,14 @@ const copy = {
     subtitle:
       "تابع طلباتك ورسائل فريق رحال بأمان. الطلب المرسل ليس حجزًا مؤكدًا، والتأكيد النهائي يتم في الفرع فقط.",
     requests: "طلباتي",
+    newRequest: "ابدأ طلبًا جديدًا",
+    totalRequests: "إجمالي الطلبات",
+    activeRequests: "طلبات جارية",
+    actionRequests: "تحتاج ردك",
+    sentStep: "تم إرسال الطلب",
+    reviewStep: "مراجعة المبيعات",
+    branchStep: "زيارة الفرع والعربون",
+    confirmedStep: "التأكيد النهائي",
     all: "الكل",
     action: "تحتاج ردك",
     open: "جارية",
@@ -94,6 +103,14 @@ const copy = {
     subtitle:
       "Track requests and Rahal team messages securely. A submitted request is not a confirmed booking; final confirmation happens at the branch only.",
     requests: "My requests",
+    newRequest: "Start a new request",
+    totalRequests: "Total requests",
+    activeRequests: "In progress",
+    actionRequests: "Need your reply",
+    sentStep: "Request sent",
+    reviewStep: "Sales review",
+    branchStep: "Branch & deposit",
+    confirmedStep: "Final confirmation",
     all: "All",
     action: "Needs your reply",
     open: "In progress",
@@ -170,6 +187,14 @@ const closedStatuses = new Set<CustomerReservationStatus>([
   "CANCELLED",
   "NO_SHOW",
 ]);
+
+function statusStep(status: CustomerReservationStatus) {
+  if (["CONFIRMED", "ACTIVE", "COMPLETED"].includes(status)) return 4;
+  if (["PRE_APPROVED", "REJECTED", "EXPIRED", "CANCELLED", "NO_SHOW"].includes(status)) return 3;
+  if (["UNDER_REVIEW", "MORE_INFORMATION_REQUIRED", "ALTERNATIVE_OFFERED"].includes(status))
+    return 2;
+  return 1;
+}
 
 function formatDate(value: string, locale: PublicLocale) {
   return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-EG", {
@@ -354,28 +379,40 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
       }),
     [filter, requests],
   );
+  const activeCount = requests.filter((request) => !closedStatuses.has(request.status)).length;
+  const actionCount = requests.filter((request) => request.needsResponse).length;
 
   return (
-    <div className="customer-requests-workspace" dir={locale === "ar" ? "rtl" : "ltr"}>
-      <header className="sales-topbar">
-        <a className="sales-brand" href={localizedPath(locale)}>
-          <span>R</span>
-          {text.brand}
-        </a>
-        <nav>
-          <a href={localizedPath(locale)}>{text.home}</a>
-          <a href={locale === "ar" ? "/en/account/requests" : "/account/requests"}>
-            {text.language}
-          </a>
-        </nav>
-      </header>
-      <main>
-        <section className="customer-requests-hero">
+    <WorkspaceShell kind="customer" locale={locale}>
+      <div className="customer-requests-workspace" dir={locale === "ar" ? "rtl" : "ltr"}>
+        <section className="portal-overview customer-requests-hero">
           <div>
             <span>{text.eyebrow}</span>
             <h1>{text.title}</h1>
+            <p>{text.subtitle}</p>
           </div>
-          <p>{text.subtitle}</p>
+          <a className="portal-primary-action" href={localizedPath(locale, "/cars")}>
+            <span>+</span>
+            {text.newRequest}
+          </a>
+        </section>
+
+        <section className="portal-metrics" aria-label={text.requests}>
+          <article>
+            <span>01</span>
+            <strong>{requests.length.toString().padStart(2, "0")}</strong>
+            <p>{text.totalRequests}</p>
+          </article>
+          <article>
+            <span>02</span>
+            <strong>{activeCount.toString().padStart(2, "0")}</strong>
+            <p>{text.activeRequests}</p>
+          </article>
+          <article className={actionCount ? "has-action" : ""}>
+            <span>03</span>
+            <strong>{actionCount.toString().padStart(2, "0")}</strong>
+            <p>{text.actionRequests}</p>
+          </article>
         </section>
 
         {state !== "READY" ? (
@@ -395,7 +432,7 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
             )}
           </div>
         ) : (
-          <div className="customer-requests-layout">
+          <div className="customer-requests-layout" id="requests">
             <section className="customer-request-list-panel">
               <div className="sales-section-heading">
                 <span>01</span>
@@ -483,6 +520,25 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                     <b className={`sales-status sales-status--${detail.status.toLowerCase()}`}>
                       {text.status[detail.status]}
                     </b>
+                    <ol className="customer-status-track" aria-label={text.status[detail.status]}>
+                      {[text.sentStep, text.reviewStep, text.branchStep, text.confirmedStep].map(
+                        (label, index) => (
+                          <li
+                            className={
+                              index + 1 === statusStep(detail.status)
+                                ? "is-complete is-current"
+                                : index + 1 < statusStep(detail.status)
+                                  ? "is-complete"
+                                  : ""
+                            }
+                            key={label}
+                          >
+                            <span>{index + 1 < statusStep(detail.status) ? "✓" : index + 1}</span>
+                            <small>{label}</small>
+                          </li>
+                        ),
+                      )}
+                    </ol>
                   </header>
                   <section>
                     <dl className="sales-detail-list">
@@ -649,7 +705,7 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
             </aside>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </WorkspaceShell>
   );
 }

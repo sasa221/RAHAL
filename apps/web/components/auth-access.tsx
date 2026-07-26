@@ -1,5 +1,6 @@
 "use client";
 
+import type { AuthSession } from "@rahal/contracts";
 import Image from "next/image";
 import { useEffect, useState, type FormEvent } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
@@ -9,17 +10,7 @@ import { Footer, Header, Icon } from "./public-home";
 type AuthMode = "login" | "register";
 type VerificationChannel = "email" | "phone";
 
-type SessionResult = {
-  user: {
-    fullName: string;
-    email: string;
-    phone: string;
-    status: string;
-    emailVerified: boolean;
-    phoneVerified: boolean;
-  };
-  expiresAt: string;
-};
+type SessionResult = AuthSession;
 
 const authCopy = {
   ar: {
@@ -62,6 +53,8 @@ const authCopy = {
     requestingCode: "جاري إنشاء الرمز...",
     confirmingCode: "جاري التحقق...",
     continue: "استعرض السيارات",
+    dashboard: "افتح حسابي وطلباتي",
+    salesDashboard: "افتح مساحة المبيعات",
     signOut: "تسجيل الخروج",
     signingOut: "جاري تسجيل الخروج...",
     security: "لن نعرض كلمة المرور أو رمز الجلسة داخل الصفحة.",
@@ -113,6 +106,8 @@ const authCopy = {
     requestingCode: "Creating code...",
     confirmingCode: "Verifying...",
     continue: "Explore the fleet",
+    dashboard: "Open my account & requests",
+    salesDashboard: "Open sales workspace",
     signOut: "Sign out",
     signingOut: "Signing out...",
     security: "Your password and raw session token are never rendered on this page.",
@@ -135,6 +130,9 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
+  const dashboardHref = session
+    ? localizedPath(locale, session.user.role === "CUSTOMER" ? "/account/requests" : "/sales")
+    : localizedPath(locale, "/auth");
 
   useEffect(() => {
     let active = true;
@@ -201,6 +199,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         return;
       }
       setSession(result.data);
+      window.dispatchEvent(new Event("rahal:session-changed"));
     } catch {
       setError(copy.connectionError);
     } finally {
@@ -226,6 +225,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         return;
       }
       setSession(null);
+      window.dispatchEvent(new Event("rahal:session-changed"));
       setVerificationChannel(null);
       setVerificationCode("");
       setVerificationNotice("");
@@ -442,10 +442,11 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                 </p>
               ) : null}
               <div className="auth-success__actions">
-                <a href={localizedPath(locale, "/cars")}>
-                  {copy.continue}
+                <a className="is-primary" href={dashboardHref}>
+                  {session.user.role === "CUSTOMER" ? copy.dashboard : copy.salesDashboard}
                   <Icon name="arrow" size={18} />
                 </a>
+                <a href={localizedPath(locale, "/cars")}>{copy.continue}</a>
                 <button disabled={loggingOut} onClick={logout} type="button">
                   {loggingOut ? copy.signingOut : copy.signOut}
                 </button>

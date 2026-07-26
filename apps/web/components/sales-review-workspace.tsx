@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatEgp, localizedPath, type PublicLocale } from "../lib/public-content";
+import { WorkspaceShell } from "./workspace-shell";
 
 type QueueStatus =
   "PENDING_REVIEW" | "UNDER_REVIEW" | "MORE_INFORMATION_REQUIRED" | "ALTERNATIVE_OFFERED";
@@ -75,6 +76,10 @@ const copy = {
     title: "راجع كل طلب بوضوح قبل أي قرار.",
     subtitle: "هذه القائمة للطلبات المرسلة فقط. استلام الطلب يبدأ المراجعة ولا يؤكد الحجز.",
     queue: "قائمة المراجعة",
+    totalMetric: "كل الطلبات",
+    pendingMetric: "بانتظار المراجعة",
+    reviewingMetric: "قيد المراجعة",
+    actionMetric: "بانتظار العميل",
     all: "الكل",
     pending: "بانتظار المراجعة",
     reviewing: "قيد المراجعة",
@@ -156,6 +161,10 @@ const copy = {
     subtitle:
       "Only submitted requests appear here. Claiming starts review and never confirms a booking.",
     queue: "Review queue",
+    totalMetric: "All requests",
+    pendingMetric: "Pending review",
+    reviewingMetric: "Under review",
+    actionMetric: "Waiting on customer",
     all: "All",
     pending: "Pending review",
     reviewing: "Under review",
@@ -290,6 +299,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
         if (response.status === 403) return setError("FORBIDDEN");
         if (!response.ok || !payload.data) return setError("GENERAL");
         setQueue(payload.data);
+        if (payload.data.length > 0) void openReview(payload.data[0]!.id);
       })
       .catch((caught: unknown) => {
         if (caught instanceof DOMException && caught.name === "AbortError") return;
@@ -314,6 +324,11 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     () => queue.filter((item) => filter === "ALL" || item.status === filter),
     [filter, queue],
   );
+  const pendingCount = queue.filter((item) => item.status === "PENDING_REVIEW").length;
+  const reviewingCount = queue.filter((item) => item.status === "UNDER_REVIEW").length;
+  const customerActionCount = queue.filter((item) =>
+    ["MORE_INFORMATION_REQUIRED", "ALTERNATIVE_OFFERED"].includes(item.status),
+  ).length;
 
   async function openReview(id: string) {
     setSelectedId(id);
@@ -456,25 +471,41 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   }
 
   return (
-    <div className="sales-workspace" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
-      <header className="sales-topbar">
-        <a className="sales-brand" href={localizedPath(locale)}>
-          <span aria-hidden="true">R</span>
-          {text.brand}
-        </a>
-        <nav aria-label={text.brand}>
-          <a href={localizedPath(locale)}>{text.home}</a>
-          <a href={locale === "ar" ? "/en/sales" : "/sales"}>{text.language}</a>
-        </nav>
-      </header>
-
-      <main>
-        <section className="sales-hero">
+    <WorkspaceShell kind="sales" locale={locale}>
+      <div className="sales-workspace" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
+        <section className="portal-overview sales-hero">
           <div>
             <span>{text.eyebrow}</span>
             <h1>{text.title}</h1>
+            <p>{text.subtitle}</p>
           </div>
-          <p>{text.subtitle}</p>
+          <a className="portal-primary-action" href="#requests">
+            <span>{queue.length.toString().padStart(2, "0")}</span>
+            {text.queue}
+          </a>
+        </section>
+
+        <section className="portal-metrics" aria-label={text.queue}>
+          <article>
+            <span>01</span>
+            <strong>{queue.length.toString().padStart(2, "0")}</strong>
+            <p>{text.totalMetric}</p>
+          </article>
+          <article className={pendingCount ? "has-action" : ""}>
+            <span>02</span>
+            <strong>{pendingCount.toString().padStart(2, "0")}</strong>
+            <p>{text.pendingMetric}</p>
+          </article>
+          <article>
+            <span>03</span>
+            <strong>{reviewingCount.toString().padStart(2, "0")}</strong>
+            <p>{text.reviewingMetric}</p>
+          </article>
+          <article>
+            <span>04</span>
+            <strong>{customerActionCount.toString().padStart(2, "0")}</strong>
+            <p>{text.actionMetric}</p>
+          </article>
         </section>
 
         {loading ? <div className="sales-state">{text.loading}</div> : null}
@@ -496,7 +527,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
         ) : null}
 
         {!loading && !error ? (
-          <div className="sales-layout">
+          <div className="sales-layout" id="requests">
             <section className="sales-queue" aria-label={text.queue}>
               <div className="sales-section-heading">
                 <span>01</span>
@@ -859,7 +890,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
             </aside>
           </div>
         ) : null}
-      </main>
-    </div>
+      </div>
+    </WorkspaceShell>
   );
 }

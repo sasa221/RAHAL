@@ -8,6 +8,7 @@ describe("customer request follow-up", () => {
   const workspace = read("apps/web/components/customer-requests-workspace.tsx");
   const controller = read("apps/api/src/reservations/reservations.controller.ts");
   const repository = read("apps/api/src/reservations/reservations.repository.ts");
+  const shell = read("apps/web/components/workspace-shell.tsx");
 
   it("shares one responsive workspace across Arabic and English routes", () => {
     expect(existsSync(join(root, "apps/web/app/account/requests/page.tsx"))).toBe(true);
@@ -15,6 +16,10 @@ describe("customer request follow-up", () => {
     expect(read("apps/web/app/account/requests/page.tsx")).toContain('locale="ar"');
     expect(read("apps/web/app/en/account/requests/page.tsx")).toContain('locale="en"');
     expect(workspace).toContain('dir={locale === "ar" ? "rtl" : "ltr"}');
+    expect(workspace).toContain('<WorkspaceShell kind="customer" locale={locale}>');
+    expect(workspace).toContain('className="customer-status-track"');
+    expect(shell).toContain('className="portal-bottom-nav"');
+    expect(shell).toContain('src="/images/rahal-logo.png"');
   });
 
   it("uses owner-authorized request endpoints and excludes protected values", () => {
