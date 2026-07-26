@@ -52,3 +52,7 @@ Authenticated customers can track only their own submitted requests at `/account
 The assigned reviewer can also send a 48-hour alternative vehicle/date offer after availability checks. The customer may accept or decline it from the same request page; either response returns the request to sales review, and acceptance still does not confirm or create a booking.
 
 The API runs a non-overlapping review-window sweep on startup and every minute. Expired alternatives return to sales review, expired pre-approvals close as `EXPIRED`, and both paths write auditable events and notifications without creating bookings.
+
+## Completed-rental reviews
+
+Customers can submit one moderated review from their request detail only after the branch rental lifecycle is completed. Administrators review pending feedback at `/admin/reviews` or `/en/admin/reviews`; approved privacy-minimized experiences appear at `/reviews` and `/en/reviews`. Public review responses never expose full customer names, contact details, documents, or internal operational notes.

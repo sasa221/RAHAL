@@ -21,6 +21,7 @@ const shellCopy = {
     requests: "الطلبات",
     fleet: "السيارات",
     staff: "الفريق والصلاحيات",
+    reviews: "تقييمات العملاء",
     security: "أمان الحساب",
     newRequest: "طلب جديد",
     publicSite: "الموقع الرئيسي",
@@ -42,6 +43,7 @@ const shellCopy = {
     requests: "Requests",
     fleet: "Fleet",
     staff: "Staff & access",
+    reviews: "Customer reviews",
     security: "Account security",
     newRequest: "New request",
     publicSite: "Public website",
@@ -63,7 +65,7 @@ export function WorkspaceShell({
   children: ReactNode;
   kind: WorkspaceKind;
   locale: PublicLocale;
-  activePage?: "overview" | "fleet" | "staff" | "security";
+  activePage?: "overview" | "fleet" | "staff" | "reviews" | "security";
 }) {
   const text = shellCopy[locale];
   const isStaff = kind !== "customer";
@@ -78,9 +80,11 @@ export function WorkspaceShell({
           ? "/en/fleet"
           : activePage === "staff"
             ? "/en/admin/staff"
-            : activePage === "security"
-              ? "/en/account/security"
-              : "/en/sales"
+            : activePage === "reviews"
+              ? "/en/admin/reviews"
+              : activePage === "security"
+                ? "/en/account/security"
+                : "/en/sales"
         : activePage === "security"
           ? "/en/account/security"
           : "/en/account/requests"
@@ -89,9 +93,11 @@ export function WorkspaceShell({
           ? "/fleet"
           : activePage === "staff"
             ? "/admin/staff"
-            : activePage === "security"
-              ? "/account/security"
-              : "/sales"
+            : activePage === "reviews"
+              ? "/admin/reviews"
+              : activePage === "security"
+                ? "/account/security"
+                : "/sales"
         : activePage === "security"
           ? "/account/security"
           : "/account/requests";
@@ -103,7 +109,10 @@ export function WorkspaceShell({
         ...(activePage === "security"
           ? [[text.security, localizedPath(locale, "/account/security"), "document"]]
           : kind === "admin" || canManageStaff
-            ? [[text.staff, localizedPath(locale, "/admin/staff"), "document"]]
+            ? [
+                [text.staff, localizedPath(locale, "/admin/staff"), "document"],
+                [text.reviews, localizedPath(locale, "/admin/reviews"), "users"],
+              ]
             : [[text.publicSite, localizedPath(locale), "arrow"]]),
       ]
     : [
@@ -168,7 +177,8 @@ export function WorkspaceShell({
               className={
                 (activePage === "overview" && index === 0) ||
                 (activePage === "fleet" && index === 2) ||
-                ((activePage === "staff" || activePage === "security") && index === 3)
+                ((activePage === "staff" || activePage === "security") && index === 3) ||
+                (activePage === "reviews" && index === 4)
                   ? "is-active"
                   : ""
               }
@@ -219,12 +229,16 @@ export function WorkspaceShell({
         className="portal-bottom-nav"
         aria-label={kind === "sales" ? text.salesBrand : text.customerBrand}
       >
-        {navigation.slice(0, 4).map(([label, href, icon], index) => (
+        {(activePage === "reviews"
+          ? navigation.filter((_, index) => index !== 3).slice(0, 4)
+          : navigation.slice(0, 4)
+        ).map(([label, href, icon], index) => (
           <a
             className={
               (activePage === "overview" && index === 0) ||
               (activePage === "fleet" && index === 2) ||
-              ((activePage === "staff" || activePage === "security") && index === 3)
+              ((activePage === "staff" || activePage === "security") && index === 3) ||
+              (activePage === "reviews" && index === 3)
                 ? "is-active"
                 : ""
             }

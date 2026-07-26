@@ -10,6 +10,7 @@ import type {
 import { useEffect, useMemo, useState } from "react";
 import { formatEgp, localizedPath, type PublicLocale } from "../lib/public-content";
 import { WorkspaceShell } from "./workspace-shell";
+import { CustomerReviewPanel } from "./customer-review-panel";
 
 type Filter = "ALL" | "ACTION" | "OPEN" | "CLOSED";
 
@@ -902,6 +903,9 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                     </section>
                   )}
                   {sent && <p className="customer-reply-success">{text.sent}</p>}
+                  {detail.status === "COMPLETED" ? (
+                    <CustomerReviewPanel locale={locale} reservationId={detail.id} />
+                  ) : null}
                   <p className="sales-safety-note">{text.safety}</p>
                 </div>
               )}

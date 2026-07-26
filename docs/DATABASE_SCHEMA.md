@@ -142,6 +142,8 @@ The staff-access slice activates the existing `StaffRole`, `Permission`, `StaffR
 
 Password recovery uses the existing `VerificationCode` rows with `purpose = RESET_PASSWORD`; `codeHash`, `expiresAt`, `attempts`, and `usedAt` provide one-time bounded verification without a new plaintext-token table. Successful recovery updates `User.passwordHash` and revokes every active `Session` transactionally. Authenticated changes revoke every active session except the current row. Session read models select timestamps and user-agent only long enough to derive generic labels; they never select `refreshTokenHash` or `ipHash`.
 
+Completed-rental feedback uses the existing unique `Review.reservationId` relationship. `ReviewStatus` separates `PENDING`, `APPROVED`, and `REJECTED`; moderator identity, note, and timestamp make the decision attributable, while `approvedAt` remains the explicit publication timestamp. Indexes support the moderation queue and approved vehicle review reads. The migration backfills legacy rows with `approvedAt` as approved and leaves all other legacy rows pending.
+
 `AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
 
 ## Constraints and indexes

@@ -541,6 +541,39 @@ Status: implemented and verified locally on 2026-07-26. Real recovery email deli
 - Template coverage for bilingual code-only recovery email content.
 - Static security coverage for endpoint throttling, HMAC-only reset storage, attempt limits, transactional session revocation, metadata exclusions, and bilingual routes.
 
+## Milestone 13: Completed-rental reviews and moderation
+
+Goal: turn verified completed rentals into privacy-safe public proof through a controlled customer and administrator workflow.
+
+Status: implemented locally on 2026-07-26. The included database migration must be applied when the local PostgreSQL service is available.
+
+### Completed scope
+
+- Only the owning customer can submit one 1–5 star review for a reservation whose rental lifecycle is `COMPLETED`.
+- Review text is bounded to 20–800 characters and starts in `PENDING`; submission never publishes directly.
+- Customer request details present the review form only after completion and show pending, published, or rejected feedback states.
+- Administrators and super administrators receive a bilingual moderation center with pending/published/rejected filters and an operational summary.
+- Rejection requires a 10–300 character reason; approval and rejection are one-time conditional transitions with actor, timestamp, reason, and audit log.
+- Public Arabic and English review pages read only `APPROVED` records, use locale-aware vehicle names, and reduce customer names to first name plus optional initial.
+- Public and administrator contracts exclude email, phone, identity data, documents, storage metadata, and internal reservation notes.
+- Responsive layouts cover desktop, tablet, and mobile, with reduced-motion handling for the public visual treatment.
+
+### Acceptance criteria
+
+- An active, cancelled, rejected, or otherwise incomplete rental cannot be reviewed.
+- Another customer cannot read or review a reservation they do not own.
+- A reservation cannot receive more than one review, including under concurrent submission.
+- Sales employees cannot open or operate the moderation center.
+- A pending review cannot be published without an administrator decision, and a moderated review cannot be decided twice.
+- Rejection is impossible without a bounded reason.
+- Public APIs return approved reviews only and never expose a full customer name or sensitive customer/reservation data.
+- Arabic and English use the same component and authorization paths.
+
+### Tests
+
+- Unit coverage for completed-rental eligibility, duplicate rejection, incomplete-rental rejection, administrator boundary, required rejection reasons, and public name minimization.
+- Existing static content, directionality, forbidden-content, old-date, and mojibake checks cover the added bilingual routes and components.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

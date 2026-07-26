@@ -303,6 +303,9 @@ export function Footer({ locale }: PublicHomeProps) {
                 {label}
               </a>
             ))}
+            <a href={localizedPath(locale, "/reviews")}>
+              {locale === "ar" ? "تجارب العملاء" : "Customer reviews"}
+            </a>
           </div>
         </div>
         <div>

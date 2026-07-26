@@ -167,6 +167,14 @@ Password recovery reuses `VerificationCode` with the dedicated `RESET_PASSWORD` 
 
 Session management reads active, unexpired rows by authenticated owner. Browser contracts receive an opaque session ID, timestamps, current-session flag, and server-derived generic device/browser labels. Refresh hashes, IP hashes, and raw user-agent strings remain private. Individual revocation includes both session ID and owner ID in its mutation predicate; all-other revocation excludes the current session explicitly.
 
+## Review and moderation architecture
+
+Customer reviews are downstream of the completed rental state machine, never the reservation-request or pre-approval flow. The owner-scoped service rereads `Reservation.status`, `completedAt`, customer ownership, and the unique review relation before creation. A database unique constraint on `reservationId` is the final concurrent-submission guard.
+
+Reviews start as `PENDING`. Only administrators and super administrators can conditionally transition a pending record to `APPROVED` or `REJECTED`; rejection requires a bounded reason. The same transaction stores moderator identity and timestamp, sets `approvedAt` only for publication, and appends a privacy-bounded audit event. Decisions are immutable through this workflow.
+
+The public read model queries approved rows only and projects rating, comment, localized vehicle name, publication time, and a reduced customer display name. It never selects contact details, identity data, documents, storage keys, staff notes, or the reservation timeline. The administrator read model adds operational counts but remains metadata-only.
+
 ## Document security architecture
 
 - Browser uploads should use short-lived, server-authorized upload flows.

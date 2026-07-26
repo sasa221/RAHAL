@@ -33,7 +33,9 @@ describe("in-app notification center", () => {
   it("localizes on the server and returns reservation targets without customer data", () => {
     expect(service).toContain('locale === "ar" ? item.titleAr : item.titleEn');
     expect(service).toContain('kind: "RESERVATION"');
-    const notificationContract = contracts.split("export type InAppNotification")[1]!;
+    const notificationContract = contracts
+      .split("export type InAppNotification")[1]!
+      .split("export type NotificationInbox")[0]!;
     expect(notificationContract).not.toContain("customer");
     expect(notificationContract).not.toContain("payload");
   });

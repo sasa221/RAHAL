@@ -633,3 +633,71 @@ export type StaffAdminOverview = {
     canManageRolePermissions: boolean;
   };
 };
+
+export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type CustomerReview = {
+  id: string;
+  reservationId: string;
+  rating: number;
+  comment: string;
+  status: ReviewStatus;
+  moderationNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CustomerReviewOverview = {
+  eligible: boolean;
+  reason: "RENTAL_NOT_COMPLETED" | null;
+  reservation: {
+    id: string;
+    reference: string;
+    vehicleName: string;
+    completedAt: string | null;
+  };
+  review: CustomerReview | null;
+};
+
+export type PublicReview = {
+  id: string;
+  rating: number;
+  comment: string;
+  customerName: string;
+  vehicleName: string;
+  publishedAt: string;
+};
+
+export type ReviewModerationItem = {
+  id: string;
+  reservationId: string;
+  reservationReference: string;
+  customerName: string;
+  vehicleName: string;
+  rating: number;
+  comment: string;
+  status: ReviewStatus;
+  moderationNote: string | null;
+  createdAt: string;
+  moderatedAt: string | null;
+  moderatorName: string | null;
+};
+
+export type ReviewAdminOverview = {
+  metrics: {
+    pendingReviews: number;
+    approvedReviews: number;
+    rejectedReviews: number;
+    averagePublishedRating: number | null;
+    pendingReservationRequests: number;
+    activeRentals: number;
+    fleetSize: number;
+  };
+  reviews: ReviewModerationItem[];
+};
+
+export type ReviewModerationResult = {
+  id: string;
+  status: "APPROVED" | "REJECTED";
+  moderatedAt: string;
+};

@@ -8,6 +8,7 @@ import { ReservationsModule } from "./reservations/reservations.module";
 import { FleetModule } from "./fleet/fleet.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StaffModule } from "./staff/staff.module";
+import { ReviewsModule } from "./reviews/reviews.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { StaffModule } from "./staff/staff.module";
     FleetModule,
     NotificationsModule,
     StaffModule,
+    ReviewsModule,
   ],
   controllers: [HealthController],
 })
