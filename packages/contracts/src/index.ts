@@ -456,3 +456,37 @@ export type FleetBlockResult = {
   reason: string;
   createdAt: string;
 };
+
+export type ManagedVehicle = {
+  id: string;
+  branchId: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  make: string;
+  model: string;
+  year: number;
+  registrationNumber: string;
+  category: string;
+  transmission: "AUTOMATIC" | "MANUAL";
+  fuelType: string;
+  seats: number;
+  luggage: number | null;
+  doors: number | null;
+  status: VehicleOperationalStatus;
+  dailyRateEgp: number;
+  weeklyRateEgp: number | null;
+  minimumRentalDays: number;
+  driverPolicy: "OPTIONAL" | "MANDATORY" | "UNAVAILABLE";
+  driverChargeEgp: number | null;
+  mileageAllowancePerDay: number | null;
+  depositAmountEgp: number | null;
+  active: boolean;
+  featured: boolean;
+  updatedAt: string;
+};
+
+export type VehicleAdminCatalog = {
+  vehicles: ManagedVehicle[];
+  branches: Array<{ id: string; nameAr: string; nameEn: string }>;
+};

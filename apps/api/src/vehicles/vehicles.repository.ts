@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { PublicVehicle } from "@rahal/contracts";
+import type { ManagedVehicle, PublicVehicle, VehicleAdminCatalog } from "@rahal/contracts";
 import type { DriverPolicy, VehicleStatus } from "@rahal/database";
 import { PrismaService } from "../database/prisma.service";
 
@@ -151,4 +151,220 @@ export class VehiclesRepository {
 
     return vehicle ? toPublicVehicle(vehicle) : null;
   }
+
+  async adminCatalog(): Promise<VehicleAdminCatalog> {
+    const [vehicles, branches] = await Promise.all([
+      this.prisma.client.vehicle.findMany({
+        where: { archivedAt: null },
+        orderBy: [{ active: "desc" }, { updatedAt: "desc" }],
+        select: managedVehicleSelect,
+      }),
+      this.prisma.client.branch.findMany({
+        where: { active: true },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, nameAr: true, nameEn: true },
+      }),
+    ]);
+    return { vehicles: vehicles.map(toManagedVehicle), branches };
+  }
+
+  findManagedVehicle(id: string) {
+    return this.prisma.client.vehicle.findFirst({
+      where: { id, archivedAt: null },
+      select: managedVehicleSelect,
+    });
+  }
+
+  findBranch(id: string) {
+    return this.prisma.client.branch.findFirst({
+      where: { id, active: true },
+      select: { id: true },
+    });
+  }
+
+  createManagedVehicle(input: ManagedVehicleWrite, actorId: string): Promise<ManagedVehicle> {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const vehicle = await transaction.vehicle.create({
+        data: {
+          ...input,
+          status: input.active ? "AVAILABLE" : "INACTIVE",
+        },
+        select: managedVehicleSelect,
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: "VEHICLE_CREATED",
+          entityType: "Vehicle",
+          entityId: vehicle.id,
+          newData: auditVehicle(vehicle),
+        },
+      });
+      return toManagedVehicle(vehicle);
+    });
+  }
+
+  updateManagedVehicle(
+    id: string,
+    input: ManagedVehicleWrite,
+    actorId: string,
+  ): Promise<ManagedVehicle> {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const previous = await transaction.vehicle.findUniqueOrThrow({
+        where: { id },
+        select: managedVehicleSelect,
+      });
+      const status =
+        previous.status === "AVAILABLE" || previous.status === "INACTIVE"
+          ? input.active
+            ? "AVAILABLE"
+            : "INACTIVE"
+          : previous.status;
+      const vehicle = await transaction.vehicle.update({
+        where: { id },
+        data: { ...input, status },
+        select: managedVehicleSelect,
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: "VEHICLE_UPDATED",
+          entityType: "Vehicle",
+          entityId: vehicle.id,
+          previousData: auditVehicle(previous),
+          newData: auditVehicle(vehicle),
+        },
+      });
+      return toManagedVehicle(vehicle);
+    });
+  }
+}
+
+const managedVehicleSelect = {
+  id: true,
+  branchId: true,
+  slug: true,
+  nameAr: true,
+  nameEn: true,
+  make: true,
+  model: true,
+  year: true,
+  registrationNumber: true,
+  category: true,
+  transmission: true,
+  fuelType: true,
+  seats: true,
+  luggage: true,
+  doors: true,
+  status: true,
+  dailyRate: true,
+  weeklyRate: true,
+  minimumRentalDays: true,
+  driverPolicy: true,
+  driverCharge: true,
+  mileageAllowancePerDay: true,
+  depositAmount: true,
+  active: true,
+  featured: true,
+  updatedAt: true,
+} as const;
+
+type ManagedVehicleRecord = {
+  id: string;
+  branchId: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  make: string;
+  model: string;
+  year: number;
+  registrationNumber: string;
+  category: string;
+  transmission: string;
+  fuelType: string;
+  seats: number;
+  luggage: number | null;
+  doors: number | null;
+  status: VehicleStatus;
+  dailyRate: { toNumber(): number };
+  weeklyRate: { toNumber(): number } | null;
+  minimumRentalDays: number;
+  driverPolicy: DriverPolicy;
+  driverCharge: { toNumber(): number } | null;
+  mileageAllowancePerDay: number | null;
+  depositAmount: { toNumber(): number } | null;
+  active: boolean;
+  featured: boolean;
+  updatedAt: Date;
+};
+
+type ManagedVehicleWrite = {
+  branchId: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  make: string;
+  model: string;
+  year: number;
+  registrationNumber: string;
+  category: string;
+  transmission: string;
+  fuelType: string;
+  seats: number;
+  luggage: number | null;
+  doors: number | null;
+  dailyRate: number;
+  weeklyRate: number | null;
+  minimumRentalDays: number;
+  driverPolicy: DriverPolicy;
+  driverChargeType: "PER_DAY" | null;
+  driverCharge: number | null;
+  mileageAllowancePerDay: number | null;
+  depositAmount: number | null;
+  active: boolean;
+  featured: boolean;
+};
+
+function toManagedVehicle(vehicle: ManagedVehicleRecord): ManagedVehicle {
+  return {
+    id: vehicle.id,
+    branchId: vehicle.branchId,
+    slug: vehicle.slug,
+    nameAr: vehicle.nameAr,
+    nameEn: vehicle.nameEn,
+    make: vehicle.make,
+    model: vehicle.model,
+    year: vehicle.year,
+    registrationNumber: vehicle.registrationNumber,
+    category: vehicle.category,
+    transmission: vehicle.transmission === "MANUAL" ? "MANUAL" : "AUTOMATIC",
+    fuelType: vehicle.fuelType,
+    seats: vehicle.seats,
+    luggage: vehicle.luggage,
+    doors: vehicle.doors,
+    status: vehicle.status,
+    dailyRateEgp: vehicle.dailyRate.toNumber(),
+    weeklyRateEgp: vehicle.weeklyRate?.toNumber() ?? null,
+    minimumRentalDays: vehicle.minimumRentalDays,
+    driverPolicy: vehicle.driverPolicy,
+    driverChargeEgp: vehicle.driverCharge?.toNumber() ?? null,
+    mileageAllowancePerDay: vehicle.mileageAllowancePerDay,
+    depositAmountEgp: vehicle.depositAmount?.toNumber() ?? null,
+    active: vehicle.active,
+    featured: vehicle.featured,
+    updatedAt: vehicle.updatedAt.toISOString(),
+  };
+}
+
+function auditVehicle(vehicle: ManagedVehicleRecord) {
+  return {
+    branchId: vehicle.branchId,
+    registrationNumber: vehicle.registrationNumber,
+    status: vehicle.status,
+    dailyRateEgp: vehicle.dailyRate.toNumber(),
+    minimumRentalDays: vehicle.minimumRentalDays,
+    driverPolicy: vehicle.driverPolicy,
+    active: vehicle.active,
+    featured: vehicle.featured,
+  };
 }

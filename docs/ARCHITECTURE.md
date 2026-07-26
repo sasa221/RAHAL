@@ -141,6 +141,8 @@ Post-confirmation operations use an explicit server-owned state machine. Deliver
 
 The staff fleet calendar is a separate privacy-minimized read model. It joins active vehicle metadata with pending request references, confirmed/active booking references, and operational blocks for a bounded date window. It deliberately omits every customer field. Pending requests are informational and non-blocking; confirmed/active bookings and maintenance/manual blocks are blocking. Sales can read this model, while block mutations require an administrator role, reject booking/block overlaps, and write an immutable audit record.
 
+Vehicle registry management is a separate administrator boundary from fleet operations. Administrators may maintain descriptive, capacity, publication, and EGP pricing fields, but cannot submit an arbitrary operational status. Create maps publication to `AVAILABLE` or `INACTIVE`; update preserves any workflow-owned status and rejects deactivation while that state is active. Reservation and booking price snapshots isolate already-created work from later catalog price changes. Every mutation stores a bounded before/after audit snapshot.
+
 ## Notification architecture
 
 Use an outbox pattern:

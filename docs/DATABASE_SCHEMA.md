@@ -132,6 +132,8 @@ State changes must happen through backend services that validate actor permissio
 
 The implemented fleet-calendar read model uses `VehicleBlock`, active `Booking` rows, and review-stage `Reservation` rows without persisting a duplicate calendar table. `VehicleBlock.createdBy` records the administrator identifier, and each create/remove operation also writes a redacted `AuditLog`. Pending reservations are demand indicators only; availability is blocked only by confirmed/active bookings and maintenance/manual block ranges.
 
+Vehicle registry writes reuse the existing `Vehicle` model. The administrator API never accepts `VehicleStatus`; publication maps only to `AVAILABLE` or `INACTIVE`, while booking, rental, maintenance, and overdue states remain service-owned. Existing unique registration and slug constraints protect identity, and audit JSON intentionally contains only operational fields rather than related customer or document data.
+
 `AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
 
 ## Constraints and indexes

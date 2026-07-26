@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PublicLocale } from "../lib/public-content";
 import { Icon } from "./public-home";
 import { WorkspaceShell } from "./workspace-shell";
+import { FleetVehicleManager } from "./fleet-vehicle-manager";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -391,54 +392,57 @@ export function FleetCalendarWorkspace({ locale }: { locale: PublicLocale }) {
             </section>
 
             {calendar.canManageBlocks ? (
-              <section className="fleet-manage-panel">
-                <header>
-                  <span>ADMIN CONTROL</span>
-                  <h2>{text.manage}</h2>
-                  <p>{text.manageCopy}</p>
-                </header>
-                <form onSubmit={submitBlock}>
-                  <label>
-                    {text.vehicle}
-                    <select name="vehicleId" required>
-                      {calendar.vehicles.map((vehicle) => (
-                        <option key={vehicle.id} value={vehicle.id}>
-                          {vehicle.name} · {vehicle.registrationNumber}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {text.type}
-                    <select name="type" required>
-                      <option value="MAINTENANCE">{text.maintenance}</option>
-                      <option value="MANUAL_BLOCK">{text.manual}</option>
-                    </select>
-                  </label>
-                  <label>
-                    {text.start}
-                    <input min={toDateInput(new Date())} name="startDate" required type="date" />
-                  </label>
-                  <label>
-                    {text.end}
-                    <input min={toDateInput(new Date())} name="endDate" required type="date" />
-                  </label>
-                  <label className="fleet-reason">
-                    {text.reason}
-                    <textarea
-                      minLength={10}
-                      name="reason"
-                      placeholder={text.reasonPlaceholder}
-                      required
-                      rows={3}
-                    />
-                  </label>
-                  <button disabled={busyId === "create"} type="submit">
-                    {busyId === "create" ? text.creating : text.create}
-                    <Icon name="arrow" size={17} />
-                  </button>
-                </form>
-              </section>
+              <>
+                <section className="fleet-manage-panel">
+                  <header>
+                    <span>ADMIN CONTROL</span>
+                    <h2>{text.manage}</h2>
+                    <p>{text.manageCopy}</p>
+                  </header>
+                  <form onSubmit={submitBlock}>
+                    <label>
+                      {text.vehicle}
+                      <select name="vehicleId" required>
+                        {calendar.vehicles.map((vehicle) => (
+                          <option key={vehicle.id} value={vehicle.id}>
+                            {vehicle.name} · {vehicle.registrationNumber}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {text.type}
+                      <select name="type" required>
+                        <option value="MAINTENANCE">{text.maintenance}</option>
+                        <option value="MANUAL_BLOCK">{text.manual}</option>
+                      </select>
+                    </label>
+                    <label>
+                      {text.start}
+                      <input min={toDateInput(new Date())} name="startDate" required type="date" />
+                    </label>
+                    <label>
+                      {text.end}
+                      <input min={toDateInput(new Date())} name="endDate" required type="date" />
+                    </label>
+                    <label className="fleet-reason">
+                      {text.reason}
+                      <textarea
+                        minLength={10}
+                        name="reason"
+                        placeholder={text.reasonPlaceholder}
+                        required
+                        rows={3}
+                      />
+                    </label>
+                    <button disabled={busyId === "create"} type="submit">
+                      {busyId === "create" ? text.creating : text.create}
+                      <Icon name="arrow" size={17} />
+                    </button>
+                  </form>
+                </section>
+                <FleetVehicleManager locale={locale} onChanged={load} />
+              </>
             ) : null}
           </>
         ) : null}

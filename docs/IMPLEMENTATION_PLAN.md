@@ -376,6 +376,38 @@ Status: completed locally on 2026-07-26. The API and responsive Arabic/English w
 
 - Static coverage for role boundaries, bounded date ranges, customer-data exclusions, blocking semantics, overlap validation, audit writes, bilingual routes, and responsive calendar/agenda views.
 
+## Milestone 8: Administrator vehicle management
+
+Goal: let administrators maintain the real fleet registry and EGP operating data without bypassing reservation or rental state machines.
+
+Status: completed locally on 2026-07-26.
+
+### Completed scope
+
+- Administrator-only catalog, create, and update API boundaries; sales and customer accounts receive `403`.
+- Managed fields cover branch, bilingual names, make/model/year, unique registration, category, transmission, fuel, capacity, EGP daily/weekly pricing, minimum duration, driver policy/charge, mileage, branch deposit, publication, and featured state.
+- Vehicle URLs are generated on the server and preserved during later edits.
+- Duplicate registration/URL conflicts return `409`, and only an active branch can be selected.
+- New vehicles begin as `AVAILABLE` or `INACTIVE` based on publication state.
+- Administrators cannot directly set workflow-owned statuses such as confirmed, rented, maintenance, or overdue.
+- A vehicle with an active workflow-owned state cannot be deactivated.
+- Existing booking and reservation amounts remain protected by their stored price snapshots when future vehicle rates change.
+- Creation and updates write redacted before/after operational snapshots to immutable audit records.
+- The administrator registry and editor are integrated into `/fleet` and `/en/fleet`, with a compact mobile layout.
+
+### Acceptance criteria
+
+- Sales employees can view fleet operations but cannot open the managed-vehicle catalog or mutate a vehicle.
+- All numeric, enum, identifier, and length rules are validated by the API.
+- Duplicate registration numbers cannot create a second vehicle.
+- Only `AVAILABLE` and `INACTIVE` are controlled through vehicle publication; operational states remain state-machine owned.
+- Vehicle create/update records the administrator and a bounded audit snapshot without customer data.
+- Arabic and English use the same responsive registry and form.
+
+### Tests
+
+- Static coverage for role protection, DTO validation, workflow-state protection, branch/uniqueness errors, audit snapshots, API wiring, and bilingual responsive UI.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.
