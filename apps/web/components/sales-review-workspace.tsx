@@ -32,6 +32,7 @@ type QueueItem = {
 };
 
 type Review = QueueItem & {
+  canReviewDocuments: boolean;
   customer: QueueItem["customer"] & {
     nationality: string | null;
     customerCategory: "EGYPTIAN" | "FOREIGN" | null;
@@ -41,7 +42,13 @@ type Review = QueueItem & {
   };
   verification: { email: boolean; phone: boolean };
   consents: { policyVersion: string | null; requiredAccepted: boolean };
-  documents: Array<{ type: string; status: string; uploadedAt: string }>;
+  documents: Array<{
+    id: string;
+    type: string;
+    status: string;
+    uploadedAt: string;
+    rejectionReason: string | null;
+  }>;
   timeline: Array<{
     fromStatus: string | null;
     toStatus: string;
@@ -170,6 +177,14 @@ const copy = {
     notVerified: "غير موثّق",
     documents: "حالة المستندات",
     noDocuments: "لا توجد مستندات مسجلة.",
+    inspectDocument: "فحص المستند",
+    accessReason: "سبب الوصول للمستند",
+    accessPlaceholder: "اكتب سببًا تشغيليًا واضحًا لا يقل عن 10 أحرف",
+    viewProtected: "عرض محمي",
+    verifyDocument: "قبول المستند",
+    rejectDocument: "رفض وطلب بديل",
+    closePreview: "إغلاق المعاينة",
+    documentActionFailed: "تعذر تنفيذ إجراء المستند.",
     consent: "نسخة الموافقات",
     timeline: "سجل الطلب",
     claim: "استلم الطلب للمراجعة",
@@ -299,6 +314,14 @@ const copy = {
     notVerified: "Not verified",
     documents: "Document status",
     noDocuments: "No documents are recorded.",
+    inspectDocument: "Inspect document",
+    accessReason: "Reason for document access",
+    accessPlaceholder: "Enter a clear operational reason of at least 10 characters",
+    viewProtected: "Protected preview",
+    verifyDocument: "Verify document",
+    rejectDocument: "Reject and request replacement",
+    closePreview: "Close preview",
+    documentActionFailed: "The document action could not be completed.",
     consent: "Consent version",
     timeline: "Request timeline",
     claim: "Claim request for review",
@@ -452,6 +475,11 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     "DELIVER" | "RETURN" | "COMPLETE" | "CANCEL" | "NO_SHOW" | null
   >(null);
   const [operationFeedback, setOperationFeedback] = useState(false);
+  const [activeDocument, setActiveDocument] = useState<Review["documents"][number] | null>(null);
+  const [documentReason, setDocumentReason] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
+  const [documentMime, setDocumentMime] = useState("");
+  const [documentBusy, setDocumentBusy] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -503,6 +531,10 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   );
 
   async function openReview(id: string) {
+    if (documentUrl) URL.revokeObjectURL(documentUrl);
+    setActiveDocument(null);
+    setDocumentUrl("");
+    setDocumentReason("");
     setSelectedId(id);
     setReview(null);
     setDecisionNote("");
@@ -566,6 +598,59 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       setActionError(text.claimFailed);
     } finally {
       setClaiming(false);
+    }
+  }
+
+  async function previewDocument() {
+    if (!review || !activeDocument || documentReason.trim().length < 10) return;
+    setDocumentBusy("VIEW");
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/documents/${encodeURIComponent(activeDocument.id)}/access`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason: documentReason }),
+        },
+      );
+      if (!response.ok) throw new Error("document unavailable");
+      if (documentUrl) URL.revokeObjectURL(documentUrl);
+      const blob = await response.blob();
+      setDocumentMime(blob.type);
+      setDocumentUrl(URL.createObjectURL(blob));
+    } catch {
+      setActionError(text.documentActionFailed);
+    } finally {
+      setDocumentBusy("");
+    }
+  }
+
+  async function reviewDocument(action: "VERIFY" | "REJECT") {
+    if (!review || !activeDocument || documentReason.trim().length < 10) return;
+    setDocumentBusy(action);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/documents/${encodeURIComponent(activeDocument.id)}/review`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action, reason: documentReason }),
+        },
+      );
+      if (!response.ok) throw new Error("review unavailable");
+      if (documentUrl) URL.revokeObjectURL(documentUrl);
+      setActiveDocument(null);
+      setDocumentUrl("");
+      setDocumentReason("");
+      await openReview(review.id);
+    } catch {
+      setActionError(text.documentActionFailed);
+    } finally {
+      setDocumentBusy("");
     }
   }
 
@@ -1083,6 +1168,19 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                               {documentLabels[document.type]?.[locale] ?? document.type}
                             </strong>
                             <span>{document.status.replaceAll("_", " ")}</span>
+                            {review.canReviewDocuments ? (
+                              <button
+                                onClick={() => {
+                                  if (documentUrl) URL.revokeObjectURL(documentUrl);
+                                  setDocumentUrl("");
+                                  setDocumentReason("");
+                                  setActiveDocument(document);
+                                }}
+                                type="button"
+                              >
+                                {text.inspectDocument}
+                              </button>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
@@ -1090,6 +1188,66 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                       <p>{text.noDocuments}</p>
                     )}
                   </section>
+
+                  {activeDocument ? (
+                    <section className="sales-document-review">
+                      <button
+                        className="sales-document-review__close"
+                        onClick={() => {
+                          if (documentUrl) URL.revokeObjectURL(documentUrl);
+                          setActiveDocument(null);
+                          setDocumentUrl("");
+                        }}
+                        type="button"
+                      >
+                        {text.closePreview}
+                      </button>
+                      <h3>
+                        {documentLabels[activeDocument.type]?.[locale] ?? activeDocument.type}
+                      </h3>
+                      <label>
+                        <span>{text.accessReason}</span>
+                        <textarea
+                          minLength={10}
+                          onChange={(event) => setDocumentReason(event.target.value)}
+                          placeholder={text.accessPlaceholder}
+                          rows={3}
+                          value={documentReason}
+                        />
+                      </label>
+                      <div className="sales-document-review__actions">
+                        <button
+                          disabled={documentBusy !== "" || documentReason.trim().length < 10}
+                          onClick={() => void previewDocument()}
+                          type="button"
+                        >
+                          {text.viewProtected}
+                        </button>
+                        <button
+                          disabled={documentBusy !== "" || documentReason.trim().length < 10}
+                          onClick={() => void reviewDocument("VERIFY")}
+                          type="button"
+                        >
+                          {text.verifyDocument}
+                        </button>
+                        <button
+                          disabled={documentBusy !== "" || documentReason.trim().length < 10}
+                          onClick={() => void reviewDocument("REJECT")}
+                          type="button"
+                        >
+                          {text.rejectDocument}
+                        </button>
+                      </div>
+                      {documentUrl ? (
+                        documentMime === "application/pdf" ? (
+                          <iframe src={documentUrl} title={text.viewProtected} />
+                        ) : (
+                          // The blob URL is created from an authenticated, no-store response.
+                          <img alt={text.viewProtected} src={documentUrl} />
+                        )
+                      ) : null}
+                    </section>
+                  ) : null}
 
                   <section>
                     <h3>{text.timeline}</h3>

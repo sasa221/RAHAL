@@ -290,6 +290,18 @@ describe("RAHAL API", () => {
                 documentConsentAt: new Date(),
               }
             : null,
+        findOwnedDocumentContext: async (id: string, customerId: string) =>
+          id === "reservation-draft-e2e" && customerId === authUser.id
+            ? {
+                id,
+                reference: "RHL-2026-123456",
+                status: "DRAFT",
+                driverRequested: false,
+                customerCategorySnapshot: "EGYPTIAN",
+                customerDetailsCompletedAt: new Date(),
+                documentConsentAt: new Date(),
+              }
+            : null,
         findOwnedDraftReview: async (id: string, customerId: string) => {
           if (id !== "reservation-draft-e2e" || customerId !== authUser.id) return null;
           const pickupAt = new Date();

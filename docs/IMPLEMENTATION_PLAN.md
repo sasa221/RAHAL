@@ -408,6 +408,39 @@ Status: completed locally on 2026-07-26.
 
 - Static coverage for role protection, DTO validation, workflow-state protection, branch/uniqueness errors, audit snapshots, API wiring, and bilingual responsive UI.
 
+## Milestone 9: Protected document review
+
+Goal: let the assigned reviewer inspect and decide customer documents without exposing storage keys, permanent URLs, or identity data outside the protected review surface.
+
+Status: completed locally on 2026-07-26 for the configured private-storage adapter.
+
+### Completed scope
+
+- Authenticated `POST`-only inline document streaming for the assigned sales reviewer and administrator override.
+- Every request requires a 10–300 character operational reason and records actor, action, reason, IP hash, result, and timestamp in `DocumentAccessLog`.
+- Responses use `private, no-store`, inline disposition, MIME nosniff, and a restrictive content security policy.
+- Private object keys remain server-only; the browser receives a temporary in-memory Blob URL that is revoked when the preview closes.
+- Storage reads reuse canonical path containment checks to reject traversal outside the configured private root.
+- Reviewers can verify an uploaded/under-review document or reject it with a 10–500 character customer-facing reason.
+- Rejection moves an assigned `UNDER_REVIEW` request to `MORE_INFORMATION_REQUIRED`, writes the customer conversation, notification, outbox event, reservation event, and document access audit together.
+- The customer detail shows the rejected type and reason and accepts a validated JPEG, PNG, or PDF replacement for rejected documents only.
+- Customers cannot return the request to review while an active rejected document still exists.
+- A replacement retires the rejected object metadata, writes a new opaque private object, and preserves the existing file-signature and size validation.
+
+### Acceptance criteria
+
+- Unassigned sales employees cannot preview or decide a document.
+- No storage key, filesystem path, permanent URL, or full identity number appears in the response contract or UI.
+- Every successful or denied access to an existing document is audited with an explicit reason.
+- Browser and intermediary caching is disabled for document bytes.
+- A verified document cannot be rejected through the normal review transition.
+- After submission, the customer can replace only an actively rejected document.
+- The request cannot leave `MORE_INFORMATION_REQUIRED` until all rejected documents are replaced.
+
+### Tests
+
+- Static security coverage for POST-only streaming, no-store headers, assignment checks, access reasons, audit success/failure, safe path resolution, review transitions, replacement gating, and bilingual UI.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

@@ -25,6 +25,7 @@ import type {
   SalesBranchChecklistResult,
   SalesBookingConfirmationResult,
   SalesBookingOperationResult,
+  SalesDocumentReviewResult,
   SalesReservationQueueItem,
   SalesReservationDecisionResult,
   SalesReservationReview,
@@ -42,6 +43,8 @@ import type {
   SalesAlternativeOfferDto,
   SalesBranchChecklistDto,
   SalesBookingOperationDto,
+  SalesDocumentAccessDto,
+  SalesDocumentReviewDto,
   SalesReservationDecisionDto,
 } from "./reservations.dto";
 import { ReservationsRepository } from "./reservations.repository";
@@ -277,6 +280,16 @@ export class ReservationsService {
     }
 
     const documentType = rule.documentType as ReservationDocumentType;
+    if (draft.status === "MORE_INFORMATION_REQUIRED") {
+      const existing = await this.reservations.findActiveDocuments(draftId);
+      if (
+        !existing.some(
+          (document) => document.type === documentType && document.status === "REJECTED",
+        )
+      ) {
+        throw new ForbiddenException("Only a rejected document can be replaced after submission.");
+      }
+    }
     const storageKey = await this.documentStorage.put(draftId, file.mimetype, file.buffer);
     let saved;
     try {
@@ -498,6 +511,8 @@ export class ReservationsService {
     );
     return {
       ...toSalesQueueItem(record, session.user.id, session.user.preferredLocale),
+      canReviewDocuments:
+        session.user.role !== "SALES" || record.assignedSalesId === session.user.id,
       customer: {
         name: record.customerNameSnapshot ?? "Customer",
         emailMasked: maskEmail(record.customerEmailSnapshot ?? record.customer.email),
@@ -516,10 +531,12 @@ export class ReservationsService {
       },
       consents: { policyVersion: record.termsVersion, requiredAccepted },
       documents: record.documents.map((document) => ({
+        id: document.id,
         type: document.type as ReservationDocumentType,
         status: document.status as
           "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED",
         uploadedAt: document.createdAt.toISOString(),
+        rejectionReason: document.rejectionReason,
       })),
       timeline: record.events.map((event) => ({
         fromStatus: event.fromStatus,
@@ -584,6 +601,88 @@ export class ReservationsService {
       throw new ConflictException("Another sales employee already claimed this request.");
     }
     return this.getSalesReview(token, reservationId);
+  }
+
+  async accessSalesDocument(
+    token: string | undefined,
+    reservationId: string,
+    documentId: string,
+    input: SalesDocumentAccessDto,
+    ipHash?: string,
+  ) {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const document = await this.reservations.findSalesDocument(reservationId, documentId);
+    if (!document) throw new NotFoundException("The protected document was not found.");
+    const allowed =
+      session.user.role !== "SALES" ||
+      (document.reservation.assignedSalesId !== null &&
+        document.reservation.assignedSalesId === session.user.id);
+    if (!allowed) {
+      await this.reservations.recordDocumentAccess({
+        documentId,
+        actorId: session.user.id,
+        action: "VIEW_INLINE",
+        reason: input.reason.trim(),
+        ipHash,
+        succeeded: false,
+      });
+      throw new ForbiddenException("Only the assigned reviewer can view this document.");
+    }
+
+    try {
+      const bytes = await this.documentStorage.read(document.storageKey);
+      await this.reservations.recordDocumentAccess({
+        documentId,
+        actorId: session.user.id,
+        action: "VIEW_INLINE",
+        reason: input.reason.trim(),
+        ipHash,
+        succeeded: true,
+      });
+      return { bytes, mimeType: document.mimeType };
+    } catch (error) {
+      await this.reservations.recordDocumentAccess({
+        documentId,
+        actorId: session.user.id,
+        action: "VIEW_INLINE",
+        reason: input.reason.trim(),
+        ipHash,
+        succeeded: false,
+      });
+      throw error;
+    }
+  }
+
+  async reviewSalesDocument(
+    token: string | undefined,
+    reservationId: string,
+    documentId: string,
+    input: SalesDocumentReviewDto,
+    ipHash?: string,
+  ): Promise<SalesDocumentReviewResult> {
+    const session = await this.auth.getSession(token);
+    assertSalesAccess(session.user.role);
+    const document = await this.reservations.findSalesDocument(reservationId, documentId);
+    if (!document) throw new NotFoundException("The protected document was not found.");
+    if (session.user.role === "SALES" && document.reservation.assignedSalesId !== session.user.id) {
+      throw new ForbiddenException("Only the assigned reviewer can review this document.");
+    }
+    const reviewed = await this.reservations.reviewSalesDocument({
+      reservationId,
+      documentId,
+      actorId: session.user.id,
+      action: input.action,
+      reason: input.reason.trim(),
+      ipHash,
+    });
+    if (!reviewed) {
+      throw new ConflictException("The document is no longer in a reviewable state.");
+    }
+    return {
+      ...reviewed,
+      reviewedAt: reviewed.reviewedAt.toISOString(),
+    };
   }
 
   async decideSalesReview(
@@ -784,9 +883,11 @@ export class ReservationsService {
     return {
       ...toCustomerRequestSummary(record, session.user.preferredLocale),
       documents: record.documents.map((document) => ({
+        id: document.id,
         type: document.type as ReservationDocumentType,
         status: document.status as
           "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED",
+        rejectionReason: document.rejectionReason,
       })),
       messages: record.customerMessages.map((message) => ({
         id: message.id,
@@ -832,6 +933,9 @@ export class ReservationsService {
     if (result.kind === "INVALID_STATUS") {
       throw new ConflictException("The reservation request no longer accepts this response.");
     }
+    if (result.kind === "DOCUMENT_REPLACEMENT_REQUIRED") {
+      throw new ConflictException("Replace every rejected document before sending your response.");
+    }
     return result.data;
   }
 
@@ -868,7 +972,7 @@ export class ReservationsService {
     if (session.user.role !== "CUSTOMER") {
       throw new ForbiddenException("Only customer accounts can manage reservation documents.");
     }
-    const draft = await this.reservations.findOwnedDraft(draftId, session.user.id);
+    const draft = await this.reservations.findOwnedDocumentContext(draftId, session.user.id);
     if (!draft) throw new NotFoundException("The reservation draft was not found.");
     const customerCategory = draft.customerCategorySnapshot;
     if (!draft.customerDetailsCompletedAt || !customerCategory) {

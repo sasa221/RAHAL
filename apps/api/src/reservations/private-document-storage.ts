@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { loadApiConfig } from "../config";
 
@@ -27,13 +27,21 @@ export class PrivateDocumentStorage {
   }
 
   async remove(storageKey: string) {
+    await rm(this.resolveKey(storageKey), { force: true });
+  }
+
+  async read(storageKey: string) {
+    return readFile(this.resolveKey(storageKey));
+  }
+
+  private resolveKey(storageKey: string) {
     const root = this.root();
     const resolved = resolve(root, storageKey);
     const relativePath = relative(root, resolved);
     if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
       throw new ServiceUnavailableException("The private document key is invalid.");
     }
-    await rm(resolved, { force: true });
+    return resolved;
   }
 
   private root() {

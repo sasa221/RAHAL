@@ -6,6 +6,8 @@ import {
   Param,
   Post,
   Req,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseInterceptors,
 } from "@nestjs/common";
@@ -25,14 +27,17 @@ import type {
   SalesBranchChecklistResult,
   SalesBookingConfirmationResult,
   SalesBookingOperationResult,
+  SalesDocumentReviewResult,
   SalesAlternativeOfferResult,
   SalesReservationQueueItem,
   SalesReservationReview,
   SubmittedReservation,
   ReservationDraft,
 } from "@rahal/contracts";
-import type { Request } from "express";
+import type { Request, Response } from "express";
+import { createHmac } from "node:crypto";
 import { readAuthCookie } from "../auth/auth-cookie";
+import { loadApiConfig } from "../config";
 import {
   CustomerAlternativeOfferDecisionDto,
   CustomerInformationResponseDto,
@@ -43,6 +48,8 @@ import {
   SalesAlternativeOfferDto,
   SalesBranchChecklistDto,
   SalesBookingOperationDto,
+  SalesDocumentAccessDto,
+  SalesDocumentReviewDto,
 } from "./reservations.dto";
 import { ReservationsService } from "./reservations.service";
 
@@ -155,6 +162,48 @@ export class ReservationsController {
     return { data: await this.reservations.claimSalesReview(readAuthCookie(request), id) };
   }
 
+  @Post("sales/:id/documents/:documentId/access")
+  async accessSalesDocument(
+    @Param("id") id: string,
+    @Param("documentId") documentId: string,
+    @Body() input: SalesDocumentAccessDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const document = await this.reservations.accessSalesDocument(
+      readAuthCookie(request),
+      id,
+      documentId,
+      input,
+      hashRequestIp(request),
+    );
+    response.set({
+      "Cache-Control": "private, no-store, max-age=0",
+      "Content-Disposition": "inline; filename=rahal-protected-document",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "X-Content-Type-Options": "nosniff",
+    });
+    return new StreamableFile(document.bytes, { type: document.mimeType });
+  }
+
+  @Post("sales/:id/documents/:documentId/review")
+  async reviewSalesDocument(
+    @Param("id") id: string,
+    @Param("documentId") documentId: string,
+    @Body() input: SalesDocumentReviewDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesDocumentReviewResult>> {
+    return {
+      data: await this.reservations.reviewSalesDocument(
+        readAuthCookie(request),
+        id,
+        documentId,
+        input,
+        hashRequestIp(request),
+      ),
+    };
+  }
+
   @Post("sales/:id/decision")
   async decideSalesReview(
     @Param("id") id: string,
@@ -245,4 +294,9 @@ export class ReservationsController {
       data: await this.reservations.respondToAlternativeOffer(readAuthCookie(request), id, input),
     };
   }
+}
+
+function hashRequestIp(request: Request) {
+  const address = request.ip || request.socket.remoteAddress || "unknown";
+  return createHmac("sha256", loadApiConfig().authSecret).update(address).digest("hex");
 }

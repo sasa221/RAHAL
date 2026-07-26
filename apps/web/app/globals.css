@@ -466,6 +466,135 @@
   font-weight: 800;
 }
 
+.sales-document-statuses li > button,
+.customer-document-replacement {
+  border: 0;
+  border-bottom: 1px solid #181815;
+  background: transparent;
+  color: #181815;
+  padding: 6px 0;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sales-document-statuses li > p {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  color: #78372e;
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.sales-document-review {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  background: #191917 !important;
+  color: #f8f2e7;
+}
+
+.sales-document-review__close {
+  position: absolute;
+  inset-block-start: 18px;
+  inset-inline-end: 18px;
+  border: 0;
+  border-bottom: 1px solid rgba(248, 242, 231, 0.55);
+  background: transparent;
+  color: #f8f2e7;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sales-document-review label {
+  display: grid;
+  gap: 8px;
+}
+
+.sales-document-review label span {
+  color: #d8b86f;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.sales-document-review textarea {
+  width: 100%;
+  border: 1px solid rgba(248, 242, 231, 0.2);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8f2e7;
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.sales-document-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sales-document-review__actions button {
+  min-height: 42px;
+  border: 1px solid rgba(248, 242, 231, 0.28);
+  background: transparent;
+  color: #f8f2e7;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sales-document-review__actions button:nth-child(2) {
+  background: #d8b86f;
+  color: #191917;
+}
+
+.sales-document-review__actions button:last-child {
+  border-color: #a85c4e;
+  color: #efb4aa;
+}
+
+.sales-document-review__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.sales-document-review iframe,
+.sales-document-review img {
+  width: 100%;
+  min-height: 420px;
+  max-height: 680px;
+  border: 1px solid rgba(248, 242, 231, 0.18);
+  background: #fff;
+  object-fit: contain;
+}
+
+.customer-document-replacement {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+}
+
+.customer-document-replacement input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.customer-document-upload-error {
+  margin-top: 10px;
+  padding: 11px 13px;
+  background: #f0e3dc;
+  color: #7a2d24;
+  font-size: 0.76rem;
+}
+
 .sales-timeline li {
   position: relative;
   padding: 15px 20px;

@@ -164,6 +164,7 @@ Use an outbox pattern:
 - The development adapter writes opaque object keys under the ignored `PRIVATE_DOCUMENT_STORAGE_PATH`; it is disabled by default in production.
 - Uploads validate configured MIME allowlists, file size, and file signatures before metadata is committed. API responses never return storage keys.
 - Production document upload remains gated on an approved private S3-compatible adapter, malware scanning, and an approved retention schedule.
+- Staff document review uses an authenticated `POST` stream rather than returning a storage key or durable signed URL. The assigned reviewer supplies an operational reason, every existing-document attempt is written to `DocumentAccessLog`, and the response is inline and non-cacheable. Rejection returns the request to customer action; replacement is limited to the rejected type and retains the original signature/size validation.
 
 ## Architecture decisions needed later
 

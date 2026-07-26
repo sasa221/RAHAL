@@ -83,6 +83,21 @@ export class SalesReservationDecisionDto {
   note!: string;
 }
 
+export class SalesDocumentAccessDto {
+  @IsString()
+  @Length(10, 300)
+  reason!: string;
+}
+
+export class SalesDocumentReviewDto {
+  @IsIn(["VERIFY", "REJECT"])
+  action!: "VERIFY" | "REJECT";
+
+  @IsString()
+  @Length(10, 500)
+  reason!: string;
+}
+
 export class CustomerInformationResponseDto {
   @IsString()
   @Length(10, 500)

@@ -250,9 +250,10 @@ describe("reservation draft service", () => {
         }),
       } as never,
       {
-        findOwnedDraft: vi.fn().mockResolvedValue({
+        findOwnedDocumentContext: vi.fn().mockResolvedValue({
           id: "draft-1",
           reference: "RHL-2026-123456",
+          status: "DRAFT",
           driverRequested: true,
           customerCategorySnapshot: "EGYPTIAN",
           customerDetailsCompletedAt: new Date(),
@@ -296,9 +297,10 @@ describe("reservation draft service", () => {
         }),
       } as never,
       {
-        findOwnedDraft: vi.fn().mockResolvedValue({
+        findOwnedDocumentContext: vi.fn().mockResolvedValue({
           id: "draft-1",
           reference: "RHL-2026-123456",
+          status: "DRAFT",
           driverRequested: false,
           customerCategorySnapshot: "EGYPTIAN",
           customerDetailsCompletedAt: new Date(),

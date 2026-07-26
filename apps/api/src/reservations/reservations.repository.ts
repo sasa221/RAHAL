@@ -139,6 +139,21 @@ export class ReservationsRepository {
     });
   }
 
+  findOwnedDocumentContext(id: string, customerId: string) {
+    return this.prisma.client.reservation.findFirst({
+      where: { id, customerId, status: { in: ["DRAFT", "MORE_INFORMATION_REQUIRED"] } },
+      select: {
+        id: true,
+        reference: true,
+        status: true,
+        driverRequested: true,
+        customerCategorySnapshot: true,
+        customerDetailsCompletedAt: true,
+        documentConsentAt: true,
+      },
+    });
+  }
+
   findConsentPolicies(locale: "ar" | "en") {
     const now = new Date();
     return this.prisma.client.policyVersion.findMany({
@@ -588,7 +603,13 @@ export class ReservationsRepository {
         documents: {
           where: { deletedAt: null, status: { notIn: ["UPLOADING", "DELETED"] } },
           orderBy: { createdAt: "desc" },
-          select: { type: true, status: true, createdAt: true },
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            rejectionReason: true,
+            createdAt: true,
+          },
         },
         events: {
           orderBy: { createdAt: "desc" },
@@ -1634,7 +1655,7 @@ export class ReservationsRepository {
         documents: {
           where: { deletedAt: null, status: { notIn: ["UPLOADING", "DELETED"] } },
           orderBy: { createdAt: "asc" },
-          select: { type: true, status: true },
+          select: { id: true, type: true, status: true, rejectionReason: true },
         },
         customerMessages: {
           orderBy: { createdAt: "asc" },
@@ -1688,6 +1709,17 @@ export class ReservationsRepository {
         },
       });
       if (!reservation) return { kind: "NOT_FOUND" as const };
+
+      const rejectedDocuments = await transaction.reservationDocument.count({
+        where: {
+          reservationId: input.reservationId,
+          status: "REJECTED",
+          deletedAt: null,
+        },
+      });
+      if (rejectedDocuments > 0) {
+        return { kind: "DOCUMENT_REPLACEMENT_REQUIRED" as const };
+      }
 
       const respondedAt = new Date();
       const updated = await transaction.reservation.updateMany({
@@ -2077,8 +2109,12 @@ export class ReservationsRepository {
   }) {
     return this.prisma.client.$transaction(async (transaction) => {
       const owned = await transaction.reservation.findFirst({
-        where: { id: input.draftId, customerId: input.customerId, status: "DRAFT" },
-        select: { id: true },
+        where: {
+          id: input.draftId,
+          customerId: input.customerId,
+          status: { in: ["DRAFT", "MORE_INFORMATION_REQUIRED"] },
+        },
+        select: { id: true, status: true },
       });
       if (!owned) return null;
 
@@ -2105,8 +2141,8 @@ export class ReservationsRepository {
       await transaction.reservationEvent.create({
         data: {
           reservationId: input.draftId,
-          fromStatus: "DRAFT",
-          toStatus: "DRAFT",
+          fromStatus: owned.status,
+          toStatus: owned.status,
           actorId: input.customerId,
           note: "Customer uploaded a required private document.",
           metadata: { documentType: input.type, replacement: replaced.length > 0 },
@@ -2174,6 +2210,176 @@ export class ReservationsRepository {
         },
       });
       return documents.map((document) => document.storageKey);
+    });
+  }
+
+  findSalesDocument(reservationId: string, documentId: string) {
+    return this.prisma.client.reservationDocument.findFirst({
+      where: {
+        id: documentId,
+        reservationId,
+        deletedAt: null,
+        status: { in: ["UPLOADED", "UNDER_REVIEW", "VERIFIED", "REJECTED"] },
+        reservation: {
+          status: { in: ["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"] },
+        },
+      },
+      select: {
+        id: true,
+        reservationId: true,
+        type: true,
+        status: true,
+        storageKey: true,
+        mimeType: true,
+        reservation: {
+          select: {
+            assignedSalesId: true,
+            status: true,
+          },
+        },
+      },
+    });
+  }
+
+  async recordDocumentAccess(input: {
+    documentId: string;
+    actorId: string;
+    action: string;
+    reason: string;
+    ipHash?: string;
+    succeeded: boolean;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      await transaction.documentAccessLog.create({ data: input });
+      if (input.succeeded) {
+        await transaction.reservationDocument.updateMany({
+          where: { id: input.documentId, status: "UPLOADED" },
+          data: { status: "UNDER_REVIEW" },
+        });
+      }
+    });
+  }
+
+  async reviewSalesDocument(input: {
+    reservationId: string;
+    documentId: string;
+    actorId: string;
+    action: "VERIFY" | "REJECT";
+    reason: string;
+    ipHash?: string;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const document = await transaction.reservationDocument.findFirst({
+        where: {
+          id: input.documentId,
+          reservationId: input.reservationId,
+          deletedAt: null,
+          status:
+            input.action === "VERIFY"
+              ? { in: ["UPLOADED", "UNDER_REVIEW", "REJECTED"] }
+              : { in: ["UPLOADED", "UNDER_REVIEW"] },
+        },
+        select: { id: true, type: true, status: true },
+      });
+      if (!document) return null;
+
+      const reviewedAt = new Date();
+      const status = input.action === "VERIFY" ? ("VERIFIED" as const) : ("REJECTED" as const);
+      await transaction.reservationDocument.update({
+        where: { id: document.id },
+        data: {
+          status,
+          verifiedBy: input.actorId,
+          verifiedAt: reviewedAt,
+          rejectionReason: input.action === "REJECT" ? input.reason : null,
+        },
+      });
+      await transaction.documentAccessLog.create({
+        data: {
+          documentId: document.id,
+          actorId: input.actorId,
+          action: input.action === "VERIFY" ? "REVIEW_VERIFY" : "REVIEW_REJECT",
+          reason: input.reason,
+          ipHash: input.ipHash,
+          succeeded: true,
+        },
+      });
+      const reservation = await transaction.reservation.findUniqueOrThrow({
+        where: { id: input.reservationId },
+        select: {
+          reference: true,
+          customerId: true,
+          status: true,
+          customer: { select: { preferredLocale: true } },
+        },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: input.reservationId,
+          fromStatus: reservation.status,
+          toStatus:
+            input.action === "REJECT" &&
+            ["PENDING_REVIEW", "UNDER_REVIEW"].includes(reservation.status)
+              ? "MORE_INFORMATION_REQUIRED"
+              : reservation.status,
+          actorId: input.actorId,
+          note:
+            input.action === "VERIFY"
+              ? "Sales verified a protected customer document."
+              : "Sales rejected a protected customer document and requested a replacement.",
+          metadata: { documentType: document.type, reviewAction: input.action },
+        },
+      });
+
+      if (input.action === "REJECT") {
+        await transaction.reservation.updateMany({
+          where: {
+            id: input.reservationId,
+            status: { in: ["PENDING_REVIEW", "UNDER_REVIEW"] },
+          },
+          data: { status: "MORE_INFORMATION_REQUIRED" },
+        });
+        await transaction.customerMessage.create({
+          data: {
+            reservationId: input.reservationId,
+            senderId: input.actorId,
+            body: input.reason,
+          },
+        });
+        await transaction.notification.create({
+          data: {
+            userId: reservation.customerId,
+            reservationId: input.reservationId,
+            eventKey: "RESERVATION_DOCUMENT_REPLACEMENT_REQUIRED",
+            titleAr: "مطلوب استبدال مستند",
+            titleEn: "Document replacement required",
+            bodyAr: `راجع طلب ${reservation.reference} وارفع بديلاً للمستند المرفوض.`,
+            bodyEn: `Review request ${reservation.reference} and upload a replacement for the rejected document.`,
+            important: true,
+          },
+        });
+        await transaction.notificationEvent.create({
+          data: {
+            eventKey: "RESERVATION_DOCUMENT_REPLACEMENT_REQUIRED",
+            aggregateType: "RESERVATION",
+            aggregateId: input.reservationId,
+            payload: {
+              reservationId: input.reservationId,
+              customerId: reservation.customerId,
+              locale: reservation.customer.preferredLocale,
+              documentType: document.type,
+              status: "MORE_INFORMATION_REQUIRED",
+            },
+          },
+        });
+      }
+
+      return {
+        documentId: document.id,
+        reservationId: input.reservationId,
+        status,
+        reviewedAt,
+      };
     });
   }
 }

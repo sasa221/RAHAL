@@ -52,6 +52,9 @@ const copy = {
     selfDrive: "بدون سائق",
     documents: "حالة المستندات",
     noDocuments: "لا توجد مستندات مسجلة.",
+    replaceDocument: "رفع مستند بديل",
+    replacingDocument: "جاري الرفع الآمن…",
+    replacementFailed: "تعذر رفع المستند البديل. استخدم JPEG أو PNG أو PDF صالحًا.",
     conversation: "محادثة الطلب",
     noMessages: "لا توجد رسائل على هذا الطلب حتى الآن.",
     rahal: "فريق رحال",
@@ -150,6 +153,9 @@ const copy = {
     selfDrive: "Self-drive",
     documents: "Document status",
     noDocuments: "No documents are recorded.",
+    replaceDocument: "Upload replacement",
+    replacingDocument: "Uploading securely…",
+    replacementFailed: "The replacement could not be uploaded. Use a valid JPEG, PNG, or PDF.",
     conversation: "Request conversation",
     noMessages: "There are no messages on this request yet.",
     rahal: "Rahal team",
@@ -267,6 +273,8 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
   const [offerFeedback, setOfferFeedback] = useState<"ACCEPTED" | "DECLINED" | "ERROR" | null>(
     null,
   );
+  const [uploadingDocument, setUploadingDocument] = useState("");
+  const [documentUploadError, setDocumentUploadError] = useState(false);
 
   useEffect(() => {
     void loadRequests();
@@ -358,6 +366,26 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
       setSendError(true);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function uploadReplacement(type: string, file: File | undefined) {
+    if (!detail || !file) return;
+    setUploadingDocument(type);
+    setDocumentUploadError(false);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch(
+        `/api/reservations/drafts/${encodeURIComponent(detail.id)}/documents/${encodeURIComponent(type)}`,
+        { method: "POST", credentials: "include", body },
+      );
+      if (!response.ok) throw new Error("UPLOAD_FAILED");
+      await openRequest(detail.id);
+    } catch {
+      setDocumentUploadError(true);
+    } finally {
+      setUploadingDocument("");
     }
   }
 
@@ -733,10 +761,32 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
                           <li key={document.type}>
                             <b>{documentLabel(document.type, locale)}</b>
                             <span>{document.status.replaceAll("_", " ")}</span>
+                            {document.rejectionReason ? <p>{document.rejectionReason}</p> : null}
+                            {document.status === "REJECTED" &&
+                            detail.status === "MORE_INFORMATION_REQUIRED" ? (
+                              <label className="customer-document-replacement">
+                                <span>
+                                  {uploadingDocument === document.type
+                                    ? text.replacingDocument
+                                    : text.replaceDocument}
+                                </span>
+                                <input
+                                  accept="image/jpeg,image/png,application/pdf"
+                                  disabled={uploadingDocument !== ""}
+                                  onChange={(event) =>
+                                    void uploadReplacement(document.type, event.target.files?.[0])
+                                  }
+                                  type="file"
+                                />
+                              </label>
+                            ) : null}
                           </li>
                         ))}
                       </ul>
                     )}
+                    {documentUploadError ? (
+                      <p className="customer-document-upload-error">{text.replacementFailed}</p>
+                    ) : null}
                   </section>
                   <section>
                     <h3>{text.conversation}</h3>

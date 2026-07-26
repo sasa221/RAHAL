@@ -134,6 +134,8 @@ The implemented fleet-calendar read model uses `VehicleBlock`, active `Booking` 
 
 Vehicle registry writes reuse the existing `Vehicle` model. The administrator API never accepts `VehicleStatus`; publication maps only to `AVAILABLE` or `INACTIVE`, while booking, rental, maintenance, and overdue states remain service-owned. Existing unique registration and slug constraints protect identity, and audit JSON intentionally contains only operational fields rather than related customer or document data.
 
+Protected review uses the existing `ReservationDocument` verification fields and `DocumentAccessLog`. Inline views record `VIEW_INLINE`; decisions record `REVIEW_VERIFY` or `REVIEW_REJECT`. Rejection stores a bounded customer-facing reason, while object keys stay confined to `ReservationDocument.storageKey` and are never copied into access logs, events, notifications, or browser contracts.
+
 `AlternativeOffer` preserves the proposed vehicle, pickup/return range, daily vehicle rate, optional daily driver rate, estimated EGP total, expiry, and response independently from the original reservation. The original reservation selection changes only after owner acceptance and another availability check. Pending offers are never bookings.
 
 ## Constraints and indexes

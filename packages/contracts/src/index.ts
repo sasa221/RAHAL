@@ -188,6 +188,7 @@ export type SalesReservationQueueItem = {
 };
 
 export type SalesReservationReview = SalesReservationQueueItem & {
+  canReviewDocuments: boolean;
   customer: SalesReservationQueueItem["customer"] & {
     nationality: string | null;
     customerCategory: "EGYPTIAN" | "FOREIGN" | null;
@@ -198,9 +199,11 @@ export type SalesReservationReview = SalesReservationQueueItem & {
   verification: { email: boolean; phone: boolean };
   consents: { policyVersion: string | null; requiredAccepted: boolean };
   documents: Array<{
+    id: string;
     type: ReservationDocumentType;
     status: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED";
     uploadedAt: string;
+    rejectionReason: string | null;
   }>;
   timeline: Array<{
     fromStatus: string | null;
@@ -304,8 +307,10 @@ export type CustomerReservationSummary = {
 
 export type CustomerReservationDetail = CustomerReservationSummary & {
   documents: Array<{
+    id: string;
     type: ReservationDocumentType;
     status: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED";
+    rejectionReason: string | null;
   }>;
   messages: Array<{
     id: string;
@@ -360,6 +365,13 @@ export type CustomerInformationResponse = {
   reference: string;
   status: "UNDER_REVIEW";
   respondedAt: string;
+};
+
+export type SalesDocumentReviewResult = {
+  documentId: string;
+  reservationId: string;
+  status: "VERIFIED" | "REJECTED";
+  reviewedAt: string;
 };
 
 export type ReservationConsentBundle = {
