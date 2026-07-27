@@ -26,7 +26,7 @@ This document summarizes the product requirements from `PROJECT_CONTEXT.md` and 
 - The schema now includes sessions/devices, explicit bookings and EGP price snapshots, alternative offers, document access logs, contracts, separate notes/messages, notification outbox/templates, branch settings, content/vehicle translations, rate rules, and database-level overlap protection for confirmed/active bookings.
 - `VehicleStatus` now includes `OVERDUE` and `ARCHIVED`.
 
-Remaining configuration work includes maximum rental duration and final production media metadata. Required-document rules are now database-backed with separate Egyptian/foreign and self-drive conditions; an administrator UI for those rules remains pending.
+Remaining configuration work includes maximum rental duration and final production media metadata. Required-document rules are database-backed with separate Egyptian/foreign and self-drive conditions, and administrators now manage their labels, formats, file-size caps, ordering, and active state through a bilingual audited policy workspace.
 
 Staff access is now database-backed beyond the broad system role. A default Sales Agent role and explicit per-user overrides control reservation review, protected documents, deposits, confirmation, rental operations, and fleet visibility. Administrators have a bilingual staff/role/audit workspace; critical overrides and administrator management remain super-administrator-only, and access changes revoke affected sessions.
 

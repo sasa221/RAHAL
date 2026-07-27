@@ -234,7 +234,7 @@ Status: the customer wizard through final review and the guarded `DRAFT` to `PEN
 
 ### Remaining scope
 
-- Administrator management screens for required-document rules and the approved production private-storage adapter.
+- Approved production private-storage adapter.
 - Approved production legal copy to replace the development-only consent bundle.
 - Customer draft/request listing and expiry/abandonment handling.
 - Notification worker delivery and sales-recipient routing for the existing outbox event.
@@ -702,6 +702,39 @@ Status: implemented locally on 2026-07-27.
 - Service coverage for administrator and permission boundaries, bounded mapping, hidden sensitive fields, and document-access pagination.
 - Static coverage for atomic sales ownership, other-sales denial, bilingual ownership messaging, endpoint wiring, and protected oversight UI.
 - Full repository formatting, lint, tests, typecheck, production build, and browser verification.
+
+## Milestone 17: Administrator document-requirement policy center
+
+Goal: move Egyptian, foreign-customer, and self-drive document requirements out of seed-only configuration and into a safe, audited administrator workflow.
+
+Status: implemented locally on 2026-07-27.
+
+### Completed scope
+
+- Added administrator-only list, create, and update boundaries for `DocumentRequirementRule`.
+- Restricted rule identity to the finite customer-category, document-type, and self-drive scenarios used by the reservation flow.
+- Added validation for bilingual labels, JPEG/PNG/PDF allowlists, 1–20 MB limits, ordering, active state, and a mandatory 10–300 character reason.
+- Kept rule identity stable after creation and rejected duplicate scenarios.
+- Prevented administrators from disabling the final active base requirement for either Egyptian or foreign customers.
+- Recorded create/update snapshots and their operational reasons in the immutable audit log without customer, reservation, filename, or storage data.
+- Added a bilingual `/admin/documents` and `/en/admin/documents` workspace with live scenario simulation, policy metrics, animated rule cards, and focused create/edit panels.
+- Added purpose-built desktop and mobile layouts plus reduced-motion behavior.
+
+### Acceptance criteria
+
+- Customers and sales employees cannot read or mutate the administrator rule catalog.
+- The browser cannot choose a rule key or submit an unsupported document type, MIME type, or size limit.
+- Each customer category always retains at least one active base document.
+- A rule change is not committed without a bounded audit reason.
+- Policy APIs and audit snapshots never expose customer records, uploaded documents, filenames, or private storage keys.
+- The scenario simulator matches the reservation rule selection for driver and customer category.
+- Arabic RTL and English LTR expose equivalent controls on desktop and mobile.
+
+### Tests
+
+- Unit coverage for administrator boundaries, duplicate rules, deterministic keys, final-base-rule protection, update mapping, and bounded missing records.
+- Static coverage for DTO limits, audited transactions, sensitive-data exclusions, bilingual routes, simulator logic, responsive layouts, and reduced motion.
+- Browser verification of real database rules, driver/category scenarios, audited save, English parity, and mobile editor composition.
 
 ## Decisions not blocking Milestone 1
 

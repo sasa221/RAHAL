@@ -88,6 +88,31 @@ export type ReservationDocumentType =
   | "DRIVING_LICENSE_BACK"
   | "PASSPORT";
 
+export type AdminDocumentRequirementRule = {
+  id: string;
+  key: string;
+  customerCategory: "EGYPTIAN" | "FOREIGN";
+  documentType: ReservationDocumentType;
+  requiresSelfDrive: boolean;
+  labelAr: string;
+  labelEn: string;
+  allowedMimeTypes: Array<"image/jpeg" | "image/png" | "application/pdf">;
+  maxSizeBytes: number;
+  active: boolean;
+  sortOrder: number;
+  updatedAt: string;
+};
+
+export type AdminDocumentRequirementOverview = {
+  rules: AdminDocumentRequirementRule[];
+  summary: {
+    activeRules: number;
+    egyptianRules: number;
+    foreignRules: number;
+    selfDriveRules: number;
+  };
+};
+
 export type ReservationDocumentRequirement = {
   key: string;
   type: ReservationDocumentType;

@@ -11,6 +11,7 @@ import { StaffModule } from "./staff/staff.module";
 import { ReviewsModule } from "./reviews/reviews.module";
 import { AccountModule } from "./account/account.module";
 import { AdminOperationsModule } from "./admin-operations/admin-operations.module";
+import { DocumentRequirementsModule } from "./document-requirements/document-requirements.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AdminOperationsModule } from "./admin-operations/admin-operations.modul
     ReviewsModule,
     AccountModule,
     AdminOperationsModule,
+    DocumentRequirementsModule,
   ],
   controllers: [HealthController],
 })
