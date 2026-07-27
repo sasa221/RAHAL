@@ -635,6 +635,40 @@ Status: implemented and verified locally on 2026-07-26. Preference enforcement b
 - Full repository formatting, lint, tests, typecheck, and production build.
 - Browser verification at desktop and mobile sizes against the Stitch administration references.
 
+## Milestone 15: Protected document review studio and private-object recovery
+
+Goal: make document review usable as a focused operational workflow while tightening the relationship between audited access and the final reviewer decision.
+
+Status: implemented locally on 2026-07-27.
+
+### Completed scope
+
+- Replaced the small inline document panel with a full-height, bilingual review studio inspired by the structure and visual hierarchy of the Stitch review reference.
+- Added a document rail, review progress, guarded preview, previous/next navigation, image zoom, rotation, reset, PDF preview, quick decision notes, and explicit secure-state messaging.
+- Added dedicated responsive compositions for desktop, tablet, and mobile rather than shrinking the desktop interface.
+- Kept access reasons separate from customer-facing decision notes.
+- Required the same staff actor to complete a successful protected preview within 15 minutes before recording a verify or reject decision.
+- Kept review access available through the legitimate pre-approval, confirmation, and active-rental lifecycle while excluding completed and closed records.
+- Converted missing local private objects into a bounded service-unavailable response without exposing filesystem paths.
+- Repaired the local fictional review fixture with clearly marked demo-only objects; no real identity details are stored in the fixture.
+
+### Acceptance criteria
+
+- The assigned reviewer can open every active fixture document from the sales workspace on desktop and mobile.
+- The browser receives only a temporary Blob URL from an authenticated, non-cacheable response.
+- A decision cannot be submitted without a recent successful preview by the same actor.
+- Access purpose and decision note remain independent audit inputs.
+- The UI exposes no storage key, local path, download action, permanent URL, or full identity value.
+- Rejected documents can be verified after a valid replacement review, but cannot be rejected repeatedly.
+- Missing object failures are audited and return safe, actionable copy.
+- Reduced-motion preferences disable non-essential studio transitions.
+
+### Tests
+
+- Static security coverage for safe missing-object handling, recent-preview enforcement, temporary URL revocation, separate reasons, modal semantics, bilingual copy, and non-exposure of storage keys.
+- Full repository formatting, lint, tests, typecheck, and production build.
+- Browser verification of the protected preview journey at desktop and mobile sizes.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

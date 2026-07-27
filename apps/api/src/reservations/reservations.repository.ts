@@ -2221,7 +2221,17 @@ export class ReservationsRepository {
         deletedAt: null,
         status: { in: ["UPLOADED", "UNDER_REVIEW", "VERIFIED", "REJECTED"] },
         reservation: {
-          status: { in: ["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"] },
+          status: {
+            in: [
+              "PENDING_REVIEW",
+              "UNDER_REVIEW",
+              "MORE_INFORMATION_REQUIRED",
+              "PRE_APPROVED",
+              "ALTERNATIVE_OFFERED",
+              "CONFIRMED",
+              "ACTIVE",
+            ],
+          },
         },
       },
       select: {
@@ -2284,6 +2294,19 @@ export class ReservationsRepository {
       if (!document) return null;
 
       const reviewedAt = new Date();
+      const recentPreview = await transaction.documentAccessLog.findFirst({
+        where: {
+          documentId: document.id,
+          actorId: input.actorId,
+          action: "VIEW_INLINE",
+          succeeded: true,
+          createdAt: { gte: new Date(reviewedAt.getTime() - 15 * 60 * 1000) },
+        },
+        select: { id: true },
+      });
+      if (!recentPreview) {
+        return { kind: "PREVIEW_REQUIRED" as const };
+      }
       const status = input.action === "VERIFY" ? ("VERIFIED" as const) : ("REJECTED" as const);
       await transaction.reservationDocument.update({
         where: { id: document.id },
@@ -2375,10 +2398,13 @@ export class ReservationsRepository {
       }
 
       return {
-        documentId: document.id,
-        reservationId: input.reservationId,
-        status,
-        reviewedAt,
+        kind: "REVIEWED" as const,
+        data: {
+          documentId: document.id,
+          reservationId: input.reservationId,
+          status,
+          reviewedAt,
+        },
       };
     });
   }

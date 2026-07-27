@@ -666,6 +666,15 @@ export class ReservationsService {
     if (session.user.role === "SALES" && document.reservation.assignedSalesId !== session.user.id) {
       throw new ForbiddenException("Only the assigned reviewer can review this document.");
     }
+    if (
+      !["PENDING_REVIEW", "UNDER_REVIEW", "MORE_INFORMATION_REQUIRED"].includes(
+        document.reservation.status,
+      )
+    ) {
+      throw new ConflictException(
+        "Document decisions are locked after the request leaves document review.",
+      );
+    }
     const reviewed = await this.reservations.reviewSalesDocument({
       reservationId,
       documentId,
@@ -677,9 +686,14 @@ export class ReservationsService {
     if (!reviewed) {
       throw new ConflictException("The document is no longer in a reviewable state.");
     }
+    if (reviewed.kind === "PREVIEW_REQUIRED") {
+      throw new ConflictException(
+        "Preview this protected document before recording a review decision.",
+      );
+    }
     return {
-      ...reviewed,
-      reviewedAt: reviewed.reviewedAt.toISOString(),
+      ...reviewed.data,
+      reviewedAt: reviewed.data.reviewedAt.toISOString(),
     };
   }
 

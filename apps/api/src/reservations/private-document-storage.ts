@@ -31,7 +31,16 @@ export class PrivateDocumentStorage {
   }
 
   async read(storageKey: string) {
-    return readFile(this.resolveKey(storageKey));
+    try {
+      return await readFile(this.resolveKey(storageKey));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new ServiceUnavailableException(
+          "The protected document object is temporarily unavailable.",
+        );
+      }
+      throw error;
+    }
   }
 
   private resolveKey(storageKey: string) {

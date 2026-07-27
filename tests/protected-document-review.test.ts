@@ -11,6 +11,7 @@ describe("protected customer document review", () => {
   const service = read("apps/api/src/reservations/reservations.service.ts");
   const storage = read("apps/api/src/reservations/private-document-storage.ts");
   const sales = read("apps/web/components/sales-review-workspace.tsx");
+  const studio = read("apps/web/components/protected-document-studio.tsx");
   const customer = read("apps/web/components/customer-requests-workspace.tsx");
 
   it("streams documents only through an authenticated no-store POST boundary", () => {
@@ -37,6 +38,8 @@ describe("protected customer document review", () => {
     expect(storage).toContain("this.resolveKey(storageKey)");
     expect(storage).toContain('relativePath.startsWith("..")');
     expect(storage).toContain("isAbsolute(relativePath)");
+    expect(storage).toContain('code === "ENOENT"');
+    expect(storage).toContain("The protected document object is temporarily unavailable.");
   });
 
   it("supports explicit verification or rejection without exposing identity data", () => {
@@ -47,6 +50,12 @@ describe("protected customer document review", () => {
     expect(repository).toContain("verifiedBy: input.actorId");
     expect(repository).toContain("rejectionReason:");
     expect(repository).not.toContain("identityNumber");
+    expect(repository).toContain('action: "VIEW_INLINE"');
+    expect(repository).toContain('return { kind: "PREVIEW_REQUIRED" as const }');
+    expect(service).toContain("Preview this protected document before recording");
+    expect(service).toContain(
+      "Document decisions are locked after the request leaves document review.",
+    );
   });
 
   it("returns a rejected request to the customer for a safe replacement", () => {
@@ -58,10 +67,16 @@ describe("protected customer document review", () => {
     expect(customer).toContain('accept="image/jpeg,image/png,application/pdf"');
   });
 
-  it("provides bilingual inline review and mobile-safe replacement controls", () => {
-    expect(sales).toContain("فحص المستند");
-    expect(sales).toContain("Inspect document");
-    expect(sales).toContain('className="sales-document-review"');
+  it("provides a bilingual secure review studio and mobile-safe replacement controls", () => {
+    expect(sales).toContain("<ProtectedDocumentStudio");
+    expect(studio).toContain("Identity review, inside one secure studio.");
+    expect(studio).toContain("مراجعة الهوية داخل استوديو آمن واحد.");
+    expect(studio).toContain('aria-modal="true"');
+    expect(studio).toContain("URL.revokeObjectURL");
+    expect(studio).toContain("accessReason");
+    expect(studio).toContain("decisionReason");
+    expect(studio).toContain("decisionsEnabled");
+    expect(studio).not.toContain("storageKey");
     expect(customer).toContain("رفع مستند بديل");
     expect(customer).toContain("Upload replacement");
   });
