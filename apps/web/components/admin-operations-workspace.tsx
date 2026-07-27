@@ -8,6 +8,7 @@ import type {
 } from "@rahal/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
+import { AdminDocumentAccessLedger } from "./admin-document-access-ledger";
 import { WorkspaceShell } from "./workspace-shell";
 
 const copy = {
@@ -248,6 +249,7 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
 }
 
 export function AdminAuditWorkspace({ locale }: { locale: PublicLocale }) {
+  const [mode, setMode] = useState<"SYSTEM" | "DOCUMENTS">("SYSTEM");
   const [page, setPage] = useState<AdminAuditPage | null>(null);
   const [items, setItems] = useState<AdminAuditEntry[]>([]);
   const [filters, setFilters] = useState({ query: "", action: "", entityType: "", result: "" });
@@ -268,6 +270,12 @@ export function AdminAuditWorkspace({ locale }: { locale: PublicLocale }) {
           more: "تحميل المزيد",
           empty: "لا توجد نتائج مطابقة.",
           loading: "جاري تحميل السجل...",
+          systemLog: "سجل النظام",
+          documentLog: "رقابة المستندات",
+          documentEyebrow: "الحوكمة / المستندات المحمية",
+          documentTitle: "اعرف من فتح المستند، ولماذا، من غير كشف محتواه.",
+          documentSubtitle:
+            "سجل إداري منفصل لأسباب فتح مستندات العملاء وقرارات المراجعة ونتيجتها، مع بقاء الملفات وأرقام الهوية وبيانات الشبكة مخفية.",
         }
       : {
           eyebrow: "GOVERNANCE / IMMUTABLE LOG",
@@ -283,6 +291,12 @@ export function AdminAuditWorkspace({ locale }: { locale: PublicLocale }) {
           more: "Load more",
           empty: "No matching audit entries.",
           loading: "Loading the audit record...",
+          systemLog: "System activity",
+          documentLog: "Document oversight",
+          documentEyebrow: "GOVERNANCE / PROTECTED DOCUMENTS",
+          documentTitle: "Know who touched a document and why—without exposing it.",
+          documentSubtitle:
+            "A dedicated administrative record of protected-file access reasons, review decisions and outcomes while document bytes, identity numbers and network data stay hidden.",
         };
   const params = useMemo(
     () =>
@@ -324,77 +338,109 @@ export function AdminAuditWorkspace({ locale }: { locale: PublicLocale }) {
       <div className="ops-workspace audit-workspace">
         <section className="ops-hero audit-hero">
           <div>
-            <span>{labels.eyebrow}</span>
-            <h1>{labels.title}</h1>
-            <p>{labels.subtitle}</p>
+            <span>{mode === "SYSTEM" ? labels.eyebrow : labels.documentEyebrow}</span>
+            <h1>{mode === "SYSTEM" ? labels.title : labels.documentTitle}</h1>
+            <p>{mode === "SYSTEM" ? labels.subtitle : labels.documentSubtitle}</p>
           </div>
           <div className="ops-hero-mark">
-            <b>∞</b>
+            <b>{mode === "SYSTEM" ? "∞" : "R"}</b>
             <span>READ ONLY</span>
           </div>
         </section>
-        <section className="audit-filters">
-          <input
-            aria-label={labels.search}
-            onChange={(event) => setFilters((value) => ({ ...value, query: event.target.value }))}
-            placeholder={labels.search}
-            value={filters.query}
-          />
-          <select
-            aria-label={labels.actions}
-            onChange={(event) => setFilters((value) => ({ ...value, action: event.target.value }))}
-            value={filters.action}
-          >
-            <option value="">{labels.actions}</option>
-            {page?.availableActions.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-          <select
-            aria-label={labels.entities}
-            onChange={(event) =>
-              setFilters((value) => ({ ...value, entityType: event.target.value }))
-            }
-            value={filters.entityType}
-          >
-            <option value="">{labels.entities}</option>
-            {page?.availableEntityTypes.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-          <select
-            aria-label={labels.results}
-            onChange={(event) => setFilters((value) => ({ ...value, result: event.target.value }))}
-            value={filters.result}
-          >
-            <option value="">{labels.results}</option>
-            <option value="success">{labels.success}</option>
-            <option value="failed">{labels.failed}</option>
-          </select>
-        </section>
-        <section className="ops-panel audit-table">
-          {loading && items.length === 0 ? (
-            <div className="ops-state">{labels.loading}</div>
-          ) : items.length === 0 ? (
-            <div className="ops-state">{labels.empty}</div>
-          ) : (
-            <div className="ops-audit-list">
-              {items.map((entry) => (
-                <AuditRow entry={entry} key={entry.id} locale={locale} />
-              ))}
-            </div>
-          )}
-        </section>
-        {page?.nextCursor ? (
+        <div className="audit-mode-switch" role="tablist" aria-label={labels.title}>
           <button
-            className="audit-more"
-            disabled={loading}
-            onClick={() => void load(page.nextCursor ?? undefined)}
+            aria-selected={mode === "SYSTEM"}
+            onClick={() => setMode("SYSTEM")}
+            role="tab"
             type="button"
           >
-            {labels.more}
+            <span>01</span>
+            {labels.systemLog}
           </button>
-        ) : null}
+          <button
+            aria-selected={mode === "DOCUMENTS"}
+            onClick={() => setMode("DOCUMENTS")}
+            role="tab"
+            type="button"
+          >
+            <span>02</span>
+            {labels.documentLog}
+          </button>
+        </div>
+        {mode === "SYSTEM" ? (
+          <>
+            <section className="audit-filters">
+              <input
+                aria-label={labels.search}
+                onChange={(event) =>
+                  setFilters((value) => ({ ...value, query: event.target.value }))
+                }
+                placeholder={labels.search}
+                value={filters.query}
+              />
+              <select
+                aria-label={labels.actions}
+                onChange={(event) =>
+                  setFilters((value) => ({ ...value, action: event.target.value }))
+                }
+                value={filters.action}
+              >
+                <option value="">{labels.actions}</option>
+                {page?.availableActions.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+              <select
+                aria-label={labels.entities}
+                onChange={(event) =>
+                  setFilters((value) => ({ ...value, entityType: event.target.value }))
+                }
+                value={filters.entityType}
+              >
+                <option value="">{labels.entities}</option>
+                {page?.availableEntityTypes.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+              <select
+                aria-label={labels.results}
+                onChange={(event) =>
+                  setFilters((value) => ({ ...value, result: event.target.value }))
+                }
+                value={filters.result}
+              >
+                <option value="">{labels.results}</option>
+                <option value="success">{labels.success}</option>
+                <option value="failed">{labels.failed}</option>
+              </select>
+            </section>
+            <section className="ops-panel audit-table">
+              {loading && items.length === 0 ? (
+                <div className="ops-state">{labels.loading}</div>
+              ) : items.length === 0 ? (
+                <div className="ops-state">{labels.empty}</div>
+              ) : (
+                <div className="ops-audit-list">
+                  {items.map((entry) => (
+                    <AuditRow entry={entry} key={entry.id} locale={locale} />
+                  ))}
+                </div>
+              )}
+            </section>
+            {page?.nextCursor ? (
+              <button
+                className="audit-more"
+                disabled={loading}
+                onClick={() => void load(page.nextCursor ?? undefined)}
+                type="button"
+              >
+                {labels.more}
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <AdminDocumentAccessLedger locale={locale} />
+        )}
       </div>
     </WorkspaceShell>
   );

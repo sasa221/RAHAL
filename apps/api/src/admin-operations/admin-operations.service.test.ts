@@ -95,4 +95,64 @@ describe("AdminOperationsService", () => {
     expect(result.items).toHaveLength(40);
     expect(result.nextCursor).toBe("audit-39");
   });
+
+  it("exposes bounded document oversight only to administrators with audit access", async () => {
+    const requireAccess = vi.fn();
+    const documentAccess = vi.fn().mockResolvedValue({
+      items: [
+        {
+          id: "access-1",
+          action: "VIEW_INLINE",
+          reason: "Reviewing identity 29801011234567 for reservation eligibility",
+          succeeded: true,
+          createdAt: new Date("2026-07-27T08:00:00.000Z"),
+          actor: {
+            fullNameAr: "موظف رحال",
+            fullNameEn: "Rahal Sales",
+            systemRole: "SALES",
+          },
+          document: {
+            type: "NATIONAL_ID_BACK",
+            status: "UNDER_REVIEW",
+            reservation: { id: "reservation-1", reference: "RHL-001" },
+          },
+        },
+      ],
+      actions: [{ action: "VIEW_INLINE" }],
+    });
+    const service = new AdminOperationsService(
+      { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
+      { require: requireAccess } as never,
+      { documentAccess } as never,
+    );
+
+    const result = await service.documentAccess("session", "en", {});
+
+    expect(requireAccess).toHaveBeenCalledWith(adminSession, "audit.view");
+    expect(result.items[0]).toMatchObject({
+      actorName: "Rahal Sales",
+      reservationReference: "RHL-001",
+      documentType: "NATIONAL_ID_BACK",
+      reason: "Reviewing identity 29••••••••••67 for reservation eligibility",
+    });
+    expect(result.items[0]?.reason).not.toContain("29801011234567");
+    expect(result.items[0]).not.toHaveProperty("ipHash");
+    expect(result.items[0]).not.toHaveProperty("storageKey");
+  });
+
+  it("rejects document oversight for non-admin staff even with an audit permission", async () => {
+    const service = new AdminOperationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { ...adminSession.user, role: "SALES" },
+        }),
+      } as never,
+      { require: vi.fn() } as never,
+      { documentAccess: vi.fn() } as never,
+    );
+
+    await expect(service.documentAccess("session", "en", {})).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
 });

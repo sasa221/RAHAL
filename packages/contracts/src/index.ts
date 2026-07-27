@@ -685,6 +685,26 @@ export type AdminAuditPage = {
   availableEntityTypes: string[];
 };
 
+export type AdminDocumentAccessEntry = {
+  id: string;
+  action: string;
+  reason: string;
+  succeeded: boolean;
+  createdAt: string;
+  actorName: string;
+  actorRole: string;
+  reservationId: string;
+  reservationReference: string;
+  documentType: ReservationDocumentType;
+  documentStatus: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "EXPIRED";
+};
+
+export type AdminDocumentAccessPage = {
+  items: AdminDocumentAccessEntry[];
+  nextCursor: string | null;
+  availableActions: string[];
+};
+
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type CustomerReview = {

@@ -1,5 +1,10 @@
 import { Controller, Get, Query, Req } from "@nestjs/common";
-import type { AdminAuditPage, AdminOperationsOverview, ApiSuccess } from "@rahal/contracts";
+import type {
+  AdminAuditPage,
+  AdminDocumentAccessPage,
+  AdminOperationsOverview,
+  ApiSuccess,
+} from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
 import { AdminOperationsService } from "./admin-operations.service";
@@ -25,6 +30,20 @@ export class AdminOperationsController {
   ): Promise<ApiSuccess<AdminAuditPage>> {
     return {
       data: await this.operations.audit(
+        readAuthCookie(request),
+        query.locale === "ar" ? "ar" : "en",
+        query,
+      ),
+    };
+  }
+
+  @Get("document-access")
+  async documentAccess(
+    @Req() request: Request,
+    @Query() query: Record<string, string | undefined>,
+  ): Promise<ApiSuccess<AdminDocumentAccessPage>> {
+    return {
+      data: await this.operations.documentAccess(
         readAuthCookie(request),
         query.locale === "ar" ? "ar" : "en",
         query,

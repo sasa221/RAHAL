@@ -17,6 +17,33 @@ const safeAuditSelect = {
   },
 } as const;
 
+const safeDocumentAccessSelect = {
+  id: true,
+  action: true,
+  reason: true,
+  succeeded: true,
+  createdAt: true,
+  actor: {
+    select: {
+      fullNameAr: true,
+      fullNameEn: true,
+      systemRole: true,
+    },
+  },
+  document: {
+    select: {
+      type: true,
+      status: true,
+      reservation: {
+        select: {
+          id: true,
+          reference: true,
+        },
+      },
+    },
+  },
+} as const;
+
 @Injectable()
 export class AdminOperationsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -102,5 +129,49 @@ export class AdminOperationsRepository {
       }),
     ]);
     return { items, actions, entityTypes };
+  }
+
+  async documentAccess(input: {
+    cursor?: string;
+    action?: string;
+    succeeded?: boolean;
+    query?: string;
+  }) {
+    const where = {
+      ...(input.action ? { action: input.action } : {}),
+      ...(input.succeeded === undefined ? {} : { succeeded: input.succeeded }),
+      ...(input.query
+        ? {
+            OR: [
+              { action: { contains: input.query, mode: "insensitive" as const } },
+              { reason: { contains: input.query, mode: "insensitive" as const } },
+              { actor: { fullNameEn: { contains: input.query, mode: "insensitive" as const } } },
+              { actor: { fullNameAr: { contains: input.query, mode: "insensitive" as const } } },
+              {
+                document: {
+                  reservation: {
+                    reference: { contains: input.query, mode: "insensitive" as const },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+    const [items, actions] = await Promise.all([
+      this.prisma.client.documentAccessLog.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 41,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        select: safeDocumentAccessSelect,
+      }),
+      this.prisma.client.documentAccessLog.findMany({
+        distinct: ["action"],
+        orderBy: { action: "asc" },
+        select: { action: true },
+      }),
+    ]);
+    return { items, actions };
   }
 }

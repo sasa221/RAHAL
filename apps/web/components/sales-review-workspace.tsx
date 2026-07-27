@@ -165,6 +165,9 @@ const copy = {
     branch: "الفرع",
     customer: "العميل",
     open: "افتح المراجعة",
+    availableOwner: "متاح للاستلام",
+    yourOwner: "مراجعتك",
+    teamOwner: "مسند لموظف مبيعات",
     select: "اختر طلبًا من القائمة لمراجعة تفاصيله المحمية.",
     protected: "تفاصيل محمية",
     contact: "التواصل المخفي",
@@ -191,6 +194,9 @@ const copy = {
     claim: "استلم الطلب للمراجعة",
     claiming: "جارٍ استلام الطلب...",
     assigned: "هذا الطلب مسند إليك",
+    claimNoticeTitle: "استلام واحد، مسؤولية واضحة.",
+    claimNoticeCopy:
+      "بمجرد استلامك للطلب يُقفل تلقائيًا أمام باقي فريق المبيعات. تظل الإدارة قادرة على مراجعة سجل الوصول والقرارات عند الحاجة.",
     claimFailed: "تعذر استلام الطلب؛ ربما استلمه موظف آخر.",
     safety:
       "لا تظهر روابط الملفات أو أرقام الهوية هنا. الحجز النهائي يتطلب الحضور للفرع والعربون والعقد الموقع.",
@@ -302,6 +308,9 @@ const copy = {
     branch: "Branch",
     customer: "Customer",
     open: "Open review",
+    availableOwner: "Available to claim",
+    yourOwner: "Your review",
+    teamOwner: "Owned by sales",
     select: "Choose a request from the queue to inspect its protected details.",
     protected: "Protected details",
     contact: "Masked contact",
@@ -328,6 +337,9 @@ const copy = {
     claim: "Claim request for review",
     claiming: "Claiming request...",
     assigned: "This request is assigned to you",
+    claimNoticeTitle: "One owner. Clear accountability.",
+    claimNoticeCopy:
+      "Claiming immediately locks this request to you and removes it from every other sales queue. Administrators retain read-only oversight of access and decisions.",
     claimFailed: "The request could not be claimed; another employee may have taken it.",
     safety:
       "File links and identity numbers never appear here. Final booking requires branch attendance, deposit, and a signed contract.",
@@ -961,6 +973,17 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                         <span className={`sales-status sales-status--${item.status.toLowerCase()}`}>
                           {statusLabel(item.status, locale)}
                         </span>
+                        <span
+                          className={`sales-owner-chip ${
+                            item.assignedToCurrentUser ? "is-yours" : ""
+                          }`}
+                        >
+                          {item.assignedToCurrentUser
+                            ? text.yourOwner
+                            : item.status === "PENDING_REVIEW"
+                              ? text.availableOwner
+                              : text.teamOwner}
+                        </span>
                         <small>{formatDate(item.submittedAt, locale)}</small>
                       </div>
                       <h3>{item.vehicle.name}</h3>
@@ -1007,9 +1030,22 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
               {review ? (
                 <div className="sales-review-content">
                   <header>
-                    <span className={`sales-status sales-status--${review.status.toLowerCase()}`}>
-                      {statusLabel(review.status, locale)}
-                    </span>
+                    <div className="sales-review-ownership">
+                      <span className={`sales-status sales-status--${review.status.toLowerCase()}`}>
+                        {statusLabel(review.status, locale)}
+                      </span>
+                      <span
+                        className={`sales-owner-chip ${
+                          review.assignedToCurrentUser ? "is-yours" : ""
+                        }`}
+                      >
+                        {review.assignedToCurrentUser
+                          ? text.yourOwner
+                          : review.status === "PENDING_REVIEW"
+                            ? text.availableOwner
+                            : text.teamOwner}
+                      </span>
+                    </div>
                     <p>{review.reference}</p>
                     <h2>{review.vehicle.name}</h2>
                     <strong>{formatEgp(review.estimate.total, locale)}</strong>
@@ -1588,15 +1624,25 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                         </section>
                       ) : null}
                     </>
+                  ) : review.status === "PENDING_REVIEW" ? (
+                    <section className="sales-claim-lock">
+                      <span aria-hidden="true">R</span>
+                      <div>
+                        <small>{text.availableOwner}</small>
+                        <h3>{text.claimNoticeTitle}</h3>
+                        <p>{text.claimNoticeCopy}</p>
+                      </div>
+                      <button
+                        className="sales-action sales-action--claim"
+                        disabled={claiming}
+                        onClick={() => void claimReview()}
+                        type="button"
+                      >
+                        {claiming ? text.claiming : text.claim}
+                      </button>
+                    </section>
                   ) : (
-                    <button
-                      className="sales-action sales-action--claim"
-                      disabled={claiming || review.status !== "PENDING_REVIEW"}
-                      onClick={() => void claimReview()}
-                      type="button"
-                    >
-                      {claiming ? text.claiming : text.claim}
-                    </button>
+                    <div className="sales-assigned">✓ {text.teamOwner}</div>
                   )}
                   {actionError ? <p className="sales-action-error">{actionError}</p> : null}
                 </div>

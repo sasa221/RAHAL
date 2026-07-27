@@ -8,6 +8,7 @@ describe("sales review workspace", () => {
   const workspace = read("apps/web/components/sales-review-workspace.tsx");
   const controller = read("apps/api/src/reservations/reservations.controller.ts");
   const repository = read("apps/api/src/reservations/reservations.repository.ts");
+  const service = read("apps/api/src/reservations/reservations.service.ts");
   const shell = read("apps/web/components/workspace-shell.tsx");
 
   it("provides shared Arabic and English staff routes", () => {
@@ -47,6 +48,16 @@ describe("sales review workspace", () => {
     expect(workspace).toContain(
       "Final booking requires branch attendance, deposit, and a signed contract",
     );
+  });
+
+  it("gives one sales employee exclusive ownership after an atomic claim", () => {
+    expect(repository).toContain('{ status: "PENDING_REVIEW", assignedSalesId: null }');
+    expect(repository).toContain("{ assignedSalesId: actorId }");
+    expect(repository).toContain("if (!updated.count)");
+    expect(service).toContain("This request is assigned to another sales employee.");
+    expect(workspace).toContain("Claiming immediately locks this request to you");
+    expect(workspace).toContain("بمجرد استلامك للطلب يُقفل تلقائيًا");
+    expect(workspace).toContain("sales-owner-chip");
   });
 
   it("keeps pre-approved requests visible for branch completion", () => {

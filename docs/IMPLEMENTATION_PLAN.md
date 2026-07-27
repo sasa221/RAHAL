@@ -669,6 +669,40 @@ Status: implemented locally on 2026-07-27.
 - Full repository formatting, lint, tests, typecheck, and production build.
 - Browser verification of the protected preview journey at desktop and mobile sizes.
 
+## Milestone 16: Exclusive sales ownership and administrator document oversight
+
+Goal: make one-employee review ownership unmistakable and give administrators a safe operational record of every protected-document access reason and decision.
+
+Status: implemented locally on 2026-07-27.
+
+### Completed scope
+
+- Confirmed and retained the conditional claim transaction that allows only one employee to move an unassigned request into review.
+- Kept claimed requests out of every other sales queue and preserved the direct-detail authorization rejection for non-owners.
+- Added visible unassigned, current-owner, and team-owned states to the sales queue and protected detail header.
+- Added a focused claim panel explaining that ownership becomes exclusive immediately and that claiming never confirms a booking.
+- Added an administrator-only `document-access` reader protected by `audit.view`.
+- Projected the existing `DocumentAccessLog` into a bounded contract containing staff actor, reservation reference, document type/status, action, operational reason, result, and timestamp; identity-like digit sequences inside free-form reasons are masked before response mapping.
+- Added search, action/result filters, cursor pagination, live visible-result metrics, and direct navigation to the related request.
+- Added a bilingual responsive document-governance workspace with an independent mobile composition and reduced-motion behavior.
+- Kept document bytes, storage keys, original filenames, identity values, IP hashes, and user agents outside the administrator response and UI.
+
+### Acceptance criteria
+
+- Two simultaneous claims cannot assign the same request to two sales employees.
+- After a successful claim, only the owner sees the request in a sales queue and only that owner may open its protected details.
+- Administrators can see the full active request queue for oversight without changing sales ownership.
+- Document oversight requires an administrator account and the `audit.view` permission.
+- Every successful or failed document access attempt and review decision appears with its recorded reason.
+- No oversight response exposes the document, its path, full identity data, or network/device metadata.
+- Arabic RTL and English LTR expose equivalent filters, metrics, records, and request links on desktop and mobile.
+
+### Tests
+
+- Service coverage for administrator and permission boundaries, bounded mapping, hidden sensitive fields, and document-access pagination.
+- Static coverage for atomic sales ownership, other-sales denial, bilingual ownership messaging, endpoint wiring, and protected oversight UI.
+- Full repository formatting, lint, tests, typecheck, production build, and browser verification.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

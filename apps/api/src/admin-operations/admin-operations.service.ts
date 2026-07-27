@@ -2,8 +2,11 @@ import { ForbiddenException, Injectable } from "@nestjs/common";
 import type {
   AdminAuditEntry,
   AdminAuditPage,
+  AdminDocumentAccessEntry,
+  AdminDocumentAccessPage,
   AdminOperationsOverview,
   AuthSession,
+  ReservationDocumentType,
   VehicleOperationalStatus,
 } from "@rahal/contracts";
 import { AuthService } from "../auth/auth.service";
@@ -20,6 +23,14 @@ function actorName(
   return locale === "ar" && entry.actor.fullNameAr
     ? entry.actor.fullNameAr
     : entry.actor.fullNameEn;
+}
+
+function maskIdentitySequences(value: string) {
+  return value.replace(/[0-9٠-٩]{8,}/g, (match) => {
+    const visibleStart = match.slice(0, 2);
+    const visibleEnd = match.slice(-2);
+    return `${visibleStart}${"•".repeat(Math.max(4, match.length - 4))}${visibleEnd}`;
+  });
 }
 
 function toAuditEntry(
@@ -48,6 +59,44 @@ function toAuditEntry(
     reason: null,
     succeeded: entry.succeeded,
     createdAt: entry.createdAt.toISOString(),
+  };
+}
+
+function toDocumentAccessEntry(
+  entry: {
+    id: string;
+    action: string;
+    reason: string;
+    succeeded: boolean;
+    createdAt: Date;
+    actor: {
+      fullNameAr: string | null;
+      fullNameEn: string;
+      systemRole: string;
+    };
+    document: {
+      type: string;
+      status: string;
+      reservation: {
+        id: string;
+        reference: string;
+      };
+    };
+  },
+  locale: Locale,
+): AdminDocumentAccessEntry {
+  return {
+    id: entry.id,
+    action: entry.action,
+    reason: maskIdentitySequences(entry.reason),
+    succeeded: entry.succeeded,
+    createdAt: entry.createdAt.toISOString(),
+    actorName: actorName(entry, locale),
+    actorRole: entry.actor.systemRole,
+    reservationId: entry.document.reservation.id,
+    reservationReference: entry.document.reservation.reference,
+    documentType: entry.document.type as ReservationDocumentType,
+    documentStatus: entry.document.status as AdminDocumentAccessEntry["documentStatus"],
   };
 }
 
@@ -166,6 +215,33 @@ export class AdminOperationsService {
       nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
       availableActions: page.actions.map((item) => item.action),
       availableEntityTypes: page.entityTypes.map((item) => item.entityType),
+    };
+  }
+
+  async documentAccess(
+    token: string | undefined,
+    locale: Locale,
+    input: {
+      cursor?: string;
+      action?: string;
+      result?: string;
+      query?: string;
+    },
+  ): Promise<AdminDocumentAccessPage> {
+    const session = await this.adminSession(token);
+    await this.access.require(session, "audit.view");
+    const page = await this.repository.documentAccess({
+      cursor: input.cursor,
+      action: input.action,
+      succeeded: input.result === "success" ? true : input.result === "failed" ? false : undefined,
+      query: input.query?.trim().slice(0, 80) || undefined,
+    });
+    const hasMore = page.items.length > 40;
+    const items = page.items.slice(0, 40);
+    return {
+      items: items.map((item) => toDocumentAccessEntry(item, locale)),
+      nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
+      availableActions: page.actions.map((item) => item.action),
     };
   }
 }
