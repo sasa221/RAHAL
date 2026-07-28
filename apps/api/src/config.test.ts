@@ -12,6 +12,15 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.verificationEmail).toBeUndefined();
     expect(config.verificationGmail).toBeUndefined();
     expect(config.verificationWhatsApp).toBeUndefined();
+    expect(Buffer.from(config.mfaEncryptionKey, "base64url")).toHaveLength(32);
+  });
+
+  it("requires a 32-byte MFA encryption key when configured", () => {
+    expect(() => loadApiConfig({ ...baseEnv, MFA_ENCRYPTION_KEY: "too-short" })).toThrow(
+      "MFA_ENCRYPTION_KEY must be a base64url-encoded 32-byte key.",
+    );
+    const key = Buffer.alloc(32, 7).toString("base64url");
+    expect(loadApiConfig({ ...baseEnv, MFA_ENCRYPTION_KEY: key }).mfaEncryptionKey).toBe(key);
   });
 
   it("requires complete Resend credentials", () => {

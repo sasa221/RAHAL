@@ -2,19 +2,28 @@ import { Body, Controller, Delete, Get, Param, Post, Req, Res } from "@nestjs/co
 import type {
   AccountSecurityOverview,
   ApiSuccess,
+  AuthLoginResult,
   AuthSession,
   PasswordChangeResult,
   PasswordResetRequestResult,
   PasswordResetResult,
   SessionRevocationResult,
+  StaffMfaChallenge,
+  StaffMfaCompletion,
 } from "@rahal/contracts";
 import { createHmac } from "node:crypto";
 import type { Request, Response } from "express";
 import { loadApiConfig } from "../config";
-import { authCookieName, readAuthCookie } from "./auth-cookie";
+import {
+  authCookieName,
+  readAuthCookie,
+  readStaffMfaChallengeCookie,
+  staffMfaChallengeCookieName,
+} from "./auth-cookie";
 import { AuthRateLimitService } from "./auth-rate-limit.service";
 import {
   ChangePasswordDto,
+  ConfirmStaffMfaDto,
   ConfirmPasswordResetDto,
   ConfirmVerificationDto,
   LoginDto,
@@ -25,6 +34,7 @@ import {
 import { AuthService, type AuthRequestContext } from "./auth.service";
 
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
+const staffMfaChallengeLifetimeMs = 5 * 60 * 1000;
 
 @Controller("auth")
 export class AuthController {
@@ -53,17 +63,48 @@ export class AuthController {
     @Body() input: LoginDto,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<ApiSuccess<AuthSession>> {
+  ): Promise<ApiSuccess<AuthLoginResult>> {
     const context = this.context(request);
     this.rateLimits.assertAllowed(`login:${context.ipHash ?? "unknown"}`, 5, 15 * 60 * 1000);
     const result = await this.auth.login(input, context);
+    if ("challengeToken" in result) {
+      response.clearCookie(authCookieName, this.cookieOptions());
+      this.setStaffMfaChallengeCookie(response, result.challengeToken);
+      return { data: result.result };
+    }
     this.setSessionCookie(response, result.token);
+    response.clearCookie(staffMfaChallengeCookieName, this.staffMfaCookieOptions());
     return { data: result.session };
   }
 
   @Get("session")
   async session(@Req() request: Request): Promise<ApiSuccess<AuthSession>> {
-    return { data: await this.auth.getSession(readAuthCookie(request)) };
+    return { data: await this.auth.getSessionStatus(readAuthCookie(request)) };
+  }
+
+  @Get("staff-mfa/challenge")
+  async staffMfaChallenge(@Req() request: Request): Promise<ApiSuccess<StaffMfaChallenge>> {
+    return {
+      data: await this.auth.getStaffMfaChallenge(readStaffMfaChallengeCookie(request)),
+    };
+  }
+
+  @Post("staff-mfa/confirm")
+  async confirmStaffMfa(
+    @Body() input: ConfirmStaffMfaDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ApiSuccess<StaffMfaCompletion>> {
+    const context = this.context(request);
+    this.rateLimits.assertAllowed(`staff-mfa:${context.ipHash ?? "unknown"}`, 8, 10 * 60 * 1000);
+    const result = await this.auth.completeStaffMfaChallenge(
+      readStaffMfaChallengeCookie(request),
+      input,
+      context,
+    );
+    response.clearCookie(staffMfaChallengeCookieName, this.staffMfaCookieOptions());
+    this.setSessionCookie(response, result.token);
+    return { data: result.completion };
   }
 
   @Delete("session")
@@ -73,6 +114,7 @@ export class AuthController {
   ): Promise<ApiSuccess<{ loggedOut: true }>> {
     await this.auth.logout(readAuthCookie(request), this.context(request));
     response.clearCookie(authCookieName, this.cookieOptions());
+    response.clearCookie(staffMfaChallengeCookieName, this.staffMfaCookieOptions());
     return { data: { loggedOut: true } };
   }
 
@@ -197,5 +239,16 @@ export class AuthController {
 
   private setSessionCookie(response: Response, token: string) {
     response.cookie(authCookieName, token, { ...this.cookieOptions(), maxAge: sessionLifetimeMs });
+  }
+
+  private staffMfaCookieOptions() {
+    return { ...this.cookieOptions(), path: "/api/auth" };
+  }
+
+  private setStaffMfaChallengeCookie(response: Response, token: string) {
+    response.cookie(staffMfaChallengeCookieName, token, {
+      ...this.staffMfaCookieOptions(),
+      maxAge: staffMfaChallengeLifetimeMs,
+    });
   }
 }

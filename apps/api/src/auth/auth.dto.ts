@@ -71,3 +71,11 @@ export class ChangePasswordDto {
   @Length(8, 128)
   newPassword!: string;
 }
+
+export class ConfirmStaffMfaDto {
+  @IsString()
+  @Matches(/^(\d{6}|RAHAL-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4})$/i, {
+    message: "code must be a six-digit authenticator code or a Rahal recovery code",
+  })
+  code!: string;
+}

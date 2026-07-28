@@ -156,7 +156,7 @@ Status: completed locally on 2026-07-18. The baseline migration and relative dem
 
 Goal: establish secure customer identity and browser sessions before reservation drafts can be persisted.
 
-Status: account verification and account-security slices are completed locally. Registration, login, verification, password recovery/change, session/device management, opaque session cookies, rate limiting, audit writes, and bilingual access/security screens are implemented. Approved production delivery and staff MFA remain pending.
+Status: account verification, account security, mandatory staff/admin MFA, and first-login temporary-password replacement are completed locally. Approved production delivery credentials and shared rate-limit infrastructure remain pending.
 
 ### Completed foundation scope
 
@@ -175,12 +175,16 @@ Status: account verification and account-security slices are completed locally. 
 - Same-origin web-to-API authentication proxying so secure session cookies are not exposed to client code.
 - Six-digit email and phone verification with HMAC-only code storage, 10-minute expiry, five-attempt limits, resend invalidation, and account activation after both channels are verified.
 - Provider-gated verification delivery with Gmail SMTP for arbitrary-recipient local testing, direct Resend production email, Meta WhatsApp authentication-template adapters, a signed webhook fallback, no plaintext code in API responses or browser UI, and fail-closed issuance when the required channel provider is absent.
+- Staff password success creates a five-minute HTTP-only MFA challenge instead of an operational session.
+- Authenticator enrollment uses encrypted TOTP secrets, one-time hashed recovery codes, replay-resistant counters, and an MFA-bound session timestamp.
+- Staff and administrator API access fails closed until MFA is complete and an administrator-issued temporary password has been replaced.
+- Bilingual staff security onboarding provides local QR generation, manual setup, recovery-code export, password replacement, mobile composition, and reduced-motion behavior.
 
 ### Remaining scope
 
 - Production Resend domain/API credentials and Meta WhatsApp Business credentials plus approved Arabic/English authentication templates.
 - Shared production rate-limit storage and operational monitoring.
-- Mandatory staff/admin MFA and first-login temporary-password replacement.
+- A production-only 32-byte `MFA_ENCRYPTION_KEY` supplied through the deployment secret manager.
 
 ### Acceptance criteria
 
@@ -475,7 +479,7 @@ Status: completed locally on 2026-07-26. External Email, WhatsApp, and Push deli
 
 Goal: replace broad sales-role trust with administrator-managed operational access and an auditable bilingual control center.
 
-Status: implemented and verified locally on 2026-07-26. Applying the included permission-catalog migration still requires the local PostgreSQL service. Production staff MFA and mandatory first-login password replacement remain launch gates.
+Status: implemented and verified locally. Staff MFA and mandatory first-login password replacement were closed in Milestone 19; production secret provisioning and the shared rate limiter remain deployment gates.
 
 ### Completed scope
 
@@ -772,6 +776,43 @@ Status: implemented locally on 2026-07-27.
 - Static coverage for endpoint ownership, resume hydration, bilingual copy, responsive draft states, notification portal/filter behavior, and sensitive-data exclusions.
 - Browser verification with fictional customer and sales accounts at mobile, compact desktop, and wide desktop sizes.
 - Full repository formatting, lint, tests, typecheck, and production build.
+
+## Milestone 19: Staff MFA and first-login security gate
+
+Goal: prevent a password-only staff login from reaching customer requests, documents, fleet controls, or administration.
+
+Status: implemented locally on 2026-07-28.
+
+### Completed scope
+
+- Added a database-backed five-minute staff login challenge stored only as a SHA-256 token hash and delivered through a dedicated HTTP-only, same-site cookie.
+- Changed sales and administrator password success to return an MFA-required contract rather than creating a full browser session.
+- Added TOTP enrollment and verification with AES-256-GCM encrypted secrets, 30-second RFC-compatible codes, bounded attempts, one-step clock tolerance, and replay-resistant counters.
+- Added eight one-time recovery codes shown only after enrollment and stored only as normalized HMAC hashes.
+- Added an MFA verification timestamp to operational staff sessions; every protected backend service continues to call the authoritative session gate.
+- Marked newly created staff accounts for mandatory first-login password replacement and revoked other sessions when that password changes.
+- Added a bilingual, responsive staff security center with locally generated QR codes, a manual setup key, live expiry timer, recovery-code copy/download, password replacement, role-aware routing, and reduced-motion support.
+- Added automatic workspace redirection when an existing staff session still has a required security action.
+- Added production configuration validation for a dedicated 32-byte `MFA_ENCRYPTION_KEY`; local development derives a separate fallback key from `AUTH_SECRET`.
+- Added migration, service, integration, configuration, static, privacy, responsive, and replay tests.
+
+### Acceptance criteria
+
+- A valid staff password never creates an operational session by itself.
+- Customer accounts retain the existing password/session flow and are not forced through staff MFA.
+- A TOTP code cannot be reused after its counter is committed.
+- Recovery codes are single use and their plaintext values are never persisted or logged.
+- Staff APIs reject sessions without both an enabled credential and an MFA verification timestamp.
+- A newly created staff member cannot use a workspace before replacing the temporary password.
+- MFA setup secrets and recovery codes are never placed in local storage, URLs, audit payloads, or API session contracts.
+- Arabic RTL and English LTR provide equivalent enrollment, verification, recovery, and password flows on mobile and desktop.
+
+### Tests
+
+- Unit coverage for authenticated encryption, RFC-compatible TOTP verification, replay rejection, normalized recovery hashing, staff challenge issuance, enrollment, session binding, and temporary-password blocking.
+- API integration coverage for MFA challenge cookies, the password-to-MFA boundary, protected session issuance, and sales workflow access after verification.
+- Static coverage for schema security fields, backend enforcement, bilingual UI, local QR generation, no local-storage persistence, responsive layout, and reduced motion.
+- Full repository formatting, lint, tests, typecheck, production build, and browser verification.
 
 ## Decisions not blocking Milestone 1
 

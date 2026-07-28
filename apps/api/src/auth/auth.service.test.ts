@@ -22,6 +22,8 @@ const activeUser: AuthUserRecord = {
   status: "ACTIVE",
   emailVerifiedAt: new Date("2026-07-01T00:00:00Z"),
   phoneVerifiedAt: null,
+  mustChangePassword: false,
+  staffMfaCredential: null,
 };
 
 function buildRepository() {
@@ -77,6 +79,7 @@ describe("AuthService", () => {
       { identifier: "CUSTOMER@EXAMPLE.COM", password: "customer-password" },
       { ipHash: "ip-hash" },
     );
+    if (!("session" in result)) throw new Error("Expected a customer session.");
 
     expect(result.session.user).toEqual({
       id: "customer-1",
@@ -88,6 +91,8 @@ describe("AuthService", () => {
       status: "ACTIVE",
       emailVerified: true,
       phoneVerified: false,
+      mfaEnabled: false,
+      securityAction: null,
     });
     expect(repository.createSession).toHaveBeenCalledWith(
       expect.objectContaining({

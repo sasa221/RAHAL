@@ -166,48 +166,98 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum StaffMfaChallengeKind {
+  ENROLL
+  VERIFY
+}
+
 model User {
-  id                     String                   @id @default(cuid())
-  email                  String                   @unique
-  phone                  String                   @unique
-  passwordHash           String
-  fullNameAr             String?
-  fullNameEn             String
-  systemRole             SystemRole               @default(CUSTOMER)
-  status                 UserStatus               @default(PENDING_VERIFICATION)
-  emailVerifiedAt        DateTime?
-  phoneVerifiedAt        DateTime?
-  dateOfBirth            DateTime?
-  nationality            String?
-  address                String?
-  emergencyContactName   String?
-  emergencyContactPhone  String?
-  preferredLocale        String                   @default("ar")
-  staffRoleId            String?
-  staffRole              StaffRole?               @relation(fields: [staffRoleId], references: [id])
-  reservations           Reservation[]            @relation("CustomerReservations")
-  assignedReservations   Reservation[]            @relation("AssignedSales")
-  verificationCodes      VerificationCode[]
-  sessions               Session[]
-  devices                Device[]
-  permissionOverrides    UserPermissionOverride[]
-  notificationPreference NotificationPreference?
-  pushSubscriptions      PushSubscription[]
-  notifications          Notification[]
-  auditEntries           AuditLog[]               @relation("AuditActor")
-  internalNotes          InternalNote[]           @relation("InternalNoteAuthor")
-  customerMessages       CustomerMessage[]        @relation("CustomerMessageSender")
-  documentAccesses       DocumentAccessLog[]      @relation("DocumentAccessActor")
-  alternativeOffers      AlternativeOffer[]       @relation("AlternativeOfferCreator")
-  contractsRecorded      Contract[]               @relation("ContractRecorder")
-  bookingOperations      BookingOperation[]       @relation("BookingOperationActor")
-  bookings               Booking[]                @relation("CustomerBookings")
-  reviews                Review[]
-  reviewsModerated       Review[]                 @relation("ReviewModerator")
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
+  id                        String                   @id @default(cuid())
+  email                     String                   @unique
+  phone                     String                   @unique
+  passwordHash              String
+  fullNameAr                String?
+  fullNameEn                String
+  systemRole                SystemRole               @default(CUSTOMER)
+  status                    UserStatus               @default(PENDING_VERIFICATION)
+  emailVerifiedAt           DateTime?
+  phoneVerifiedAt           DateTime?
+  dateOfBirth               DateTime?
+  nationality               String?
+  address                   String?
+  emergencyContactName      String?
+  emergencyContactPhone     String?
+  preferredLocale           String                   @default("ar")
+  mustChangePassword        Boolean                  @default(false)
+  temporaryPasswordIssuedAt DateTime?
+  staffRoleId               String?
+  staffRole                 StaffRole?               @relation(fields: [staffRoleId], references: [id])
+  reservations              Reservation[]            @relation("CustomerReservations")
+  assignedReservations      Reservation[]            @relation("AssignedSales")
+  verificationCodes         VerificationCode[]
+  sessions                  Session[]
+  devices                   Device[]
+  permissionOverrides       UserPermissionOverride[]
+  notificationPreference    NotificationPreference?
+  pushSubscriptions         PushSubscription[]
+  notifications             Notification[]
+  auditEntries              AuditLog[]               @relation("AuditActor")
+  internalNotes             InternalNote[]           @relation("InternalNoteAuthor")
+  customerMessages          CustomerMessage[]        @relation("CustomerMessageSender")
+  documentAccesses          DocumentAccessLog[]      @relation("DocumentAccessActor")
+  alternativeOffers         AlternativeOffer[]       @relation("AlternativeOfferCreator")
+  contractsRecorded         Contract[]               @relation("ContractRecorder")
+  bookingOperations         BookingOperation[]       @relation("BookingOperationActor")
+  bookings                  Booking[]                @relation("CustomerBookings")
+  reviews                   Review[]
+  reviewsModerated          Review[]                 @relation("ReviewModerator")
+  staffMfaCredential        StaffMfaCredential?
+  staffLoginChallenges      StaffLoginChallenge[]
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
 
   @@index([systemRole, status])
+}
+
+model StaffMfaCredential {
+  id               String                 @id @default(cuid())
+  userId           String                 @unique
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretCiphertext String
+  enabledAt        DateTime
+  lastUsedCounter  BigInt?
+  recoveryCodes    StaffMfaRecoveryCode[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([enabledAt])
+}
+
+model StaffMfaRecoveryCode {
+  id           String             @id @default(cuid())
+  credentialId String
+  credential   StaffMfaCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  codeHash     String             @unique
+  usedAt       DateTime?
+  createdAt    DateTime           @default(now())
+
+  @@index([credentialId, usedAt])
+}
+
+model StaffLoginChallenge {
+  id               String                @id @default(cuid())
+  userId           String
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash        String                @unique
+  kind             StaffMfaChallengeKind
+  secretCiphertext String?
+  attempts         Int                   @default(0)
+  expiresAt        DateTime
+  usedAt           DateTime?
+  ipHash           String?
+  createdAt        DateTime              @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model Session {
@@ -216,6 +266,7 @@ model Session {
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   refreshTokenHash String        @unique
   status           SessionStatus @default(ACTIVE)
+  mfaVerifiedAt    DateTime?
   ipHash           String?
   userAgent        String?
   expiresAt        DateTime

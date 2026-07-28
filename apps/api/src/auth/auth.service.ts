@@ -10,12 +10,15 @@ import {
 } from "@nestjs/common";
 import type {
   AccountSecurityOverview,
+  AuthLoginResult,
   AuthSession,
   AuthUser,
   PasswordChangeResult,
   PasswordResetRequestResult,
   PasswordResetResult,
   SessionRevocationResult,
+  StaffMfaChallenge,
+  StaffMfaCompletion,
 } from "@rahal/contracts";
 import type { VerificationPurpose } from "@rahal/database";
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
@@ -25,6 +28,7 @@ import { AuthRepository, type AuthUserRecord } from "./auth.repository";
 import type {
   ConfirmVerificationDto,
   ChangePasswordDto,
+  ConfirmStaffMfaDto,
   ConfirmPasswordResetDto,
   LoginDto,
   RegisterDto,
@@ -32,12 +36,15 @@ import type {
   RequestVerificationDto,
 } from "./auth.dto";
 import { PasswordService } from "./password.service";
+import { StaffMfaService } from "./staff-mfa.service";
 import { buildPasswordResetEmail } from "./password-reset-email.template";
 import { buildVerificationEmail } from "./verification-email.template";
 
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 const verificationLifetimeMs = 10 * 60 * 1000;
 const verificationAttemptLimit = 5;
+const staffMfaChallengeLifetimeMs = 5 * 60 * 1000;
+const staffMfaAttemptLimit = 5;
 
 export type AuthRequestContext = { ipHash?: string; userAgent?: string };
 
@@ -55,6 +62,7 @@ export function hashSessionToken(token: string) {
 }
 
 function toAuthUser(user: AuthUserRecord): AuthUser {
+  const staffAccount = user.systemRole !== "CUSTOMER";
   return {
     id: user.id,
     email: user.email,
@@ -65,6 +73,13 @@ function toAuthUser(user: AuthUserRecord): AuthUser {
     status: user.status,
     emailVerified: Boolean(user.emailVerifiedAt),
     phoneVerified: Boolean(user.phoneVerifiedAt),
+    mfaEnabled: Boolean(user.staffMfaCredential),
+    securityAction:
+      staffAccount && !user.staffMfaCredential
+        ? "ENROLL_MFA"
+        : staffAccount && user.mustChangePassword
+          ? "CHANGE_TEMPORARY_PASSWORD"
+          : null,
   };
 }
 
@@ -75,6 +90,7 @@ export class AuthService {
   constructor(
     private readonly repository: AuthRepository,
     private readonly passwords: PasswordService,
+    private readonly staffMfa: StaffMfaService = new StaffMfaService(),
   ) {}
 
   async register(input: RegisterDto, context: AuthRequestContext) {
@@ -145,6 +161,42 @@ export class AuthService {
       throw new ForbiddenException("This account cannot start a session.");
     }
 
+    if (user.systemRole !== "CUSTOMER") {
+      const challengeToken = randomBytes(32).toString("base64url");
+      const expiresAt = new Date(Date.now() + staffMfaChallengeLifetimeMs);
+      const action = user.staffMfaCredential ? "VERIFY" : "ENROLL";
+      const secretCiphertext =
+        action === "ENROLL"
+          ? this.staffMfa.encryptSecret(this.staffMfa.generateSecret())
+          : undefined;
+      await this.repository.invalidateStaffLoginChallenges(user.id);
+      await this.repository.createStaffLoginChallenge({
+        userId: user.id,
+        tokenHash: hashSessionToken(challengeToken),
+        kind: action,
+        secretCiphertext,
+        expiresAt,
+        ipHash: context.ipHash,
+      });
+      await this.repository.writeAudit({
+        actorId: user.id,
+        action: "AUTH_LOGIN_PASSWORD",
+        entityType: "USER",
+        entityId: user.id,
+        reason: `STAFF_MFA_${action}_REQUIRED`,
+        ...context,
+        succeeded: true,
+      });
+      return {
+        challengeToken,
+        result: {
+          kind: "STAFF_MFA_REQUIRED",
+          action,
+          expiresAt: expiresAt.toISOString(),
+        } satisfies AuthLoginResult,
+      };
+    }
+
     await this.repository.writeAudit({
       actorId: user.id,
       action: "AUTH_LOGIN",
@@ -157,14 +209,112 @@ export class AuthService {
   }
 
   async getSession(token: string | undefined): Promise<AuthSession> {
-    if (!token) throw new UnauthorizedException("Authentication is required.");
-    const session = await this.repository.findSession(hashSessionToken(token));
-    if (!session) throw new UnauthorizedException("The session is invalid or expired.");
-    if (["SUSPENDED", "BLOCKED", "ARCHIVED"].includes(session.user.status)) {
-      throw new ForbiddenException("This account cannot use the current session.");
+    const { session } = await this.requireSessionRecord(token);
+    return this.serializeSession(session);
+  }
+
+  async getSessionStatus(token: string | undefined): Promise<AuthSession> {
+    const { session } = await this.requireSessionRecord(token, false);
+    return this.serializeSession(session);
+  }
+
+  async getStaffMfaChallenge(token: string | undefined): Promise<StaffMfaChallenge> {
+    const challenge = await this.requireStaffMfaChallenge(token);
+    const secret =
+      challenge.kind === "ENROLL" && challenge.secretCiphertext
+        ? this.staffMfa.decryptSecret(challenge.secretCiphertext)
+        : null;
+    return {
+      action: challenge.kind,
+      expiresAt: challenge.expiresAt.toISOString(),
+      account: this.maskEmail(challenge.user.email),
+      enrollment: secret
+        ? {
+            secret,
+            otpAuthUri: this.staffMfa.buildOtpAuthUri({
+              email: challenge.user.email,
+              secret,
+            }),
+          }
+        : null,
+    };
+  }
+
+  async completeStaffMfaChallenge(
+    token: string | undefined,
+    input: ConfirmStaffMfaDto,
+    context: AuthRequestContext,
+  ): Promise<{ token: string; completion: StaffMfaCompletion }> {
+    const challenge = await this.requireStaffMfaChallenge(token);
+    const code = input.code.trim().toUpperCase();
+
+    try {
+      if (challenge.kind === "ENROLL") {
+        if (!challenge.secretCiphertext || !/^\d{6}$/.test(code)) {
+          return await this.rejectStaffMfaChallenge(challenge, context);
+        }
+        const secret = this.staffMfa.decryptSecret(challenge.secretCiphertext);
+        const counter = this.staffMfa.verifyTotp(secret, code, null);
+        if (counter === null) return await this.rejectStaffMfaChallenge(challenge, context);
+
+        const recoveryCodes = this.staffMfa.generateRecoveryCodes();
+        const credential = await this.repository.enableStaffMfa({
+          challengeId: challenge.id,
+          userId: challenge.user.id,
+          secretCiphertext: challenge.secretCiphertext,
+          usedCounter: counter,
+          recoveryCodeHashes: recoveryCodes.map((recoveryCode) =>
+            this.staffMfa.hashRecoveryCode(challenge.user.id, recoveryCode),
+          ),
+          audit: context,
+        });
+        const issued = await this.issueSession(
+          { ...challenge.user, staffMfaCredential: credential },
+          context,
+          true,
+        );
+        return {
+          token: issued.token,
+          completion: { session: issued.session, recoveryCodes },
+        };
+      }
+
+      const credential = challenge.user.staffMfaCredential;
+      if (!credential) return await this.rejectStaffMfaChallenge(challenge, context);
+
+      if (/^\d{6}$/.test(code)) {
+        const secret = this.staffMfa.decryptSecret(credential.secretCiphertext);
+        const counter = this.staffMfa.verifyTotp(secret, code, credential.lastUsedCounter);
+        if (counter === null) return await this.rejectStaffMfaChallenge(challenge, context);
+        await this.repository.completeStaffMfaTotp({
+          challengeId: challenge.id,
+          userId: challenge.user.id,
+          credentialId: credential.id,
+          usedCounter: counter,
+          audit: context,
+        });
+      } else {
+        await this.repository.completeStaffMfaRecovery({
+          challengeId: challenge.id,
+          userId: challenge.user.id,
+          credentialId: credential.id,
+          recoveryCodeHash: this.staffMfa.hashRecoveryCode(challenge.user.id, code),
+          audit: context,
+        });
+      }
+
+      const issued = await this.issueSession(challenge.user, context, true);
+      return {
+        token: issued.token,
+        completion: { session: issued.session, recoveryCodes: null },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      if (error instanceof Error && error.message === "STAFF_MFA_STATE_CONFLICT") {
+        return await this.rejectStaffMfaChallenge(challenge, context);
+      }
+      throw error;
     }
-    await this.repository.touchSession(session.id);
-    return { user: toAuthUser(session.user), expiresAt: session.expiresAt.toISOString() };
   }
 
   async logout(token: string | undefined, context: AuthRequestContext) {
@@ -240,7 +390,13 @@ export class AuthService {
     input: ChangePasswordDto,
     context: AuthRequestContext,
   ): Promise<PasswordChangeResult> {
-    const { session } = await this.requireSessionRecord(token);
+    const { session } = await this.requireSessionRecord(token, false);
+    if (
+      session.user.systemRole !== "CUSTOMER" &&
+      (!session.user.staffMfaCredential || !session.mfaVerifiedAt)
+    ) {
+      throw new ForbiddenException("Staff MFA verification is required before changing password.");
+    }
     if (!(await this.passwords.verify(input.currentPassword, session.user.passwordHash))) {
       await this.repository.writeAudit({
         actorId: session.user.id,
@@ -473,7 +629,7 @@ export class AuthService {
     return channel === "email" ? "VERIFY_EMAIL" : "VERIFY_PHONE";
   }
 
-  private async requireSessionRecord(token: string | undefined) {
+  private async requireSessionRecord(token: string | undefined, enforceStaffSecurity = true) {
     if (!token) throw new UnauthorizedException("Authentication is required.");
     const tokenHash = hashSessionToken(token);
     const session = await this.repository.findSession(tokenHash);
@@ -481,8 +637,64 @@ export class AuthService {
     if (["SUSPENDED", "BLOCKED", "ARCHIVED"].includes(session.user.status)) {
       throw new ForbiddenException("This account cannot use the current session.");
     }
+    if (enforceStaffSecurity && session.user.systemRole !== "CUSTOMER") {
+      if (!session.user.staffMfaCredential || !session.mfaVerifiedAt) {
+        throw new ForbiddenException("Staff MFA verification is required.");
+      }
+      if (session.user.mustChangePassword) {
+        throw new ForbiddenException("The temporary password must be changed before continuing.");
+      }
+    }
     await this.repository.touchSession(session.id);
     return { session };
+  }
+
+  private async requireStaffMfaChallenge(token: string | undefined) {
+    if (!token) throw new UnauthorizedException("A staff security challenge is required.");
+    const challenge = await this.repository.findStaffLoginChallenge(hashSessionToken(token));
+    if (
+      !challenge ||
+      challenge.attempts >= staffMfaAttemptLimit ||
+      challenge.user.systemRole === "CUSTOMER"
+    ) {
+      throw new UnauthorizedException("The staff security challenge is invalid or expired.");
+    }
+    if (["SUSPENDED", "BLOCKED", "ARCHIVED"].includes(challenge.user.status)) {
+      throw new ForbiddenException("This account cannot continue sign in.");
+    }
+    return challenge;
+  }
+
+  private async rejectStaffMfaChallenge(
+    challenge: NonNullable<Awaited<ReturnType<AuthRepository["findStaffLoginChallenge"]>>>,
+    context: AuthRequestContext,
+  ): Promise<never> {
+    const attempt = await this.repository.incrementStaffLoginChallengeAttempts(challenge.id);
+    await this.repository.writeAudit({
+      actorId: challenge.user.id,
+      action: "AUTH_STAFF_MFA_VERIFY",
+      entityType: "USER",
+      entityId: challenge.user.id,
+      reason: "INVALID_CODE",
+      ...context,
+      succeeded: false,
+    });
+    if (attempt.attempts >= staffMfaAttemptLimit) {
+      throw new HttpException(
+        "Too many security code attempts. Sign in again.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    throw new BadRequestException("The security code is invalid or expired.");
+  }
+
+  private serializeSession(
+    session: NonNullable<Awaited<ReturnType<AuthRepository["findSession"]>>>,
+  ): AuthSession {
+    return {
+      user: toAuthUser(session.user),
+      expiresAt: session.expiresAt.toISOString(),
+    };
   }
 
   private hashVerificationCode(userId: string, purpose: VerificationPurpose, code: string) {
@@ -711,13 +923,18 @@ export class AuthService {
     return `${phone.slice(0, 3)}••••${phone.slice(-4)}`;
   }
 
-  private async issueSession(user: AuthUserRecord, context: AuthRequestContext) {
+  private async issueSession(
+    user: AuthUserRecord,
+    context: AuthRequestContext,
+    mfaVerified = false,
+  ) {
     const token = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + sessionLifetimeMs);
     await this.repository.createSession({
       userId: user.id,
       refreshTokenHash: hashSessionToken(token),
       expiresAt,
+      ...(mfaVerified ? { mfaVerifiedAt: new Date() } : {}),
       ...context,
     });
     return { token, session: { user: toAuthUser(user), expiresAt: expiresAt.toISOString() } };

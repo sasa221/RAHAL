@@ -128,6 +128,8 @@ export class StaffRepository {
           status: "ACTIVE",
           emailVerifiedAt: new Date(),
           phoneVerifiedAt: new Date(),
+          mustChangePassword: true,
+          temporaryPasswordIssuedAt: new Date(),
         },
         select: staffSelect,
       });

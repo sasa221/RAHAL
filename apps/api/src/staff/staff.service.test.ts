@@ -123,6 +123,8 @@ describe("StaffAccessService", () => {
             status: "ACTIVE",
             emailVerified: true,
             phoneVerified: true,
+            mfaEnabled: true,
+            securityAction: null,
           },
           expiresAt: new Date().toISOString(),
         },

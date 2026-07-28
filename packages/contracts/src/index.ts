@@ -486,11 +486,36 @@ export type AuthUser = {
   status: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "BLOCKED" | "ARCHIVED";
   emailVerified: boolean;
   phoneVerified: boolean;
+  mfaEnabled: boolean;
+  securityAction: "ENROLL_MFA" | "CHANGE_TEMPORARY_PASSWORD" | null;
 };
 
 export type AuthSession = {
   user: AuthUser;
   expiresAt: string;
+};
+
+export type StaffMfaRequired = {
+  kind: "STAFF_MFA_REQUIRED";
+  action: "ENROLL" | "VERIFY";
+  expiresAt: string;
+};
+
+export type AuthLoginResult = AuthSession | StaffMfaRequired;
+
+export type StaffMfaChallenge = {
+  action: "ENROLL" | "VERIFY";
+  expiresAt: string;
+  account: string;
+  enrollment: {
+    secret: string;
+    otpAuthUri: string;
+  } | null;
+};
+
+export type StaffMfaCompletion = {
+  session: AuthSession;
+  recoveryCodes: string[] | null;
 };
 
 export type AccountSession = {

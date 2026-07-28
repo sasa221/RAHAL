@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+
 type ApiConfig = {
   port: number;
   webUrl: string;
   databaseUrl: string;
   authSecret: string;
+  mfaEncryptionKey: string;
   production: boolean;
   privateDocumentStoragePath?: string;
   verificationDelivery?: {
@@ -76,6 +79,24 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     throw new Error("AUTH_SECRET is required in production.");
   }
 
+  const configuredMfaKey = env.MFA_ENCRYPTION_KEY?.trim();
+  if (production && !configuredMfaKey) {
+    throw new Error("MFA_ENCRYPTION_KEY is required in production.");
+  }
+  let mfaKeyBytes: Buffer;
+  if (configuredMfaKey) {
+    try {
+      mfaKeyBytes = Buffer.from(configuredMfaKey, "base64url");
+    } catch {
+      throw new Error("MFA_ENCRYPTION_KEY must be a base64url-encoded 32-byte key.");
+    }
+    if (mfaKeyBytes.length !== 32) {
+      throw new Error("MFA_ENCRYPTION_KEY must be a base64url-encoded 32-byte key.");
+    }
+  } else {
+    mfaKeyBytes = createHash("sha256").update(`rahal-staff-mfa:${authSecret}`).digest();
+  }
+
   const verificationUrl = env.VERIFICATION_DELIVERY_WEBHOOK_URL?.trim();
   const verificationSecret = env.VERIFICATION_DELIVERY_WEBHOOK_SECRET?.trim();
   if (Boolean(verificationUrl) !== Boolean(verificationSecret)) {
@@ -135,6 +156,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     webUrl: readUrl("WEB_URL", env.WEB_URL, "http://localhost:3000"),
     databaseUrl,
     authSecret,
+    mfaEncryptionKey: mfaKeyBytes.toString("base64url"),
     production,
     privateDocumentStoragePath:
       env.PRIVATE_DOCUMENT_STORAGE_PATH?.trim() || (production ? undefined : ".private-storage"),

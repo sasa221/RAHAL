@@ -12,6 +12,7 @@ import { AuthRateLimitService } from "./auth/auth-rate-limit.service";
 import { ReservationsRepository } from "./reservations/reservations.repository";
 import { PrivateDocumentStorage } from "./reservations/private-document-storage";
 import { StaffRepository } from "./staff/staff.repository";
+import { StaffMfaService } from "./auth/staff-mfa.service";
 
 const fakeVehicles = [
   {
@@ -47,6 +48,9 @@ describe("RAHAL API", () => {
   let app: INestApplication;
   let storedSessionHash = "";
   let storedSessionUser: typeof authUser | typeof salesUser;
+  let storedSessionMfaVerifiedAt: Date | null = null;
+  let storedStaffChallengeHash = "";
+  let staffChallengeUsed = false;
   let documentCookie = "";
   let salesAssigned = false;
   let customerResponded = false;
@@ -75,6 +79,8 @@ describe("RAHAL API", () => {
     status: "ACTIVE" as const,
     emailVerifiedAt: new Date("2026-07-01T00:00:00Z"),
     phoneVerifiedAt: new Date("2026-07-01T00:00:00Z"),
+    mustChangePassword: false,
+    staffMfaCredential: null,
   };
 
   const salesUser = {
@@ -84,6 +90,12 @@ describe("RAHAL API", () => {
     phone: "+201001115555",
     fullNameEn: "Rahal Sales Employee",
     systemRole: "SALES" as const,
+    staffMfaCredential: {
+      id: "sales-mfa-e2e",
+      secretCiphertext: "encrypted-e2e-secret",
+      enabledAt: new Date("2026-07-01T00:00:00Z"),
+      lastUsedCounter: null,
+    },
   };
 
   storedSessionUser = authUser;
@@ -229,9 +241,11 @@ describe("RAHAL API", () => {
           userId: string;
           refreshTokenHash: string;
           expiresAt: Date;
+          mfaVerifiedAt?: Date;
         }) => {
           storedSessionHash = input.refreshTokenHash;
           storedSessionUser = input.userId === salesUser.id ? salesUser : authUser;
+          storedSessionMfaVerifiedAt = input.mfaVerifiedAt ?? null;
           return { id: "session-e2e", expiresAt: input.expiresAt };
         },
         findSession: async (refreshTokenHash: string) =>
@@ -239,9 +253,40 @@ describe("RAHAL API", () => {
             ? {
                 id: "session-e2e",
                 expiresAt: new Date(Date.now() + 60_000),
+                mfaVerifiedAt: storedSessionMfaVerifiedAt,
                 user: storedSessionUser,
               }
             : null,
+        invalidateStaffLoginChallenges: async () => {
+          staffChallengeUsed = true;
+        },
+        createStaffLoginChallenge: async (input: {
+          tokenHash: string;
+          kind: "ENROLL" | "VERIFY";
+          expiresAt: Date;
+        }) => {
+          storedStaffChallengeHash = input.tokenHash;
+          staffChallengeUsed = false;
+          return { id: "staff-challenge-e2e", kind: input.kind, expiresAt: input.expiresAt };
+        },
+        findStaffLoginChallenge: async (tokenHash: string) =>
+          tokenHash === storedStaffChallengeHash && !staffChallengeUsed
+            ? {
+                id: "staff-challenge-e2e",
+                kind: "VERIFY",
+                secretCiphertext: null,
+                attempts: 0,
+                expiresAt: new Date(Date.now() + 60_000),
+                user: salesUser,
+              }
+            : null,
+        incrementStaffLoginChallengeAttempts: async () => ({ attempts: 1 }),
+        completeStaffMfaTotp: async () => {
+          staffChallengeUsed = true;
+        },
+        completeStaffMfaRecovery: async () => {
+          staffChallengeUsed = true;
+        },
         touchSession: async () => undefined,
         revokeSession: async () => ({ count: 1 }),
         writeAudit: async () => undefined,
@@ -250,6 +295,12 @@ describe("RAHAL API", () => {
       .useValue({
         hash: async () => "secure-password-hash",
         verify: async (password: string) => password === "correct-customer-password",
+      })
+      .overrideProvider(StaffMfaService)
+      .useValue({
+        decryptSecret: () => "BASE32-E2E-SECRET",
+        verifyTotp: () => 42n,
+        hashRecoveryCode: (_userId: string, code: string) => `recovery:${code}`,
       })
       .overrideProvider(AuthRateLimitService)
       .useValue({ assertAllowed: () => undefined })
@@ -564,6 +615,38 @@ describe("RAHAL API", () => {
   afterAll(async () => {
     await app.close();
   });
+
+  async function loginSalesWithMfa() {
+    const login = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .send({ identifier: salesUser.email, password: "correct-customer-password" })
+      .expect(201);
+    expect(login.body.data).toMatchObject({
+      kind: "STAFF_MFA_REQUIRED",
+      action: "VERIFY",
+    });
+    expect(login.body.data).not.toHaveProperty("user");
+    const loginCookies = ([] as string[]).concat(login.headers["set-cookie"] ?? []);
+    const challengeCookie = loginCookies.find((value) =>
+      value.startsWith("rahal_staff_mfa_challenge="),
+    );
+    expect(challengeCookie).toContain("HttpOnly");
+
+    const confirmation = await request(app.getHttpServer())
+      .post("/api/auth/staff-mfa/confirm")
+      .set("Cookie", challengeCookie ?? "")
+      .send({ code: "123456" })
+      .expect(201);
+    expect(confirmation.body.data.session.user).toMatchObject({
+      role: "SALES",
+      mfaEnabled: true,
+      securityAction: null,
+    });
+    const confirmationCookies = ([] as string[]).concat(confirmation.headers["set-cookie"] ?? []);
+    const sessionCookie = confirmationCookies.find((value) => value.startsWith("rahal_session="));
+    expect(sessionCookie).toContain("HttpOnly");
+    return sessionCookie ?? "";
+  }
 
   it("serves health under the global API prefix", async () => {
     const response = await request(app.getHttpServer()).get("/api/health").expect(200);
@@ -913,23 +996,16 @@ describe("RAHAL API", () => {
   });
 
   it("rejects sales access to customer-owned request routes", async () => {
-    const login = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ identifier: salesUser.email, password: "correct-customer-password" })
-      .expect(201);
+    const cookie = await loginSalesWithMfa();
 
     await request(app.getHttpServer())
       .get("/api/reservations/customer/requests")
-      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .set("Cookie", cookie)
       .expect(403);
   });
 
   it("lets sales inspect masked requests and claim one without confirming it", async () => {
-    const login = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ identifier: salesUser.email, password: "correct-customer-password" })
-      .expect(201);
-    const cookie = login.headers["set-cookie"]?.[0] ?? "";
+    const cookie = await loginSalesWithMfa();
 
     const queue = await request(app.getHttpServer())
       .get("/api/reservations/sales/queue")
@@ -964,10 +1040,7 @@ describe("RAHAL API", () => {
   });
 
   it("lets the assigned reviewer offer an available alternative without booking it", async () => {
-    const login = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ identifier: salesUser.email, password: "correct-customer-password" })
-      .expect(201);
+    const cookie = await loginSalesWithMfa();
     const pickup = new Date();
     pickup.setUTCDate(pickup.getUTCDate() + 3);
     const returnDate = new Date(pickup);
@@ -975,7 +1048,7 @@ describe("RAHAL API", () => {
 
     const response = await request(app.getHttpServer())
       .post("/api/reservations/sales/reservation-draft-e2e/alternative-offers")
-      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .set("Cookie", cookie)
       .send({
         vehicleId: "graphite-suv",
         pickupDate: pickup.toISOString().slice(0, 10),
@@ -1023,14 +1096,11 @@ describe("RAHAL API", () => {
   });
 
   it("records a validated pre-approval without creating a confirmed booking", async () => {
-    const login = await request(app.getHttpServer())
-      .post("/api/auth/login")
-      .send({ identifier: salesUser.email, password: "correct-customer-password" })
-      .expect(201);
+    const cookie = await loginSalesWithMfa();
 
     const response = await request(app.getHttpServer())
       .post("/api/reservations/sales/reservation-draft-e2e/decision")
-      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .set("Cookie", cookie)
       .send({
         action: "PRE_APPROVE",
         note: "Please attend the Rahal branch within the stated pre-approval window.",
@@ -1046,7 +1116,7 @@ describe("RAHAL API", () => {
 
     await request(app.getHttpServer())
       .post("/api/reservations/sales/reservation-draft-e2e/decision")
-      .set("Cookie", login.headers["set-cookie"]?.[0] ?? "")
+      .set("Cookie", cookie)
       .send({ action: "REJECT", note: "short" })
       .expect(400);
   });

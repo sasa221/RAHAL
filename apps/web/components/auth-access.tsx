@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthSession } from "@rahal/contracts";
+import type { AuthLoginResult, AuthSession } from "@rahal/contracts";
 import Image from "next/image";
 import { useEffect, useState, type FormEvent } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
@@ -133,7 +133,16 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
   const [verificationNotice, setVerificationNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   const dashboardHref = session
-    ? localizedPath(locale, session.user.role === "CUSTOMER" ? "/account/requests" : "/sales")
+    ? localizedPath(
+        locale,
+        session.user.securityAction
+          ? "/auth/staff-security"
+          : session.user.role === "CUSTOMER"
+            ? "/account/requests"
+            : session.user.role === "SALES"
+              ? "/sales"
+              : "/admin",
+      )
     : localizedPath(locale, "/auth");
 
   useEffect(() => {
@@ -145,7 +154,13 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         return result.data ?? null;
       })
       .then((currentSession) => {
-        if (active && currentSession) setSession(currentSession);
+        if (active && currentSession) {
+          if (currentSession.user.securityAction) {
+            window.location.replace(localizedPath(locale, "/auth/staff-security"));
+            return;
+          }
+          setSession(currentSession);
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -193,11 +208,15 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
         body: JSON.stringify(payload),
       });
       const result = (await response.json()) as {
-        data?: SessionResult;
+        data?: AuthLoginResult;
         error?: { message?: string };
       };
       if (!response.ok || !result.data) {
         setError(result.error?.message || copy.connectionError);
+        return;
+      }
+      if (!("user" in result.data)) {
+        window.location.assign(localizedPath(locale, "/auth/staff-security"));
         return;
       }
       setSession(result.data);

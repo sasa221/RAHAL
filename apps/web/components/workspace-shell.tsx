@@ -175,7 +175,7 @@ export function WorkspaceShell({
         : navigation.slice(0, 4);
 
   useEffect(() => {
-    if (!isStaff || kind === "admin") return;
+    if (!isStaff) return;
     const controller = new AbortController();
     fetch("/api/auth/session", {
       credentials: "include",
@@ -185,11 +185,15 @@ export function WorkspaceShell({
       .then(async (response) => {
         if (!response.ok) return;
         const payload = (await response.json()) as ApiSuccess<AuthSession>;
+        if (payload.data.user.securityAction) {
+          window.location.replace(localizedPath(locale, "/auth/staff-security"));
+          return;
+        }
         setCanManageStaff(["ADMIN", "SUPER_ADMIN"].includes(payload.data.user.role));
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [isStaff, kind]);
+  }, [isStaff, locale]);
 
   async function logout() {
     setLoggingOut(true);
