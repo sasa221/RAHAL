@@ -60,7 +60,7 @@
   max-width: 900px;
   margin: 1rem 0 1.2rem;
   font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(3rem, 6vw, 6.4rem);
+  font-size: clamp(2.8rem, 5vw, 5.2rem);
   font-weight: 500;
   line-height: 0.92;
   letter-spacing: -0.055em;
@@ -887,13 +887,62 @@
   font-size: 1.2rem;
 }
 
+@media (max-width: 1320px) and (min-width: 761px) {
+  .document-rule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .document-rule-grid > article {
+    display: grid;
+    grid-template-columns: 76px minmax(180px, 0.8fr) minmax(240px, 1.2fr);
+    grid-template-rows: auto auto auto;
+    gap: 0.5rem 1.5rem;
+    min-height: 0;
+    padding: 1.25rem;
+  }
+
+  .document-rule-grid > article > header {
+    grid-column: 1 / -1;
+    margin-bottom: 0.45rem;
+  }
+
+  .document-rule-card__icon {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    width: 58px;
+    height: 70px;
+    margin: 0;
+  }
+
+  .document-rule-grid h3 {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 0;
+    font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  }
+
+  .document-rule-grid > article > p {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 0;
+  }
+
+  .document-rule-grid dl {
+    grid-column: 3;
+    grid-row: 2 / span 2;
+  }
+
+  .document-rule-grid > article > button {
+    position: static;
+    grid-column: 1 / -1;
+    grid-row: 4;
+    margin-top: 0.65rem;
+  }
+}
+
 @media (max-width: 1050px) {
   .document-policy__hero {
     grid-template-columns: minmax(0, 1fr) 280px;
-  }
-
-  .document-rule-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -909,12 +958,13 @@
   }
 
   .document-policy__hero > div:first-child {
-    min-height: 470px;
+    min-height: 420px;
     padding: 2rem 1.25rem 3rem;
   }
 
   .document-policy__hero h1 {
-    font-size: clamp(2.8rem, 15vw, 4.8rem);
+    max-width: 340px;
+    font-size: clamp(2.45rem, 12vw, 3.4rem);
   }
 
   .document-policy__hero > div:first-child > button {
@@ -1000,7 +1050,23 @@
   }
 
   .document-rule-grid > article {
+    display: block;
     min-height: 440px;
+  }
+
+  .document-rule-card__icon {
+    width: 58px;
+    height: 70px;
+    margin: 1.7rem 0 1.25rem;
+  }
+
+  .document-rule-grid h3 {
+    min-height: 0;
+    font-size: 1.55rem;
+  }
+
+  .document-rule-grid > article > button {
+    position: absolute;
   }
 
   .document-policy__privacy {

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Req } from "@nestjs/common";
+import { Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import type { ApiSuccess, NotificationInbox, NotificationReadResult } from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
@@ -9,8 +9,11 @@ export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
   @Get()
-  async inbox(@Req() request: Request): Promise<ApiSuccess<NotificationInbox>> {
-    return { data: await this.notifications.inbox(readAuthCookie(request)) };
+  async inbox(
+    @Query("locale") locale: string | undefined,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<NotificationInbox>> {
+    return { data: await this.notifications.inbox(readAuthCookie(request), locale) };
   }
 
   @Post("read-all")

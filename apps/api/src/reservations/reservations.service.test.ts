@@ -117,6 +117,103 @@ describe("reservation draft service", () => {
     ).rejects.toThrow("This vehicle requires a driver.");
   });
 
+  it("lists only owned live drafts with a truthful next-step summary", async () => {
+    const now = new Date();
+    const findCustomerDrafts = vi.fn().mockResolvedValue([
+      {
+        id: "draft-1",
+        reference: "RHL-2026-123456",
+        status: "DRAFT",
+        createdAt: now,
+        updatedAt: now,
+        pickupAt: new Date(now.getTime() + 3 * 86_400_000),
+        returnAt: new Date(now.getTime() + 6 * 86_400_000),
+        driverRequested: false,
+        estimatedTotal: { toNumber: () => 13_500 },
+        customerEmailSnapshot: "customer@example.com",
+        customerPhoneSnapshot: "+201001112222",
+        nationalitySnapshot: "Egyptian",
+        customerCategorySnapshot: "EGYPTIAN",
+        addressSnapshot: "Fictional Cairo address",
+        emergencyContactNameSnapshot: "Demo Contact",
+        emergencyContactPhoneSnapshot: "+201009998888",
+        customerDetailsCompletedAt: now,
+        termsVersion: "POLICY-1",
+        termsAcceptedAt: now,
+        privacyConsentAt: now,
+        documentConsentAt: now,
+        operationalConsentAt: now,
+        marketingConsentAt: null,
+        vehicle: { id: "vehicle-1", nameAr: "سيارة تجريبية", nameEn: "Demo vehicle" },
+        branch: { id: "branch-1", nameAr: "فرع رحال", nameEn: "Rahal branch" },
+        documents: [{ type: "NATIONAL_ID_FRONT", status: "UPLOADED" }],
+      },
+    ]);
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER", preferredLocale: "en" },
+        }),
+      } as never,
+      {
+        findCustomerDrafts,
+        findDocumentRequirementRules: vi.fn().mockResolvedValue([
+          {
+            documentType: "NATIONAL_ID_FRONT",
+            requiresSelfDrive: false,
+          },
+          {
+            documentType: "DRIVING_LICENSE_FRONT",
+            requiresSelfDrive: true,
+          },
+        ]),
+      } as never,
+    );
+
+    await expect(service.getCustomerDrafts("session-token", "ar")).resolves.toMatchObject([
+      {
+        id: "draft-1",
+        vehicle: { name: "سيارة تجريبية" },
+        progress: {
+          completedSteps: 3,
+          documentsUploaded: 1,
+          documentsRequired: 2,
+          nextStep: "DOCUMENTS",
+        },
+      },
+    ]);
+    expect(findCustomerDrafts).toHaveBeenCalledWith("customer-1", expect.any(Date));
+  });
+
+  it("abandons only an owned draft and removes its private objects", async () => {
+    const remove = vi.fn().mockResolvedValue(undefined);
+    const abandonCustomerDraft = vi.fn().mockResolvedValue({
+      data: {
+        id: "draft-1",
+        reference: "RHL-2026-123456",
+        status: "EXPIRED",
+        abandonedAt: new Date().toISOString(),
+      },
+      storageKeys: ["reservations/draft-1/private.pdf"],
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER" },
+        }),
+      } as never,
+      { abandonCustomerDraft } as never,
+      { remove } as never,
+    );
+
+    await expect(service.abandonCustomerDraft("session-token", "draft-1")).resolves.toMatchObject({
+      id: "draft-1",
+      status: "EXPIRED",
+    });
+    expect(abandonCustomerDraft).toHaveBeenCalledWith("draft-1", "customer-1");
+    expect(remove).toHaveBeenCalledWith("reservations/draft-1/private.pdf");
+  });
+
   it("saves owned-draft details using trusted session contacts", async () => {
     const saveCustomerDetails = vi.fn().mockResolvedValue({
       draftId: "draft-1",

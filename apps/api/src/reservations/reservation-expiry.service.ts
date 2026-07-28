@@ -4,6 +4,7 @@ import {
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from "@nestjs/common";
+import { PrivateDocumentStorage } from "./private-document-storage";
 import { ReservationsRepository } from "./reservations.repository";
 
 const sweepIntervalMs = 60_000;
@@ -14,7 +15,10 @@ export class ReservationExpiryService implements OnApplicationBootstrap, OnAppli
   private timer: ReturnType<typeof setInterval> | undefined;
   private running = false;
 
-  constructor(private readonly reservations: ReservationsRepository) {}
+  constructor(
+    private readonly reservations: ReservationsRepository,
+    private readonly documentStorage: PrivateDocumentStorage = new PrivateDocumentStorage(),
+  ) {}
 
   onApplicationBootstrap() {
     void this.sweepExpiredReviewWindows();
@@ -28,19 +32,27 @@ export class ReservationExpiryService implements OnApplicationBootstrap, OnAppli
   }
 
   async sweepExpiredReviewWindows(now = new Date()) {
-    if (this.running) return { expiredOffers: 0, expiredPreApprovals: 0 };
+    if (this.running) return { expiredDrafts: 0, expiredOffers: 0, expiredPreApprovals: 0 };
     this.running = true;
     try {
       const result = await this.reservations.expireStaleReviewWindows(now);
-      if (result.expiredOffers || result.expiredPreApprovals) {
+      await Promise.allSettled(
+        result.removedDraftStorageKeys.map((storageKey) => this.documentStorage.remove(storageKey)),
+      );
+      const summary = {
+        expiredDrafts: result.expiredDrafts,
+        expiredOffers: result.expiredOffers,
+        expiredPreApprovals: result.expiredPreApprovals,
+      };
+      if (summary.expiredDrafts || summary.expiredOffers || summary.expiredPreApprovals) {
         this.logger.log(
-          `Expired ${result.expiredOffers} alternative offer(s) and ${result.expiredPreApprovals} pre-approval(s).`,
+          `Expired ${summary.expiredDrafts} draft(s), ${summary.expiredOffers} alternative offer(s), and ${summary.expiredPreApprovals} pre-approval(s).`,
         );
       }
-      return result;
+      return summary;
     } catch (error) {
       this.logger.error("Reservation expiry sweep failed.", error);
-      return { expiredOffers: 0, expiredPreApprovals: 0 };
+      return { expiredDrafts: 0, expiredOffers: 0, expiredPreApprovals: 0 };
     } finally {
       this.running = false;
     }

@@ -483,7 +483,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/reservations/sales/queue", {
+    fetch(`/api/reservations/sales/queue?locale=${locale}`, {
       credentials: "include",
       signal: controller.signal,
     })
@@ -503,7 +503,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     fetch("/api/vehicles", { credentials: "include" })
@@ -550,9 +550,12 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     setFuelLevelPercent("");
     setOperationFeedback(false);
     try {
-      const response = await fetch(`/api/reservations/sales/${encodeURIComponent(id)}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(id)}?locale=${locale}`,
+        {
+          credentials: "include",
+        },
+      );
       const payload = (await response.json()) as { data?: Review };
       if (!response.ok || !payload.data) throw new Error("review unavailable");
       setReview(payload.data);
@@ -575,7 +578,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     setActionError(null);
     try {
       const response = await fetch(
-        `/api/reservations/sales/${encodeURIComponent(review.id)}/claim`,
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/claim?locale=${locale}`,
         { method: "POST", credentials: "include" },
       );
       const payload = (await response.json()) as { data?: Review };

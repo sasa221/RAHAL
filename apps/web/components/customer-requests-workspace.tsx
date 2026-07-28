@@ -3,6 +3,7 @@
 import type {
   CustomerAlternativeOfferResponse,
   CustomerInformationResponse,
+  CustomerReservationDraftSummary,
   CustomerReservationDetail,
   CustomerReservationStatus,
   CustomerReservationSummary,
@@ -28,6 +29,30 @@ const copy = {
     totalRequests: "إجمالي الطلبات",
     activeRequests: "طلبات جارية",
     actionRequests: "تحتاج ردك",
+    savedDrafts: "مسودات محفوظة",
+    draftsEyebrow: "أكمل من حيث توقفت",
+    draftsTitle: "رحلات بدأت ولم تُرسل بعد",
+    draftsCopy:
+      "كل مسودة محفوظة في حسابك فقط ولا يراها فريق المبيعات. أكمل البيانات بأمان قبل موعد الاستلام.",
+    draftProgress: "نسبة الاكتمال",
+    draftUpdated: "آخر تحديث",
+    draftExpires: "تنتهي عند موعد الاستلام",
+    draftDocuments: "المستندات",
+    resumeDraft: "استكمال المسودة",
+    abandonDraft: "إلغاء المسودة",
+    abandonTitle: "إلغاء هذه المسودة؟",
+    abandonCopy:
+      "سيتم إغلاق المسودة وحذف ملفاتها الخاصة من التخزين. لا يمكن التراجع عن هذا الإجراء.",
+    keepDraft: "الاحتفاظ بها",
+    confirmAbandon: "نعم، ألغِ المسودة",
+    abandoningDraft: "جاري الإلغاء الآمن...",
+    abandonFailed: "تعذر إلغاء المسودة الآن. حاول مرة أخرى.",
+    draftStep: {
+      CUSTOMER_DETAILS: "بيانات العميل",
+      CONSENTS: "الموافقات",
+      DOCUMENTS: "المستندات الخاصة",
+      REVIEW: "المراجعة النهائية",
+    },
     sentStep: "تم إرسال الطلب",
     reviewStep: "مراجعة المبيعات",
     branchStep: "زيارة الفرع والعربون",
@@ -129,6 +154,30 @@ const copy = {
     totalRequests: "Total requests",
     activeRequests: "In progress",
     actionRequests: "Need your reply",
+    savedDrafts: "Saved drafts",
+    draftsEyebrow: "PICK UP WHERE YOU LEFT OFF",
+    draftsTitle: "Journeys started, not yet submitted",
+    draftsCopy:
+      "Each draft stays inside your account and is invisible to sales. Finish it securely before pickup.",
+    draftProgress: "Completion",
+    draftUpdated: "Last updated",
+    draftExpires: "Expires at pickup",
+    draftDocuments: "Documents",
+    resumeDraft: "Continue draft",
+    abandonDraft: "Abandon draft",
+    abandonTitle: "Abandon this draft?",
+    abandonCopy:
+      "The draft will close and its private files will be removed from storage. This cannot be undone.",
+    keepDraft: "Keep it",
+    confirmAbandon: "Yes, abandon draft",
+    abandoningDraft: "Removing securely...",
+    abandonFailed: "The draft could not be abandoned right now. Please try again.",
+    draftStep: {
+      CUSTOMER_DETAILS: "Customer details",
+      CONSENTS: "Consent",
+      DOCUMENTS: "Private documents",
+      REVIEW: "Final review",
+    },
     sentStep: "Request sent",
     reviewStep: "Sales review",
     branchStep: "Branch & deposit",
@@ -260,6 +309,7 @@ function documentLabel(type: string, locale: PublicLocale) {
 export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) {
   const text = copy[locale];
   const [requests, setRequests] = useState<CustomerReservationSummary[]>([]);
+  const [drafts, setDrafts] = useState<CustomerReservationDraftSummary[]>([]);
   const [filter, setFilter] = useState<Filter>("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CustomerReservationDetail | null>(null);
@@ -276,6 +326,9 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
   );
   const [uploadingDocument, setUploadingDocument] = useState("");
   const [documentUploadError, setDocumentUploadError] = useState(false);
+  const [confirmAbandonId, setConfirmAbandonId] = useState<string | null>(null);
+  const [abandoningDraftId, setAbandoningDraftId] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState(false);
 
   useEffect(() => {
     void loadRequests();
@@ -284,24 +337,59 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
   async function loadRequests() {
     setLoading(true);
     try {
-      const response = await fetch("/api/reservations/customer/requests", {
-        credentials: "include",
-      });
-      if (response.status === 401) return setState("SIGNED_OUT");
-      if (response.status === 403) return setState("FORBIDDEN");
-      if (!response.ok) throw new Error("REQUESTS_UNAVAILABLE");
-      const payload = (await response.json()) as { data: CustomerReservationSummary[] };
-      setRequests(payload.data);
+      const [requestsResponse, draftsResponse] = await Promise.all([
+        fetch(`/api/reservations/customer/requests?locale=${locale}`, {
+          credentials: "include",
+        }),
+        fetch(`/api/reservations/customer/drafts?locale=${locale}`, {
+          credentials: "include",
+        }),
+      ]);
+      if (requestsResponse.status === 401 || draftsResponse.status === 401) {
+        return setState("SIGNED_OUT");
+      }
+      if (requestsResponse.status === 403 || draftsResponse.status === 403) {
+        return setState("FORBIDDEN");
+      }
+      if (!requestsResponse.ok || !draftsResponse.ok) {
+        throw new Error("REQUESTS_UNAVAILABLE");
+      }
+      const requestsPayload = (await requestsResponse.json()) as {
+        data: CustomerReservationSummary[];
+      };
+      const draftsPayload = (await draftsResponse.json()) as {
+        data: CustomerReservationDraftSummary[];
+      };
+      setRequests(requestsPayload.data);
+      setDrafts(draftsPayload.data);
       setState("READY");
       const requestedId = new URLSearchParams(window.location.search).get("request");
       const initial =
-        payload.data.find((request) => request.id === requestedId) ??
-        (payload.data.length === 1 ? payload.data[0] : undefined);
+        requestsPayload.data.find((request) => request.id === requestedId) ??
+        (requestsPayload.data.length === 1 ? requestsPayload.data[0] : undefined);
       if (initial) void openRequest(initial.id);
     } catch {
       setState("ERROR");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function abandonDraft(id: string) {
+    setAbandoningDraftId(id);
+    setDraftError(false);
+    try {
+      const response = await fetch(`/api/reservations/customer/drafts/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("ABANDON_FAILED");
+      setDrafts((current) => current.filter((draft) => draft.id !== id));
+      setConfirmAbandonId(null);
+    } catch {
+      setDraftError(true);
+    } finally {
+      setAbandoningDraftId(null);
     }
   }
 
@@ -312,7 +400,7 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
     setSendError(false);
     setOfferFeedback(null);
     try {
-      const response = await fetch(`/api/reservations/customer/requests/${id}`, {
+      const response = await fetch(`/api/reservations/customer/requests/${id}?locale=${locale}`, {
         credentials: "include",
       });
       if (!response.ok) throw new Error("DETAIL_UNAVAILABLE");
@@ -482,6 +570,11 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
             <strong>{actionCount.toString().padStart(2, "0")}</strong>
             <p>{text.actionRequests}</p>
           </article>
+          <article className={drafts.length ? "has-action" : ""}>
+            <span>04</span>
+            <strong>{drafts.length.toString().padStart(2, "0")}</strong>
+            <p>{text.savedDrafts}</p>
+          </article>
         </section>
 
         {state !== "READY" ? (
@@ -501,416 +594,539 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
             )}
           </div>
         ) : (
-          <div className="customer-requests-layout" id="requests">
-            <section className="customer-request-list-panel">
-              <div className="sales-section-heading">
-                <span>01</span>
-                <h2>{text.requests}</h2>
-                <b>{requests.length}</b>
-              </div>
-              <div className="sales-filters" aria-label={text.requests}>
-                {(["ALL", "ACTION", "OPEN", "CLOSED"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={filter === value}
-                    onClick={() => setFilter(value)}
-                  >
-                    {value === "ALL"
-                      ? text.all
-                      : value === "ACTION"
-                        ? text.action
-                        : value === "OPEN"
-                          ? text.open
-                          : text.closed}
-                  </button>
-                ))}
-              </div>
-              {loading ? (
-                <div className="sales-state">{text.loading}</div>
-              ) : filtered.length === 0 ? (
-                <div className="sales-state">{text.empty}</div>
-              ) : (
-                <div className="sales-request-list">
-                  {filtered.map((request) => (
-                    <article
-                      className={`customer-request-card${selectedId === request.id ? " is-selected" : ""}`}
-                      key={request.id}
+          <>
+            {drafts.length > 0 ? (
+              <section className="customer-drafts-studio" aria-labelledby="customer-drafts-title">
+                <header>
+                  <div>
+                    <span>{text.draftsEyebrow}</span>
+                    <h2 id="customer-drafts-title">{text.draftsTitle}</h2>
+                  </div>
+                  <p>{text.draftsCopy}</p>
+                </header>
+                <div className="customer-drafts-track">
+                  {drafts.map((draft, index) => {
+                    const percentage = Math.round(
+                      (draft.progress.completedSteps / draft.progress.totalSteps) * 100,
+                    );
+                    const resumeParams = new URLSearchParams({
+                      vehicle: draft.vehicle.id,
+                      draft: draft.id,
+                    });
+                    return (
+                      <article className="customer-draft-card" key={draft.id}>
+                        <div className="customer-draft-card__index">
+                          <span>{String(index + 1).padStart(2, "0")}</span>
+                          <small>{draft.reference}</small>
+                        </div>
+                        <div className="customer-draft-card__body">
+                          <div className="customer-draft-card__title">
+                            <div>
+                              <span>{text.draftStep[draft.progress.nextStep]}</span>
+                              <h3>{draft.vehicle.name}</h3>
+                            </div>
+                            <strong>{percentage}%</strong>
+                          </div>
+                          <div
+                            aria-label={`${text.draftProgress}: ${percentage}%`}
+                            aria-valuemax={100}
+                            aria-valuemin={0}
+                            aria-valuenow={percentage}
+                            className="customer-draft-progress"
+                            role="progressbar"
+                          >
+                            <span style={{ width: `${percentage}%` }} />
+                          </div>
+                          <dl>
+                            <div>
+                              <dt>{text.pickup}</dt>
+                              <dd>{formatDate(draft.pickupAt, locale)}</dd>
+                            </div>
+                            <div>
+                              <dt>{text.draftDocuments}</dt>
+                              <dd>
+                                {draft.progress.documentsUploaded}/
+                                {draft.progress.documentsRequired || "—"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>{text.estimate}</dt>
+                              <dd>{formatEgp(draft.estimate.total, locale)}</dd>
+                            </div>
+                            <div>
+                              <dt>{text.draftUpdated}</dt>
+                              <dd>{formatDate(draft.updatedAt, locale)}</dd>
+                            </div>
+                          </dl>
+                          <p className="customer-draft-expiry">
+                            {text.draftExpires}:{" "}
+                            <strong>{formatDate(draft.expiresAt, locale)}</strong>
+                          </p>
+                          {confirmAbandonId === draft.id ? (
+                            <div className="customer-draft-confirm" role="alert">
+                              <strong>{text.abandonTitle}</strong>
+                              <p>{text.abandonCopy}</p>
+                              <div>
+                                <button
+                                  disabled={abandoningDraftId === draft.id}
+                                  onClick={() => void abandonDraft(draft.id)}
+                                  type="button"
+                                >
+                                  {abandoningDraftId === draft.id
+                                    ? text.abandoningDraft
+                                    : text.confirmAbandon}
+                                </button>
+                                <button
+                                  disabled={abandoningDraftId === draft.id}
+                                  onClick={() => setConfirmAbandonId(null)}
+                                  type="button"
+                                >
+                                  {text.keepDraft}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="customer-draft-actions">
+                              <a
+                                href={`${localizedPath(locale, "/reservation")}?${resumeParams.toString()}`}
+                              >
+                                {text.resumeDraft}
+                                <span>→</span>
+                              </a>
+                              <button
+                                onClick={() => {
+                                  setDraftError(false);
+                                  setConfirmAbandonId(draft.id);
+                                }}
+                                type="button"
+                              >
+                                {text.abandonDraft}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                {draftError ? <p className="customer-draft-error">{text.abandonFailed}</p> : null}
+              </section>
+            ) : null}
+            <div className="customer-requests-layout" id="requests">
+              <section className="customer-request-list-panel">
+                <div className="sales-section-heading">
+                  <span>01</span>
+                  <h2>{text.requests}</h2>
+                  <b>{requests.length}</b>
+                </div>
+                <div className="sales-filters" aria-label={text.requests}>
+                  {(["ALL", "ACTION", "OPEN", "CLOSED"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={filter === value}
+                      onClick={() => setFilter(value)}
                     >
-                      <div className="sales-request-card__top">
-                        <span
-                          className={`sales-status sales-status--${request.status.toLowerCase()}`}
+                      {value === "ALL"
+                        ? text.all
+                        : value === "ACTION"
+                          ? text.action
+                          : value === "OPEN"
+                            ? text.open
+                            : text.closed}
+                    </button>
+                  ))}
+                </div>
+                {loading ? (
+                  <div className="sales-state">{text.loading}</div>
+                ) : filtered.length === 0 ? (
+                  <div className="sales-state">{text.empty}</div>
+                ) : (
+                  <div className="sales-request-list">
+                    {filtered.map((request) => (
+                      <article
+                        className={`customer-request-card${selectedId === request.id ? " is-selected" : ""}`}
+                        key={request.id}
+                      >
+                        <div className="sales-request-card__top">
+                          <span
+                            className={`sales-status sales-status--${request.status.toLowerCase()}`}
+                          >
+                            {text.status[request.status]}
+                          </span>
+                          <small>{request.reference}</small>
+                        </div>
+                        <h3>{request.vehicle.name}</h3>
+                        <strong>{request.branch.name}</strong>
+                        <dl>
+                          <div>
+                            <dt>{text.pickup}</dt>
+                            <dd>{formatDate(request.pickupAt, locale)}</dd>
+                          </div>
+                          <div>
+                            <dt>{text.return}</dt>
+                            <dd>{formatDate(request.returnAt, locale)}</dd>
+                          </div>
+                          <div>
+                            <dt>{text.estimate}</dt>
+                            <dd>{formatEgp(request.estimate.total, locale)}</dd>
+                          </div>
+                        </dl>
+                        <button
+                          className="sales-card-button"
+                          type="button"
+                          onClick={() => void openRequest(request.id)}
                         >
-                          {text.status[request.status]}
-                        </span>
-                        <small>{request.reference}</small>
-                      </div>
-                      <h3>{request.vehicle.name}</h3>
-                      <strong>{request.branch.name}</strong>
-                      <dl>
+                          {text.openRequest}
+                          <span>→</span>
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <aside className="customer-request-detail">
+                {detailLoading ? (
+                  <div className="sales-review-empty">{text.loading}</div>
+                ) : !detail ? (
+                  <div className="sales-review-empty">{text.select}</div>
+                ) : (
+                  <div className="customer-detail-content">
+                    <header>
+                      <span>{text.details}</span>
+                      <h2>{detail.vehicle.name}</h2>
+                      <p>{detail.reference}</p>
+                      <b className={`sales-status sales-status--${detail.status.toLowerCase()}`}>
+                        {text.status[detail.status]}
+                      </b>
+                      <ol className="customer-status-track" aria-label={text.status[detail.status]}>
+                        {[text.sentStep, text.reviewStep, text.branchStep, text.confirmedStep].map(
+                          (label, index) => (
+                            <li
+                              className={
+                                index + 1 === statusStep(detail.status)
+                                  ? "is-complete is-current"
+                                  : index + 1 < statusStep(detail.status)
+                                    ? "is-complete"
+                                    : ""
+                              }
+                              key={label}
+                            >
+                              <span>{index + 1 < statusStep(detail.status) ? "✓" : index + 1}</span>
+                              <small>{label}</small>
+                            </li>
+                          ),
+                        )}
+                      </ol>
+                    </header>
+                    <section>
+                      <dl className="sales-detail-list">
+                        <div>
+                          <dt>{text.submitted}</dt>
+                          <dd>{formatDate(detail.submittedAt, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{text.branch}</dt>
+                          <dd>{detail.branch.name}</dd>
+                        </div>
                         <div>
                           <dt>{text.pickup}</dt>
-                          <dd>{formatDate(request.pickupAt, locale)}</dd>
+                          <dd>{formatDate(detail.pickupAt, locale)}</dd>
                         </div>
                         <div>
                           <dt>{text.return}</dt>
-                          <dd>{formatDate(request.returnAt, locale)}</dd>
+                          <dd>{formatDate(detail.returnAt, locale)}</dd>
                         </div>
                         <div>
                           <dt>{text.estimate}</dt>
-                          <dd>{formatEgp(request.estimate.total, locale)}</dd>
+                          <dd>{formatEgp(detail.estimate.total, locale)}</dd>
+                        </div>
+                        <div>
+                          <dt>{detail.driverRequested ? text.driver : text.selfDrive}</dt>
+                          <dd>EGP</dd>
                         </div>
                       </dl>
-                      <button
-                        className="sales-card-button"
-                        type="button"
-                        onClick={() => void openRequest(request.id)}
-                      >
-                        {text.openRequest}
-                        <span>→</span>
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <aside className="customer-request-detail">
-              {detailLoading ? (
-                <div className="sales-review-empty">{text.loading}</div>
-              ) : !detail ? (
-                <div className="sales-review-empty">{text.select}</div>
-              ) : (
-                <div className="customer-detail-content">
-                  <header>
-                    <span>{text.details}</span>
-                    <h2>{detail.vehicle.name}</h2>
-                    <p>{detail.reference}</p>
-                    <b className={`sales-status sales-status--${detail.status.toLowerCase()}`}>
-                      {text.status[detail.status]}
-                    </b>
-                    <ol className="customer-status-track" aria-label={text.status[detail.status]}>
-                      {[text.sentStep, text.reviewStep, text.branchStep, text.confirmedStep].map(
-                        (label, index) => (
-                          <li
-                            className={
-                              index + 1 === statusStep(detail.status)
-                                ? "is-complete is-current"
-                                : index + 1 < statusStep(detail.status)
-                                  ? "is-complete"
-                                  : ""
-                            }
-                            key={label}
-                          >
-                            <span>{index + 1 < statusStep(detail.status) ? "✓" : index + 1}</span>
-                            <small>{label}</small>
-                          </li>
-                        ),
+                      {detail.preApprovalExpiresAt && (
+                        <p className="customer-expiry">
+                          {text.expires}:{" "}
+                          <strong>{formatDate(detail.preApprovalExpiresAt, locale)}</strong>
+                        </p>
                       )}
-                    </ol>
-                  </header>
-                  <section>
-                    <dl className="sales-detail-list">
-                      <div>
-                        <dt>{text.submitted}</dt>
-                        <dd>{formatDate(detail.submittedAt, locale)}</dd>
-                      </div>
-                      <div>
-                        <dt>{text.branch}</dt>
-                        <dd>{detail.branch.name}</dd>
-                      </div>
-                      <div>
-                        <dt>{text.pickup}</dt>
-                        <dd>{formatDate(detail.pickupAt, locale)}</dd>
-                      </div>
-                      <div>
-                        <dt>{text.return}</dt>
-                        <dd>{formatDate(detail.returnAt, locale)}</dd>
-                      </div>
-                      <div>
-                        <dt>{text.estimate}</dt>
-                        <dd>{formatEgp(detail.estimate.total, locale)}</dd>
-                      </div>
-                      <div>
-                        <dt>{detail.driverRequested ? text.driver : text.selfDrive}</dt>
-                        <dd>EGP</dd>
-                      </div>
-                    </dl>
-                    {detail.preApprovalExpiresAt && (
-                      <p className="customer-expiry">
-                        {text.expires}:{" "}
-                        <strong>{formatDate(detail.preApprovalExpiresAt, locale)}</strong>
-                      </p>
-                    )}
-                  </section>
-                  {[
-                    "PRE_APPROVED",
-                    "CONFIRMED",
-                    "ACTIVE",
-                    "COMPLETED",
-                    "CANCELLED",
-                    "NO_SHOW",
-                  ].includes(detail.status) && (
-                    <section className="customer-branch-progress">
-                      <div>
-                        <span>03</span>
-                        <div>
-                          <h3>{text.branchProgressTitle}</h3>
-                          <p>{text.branchProgressCopy}</p>
-                        </div>
-                      </div>
-                      <ol>
-                        <li className={detail.branchProgress.attended ? "is-complete" : ""}>
-                          <span>{detail.branchProgress.attended ? "✓" : "1"}</span>
-                          <strong>
-                            {detail.branchProgress.attended
-                              ? text.attended
-                              : text.attendancePending}
-                          </strong>
-                        </li>
-                        <li className={detail.branchProgress.depositRecorded ? "is-complete" : ""}>
-                          <span>{detail.branchProgress.depositRecorded ? "✓" : "2"}</span>
-                          <strong>
-                            {detail.branchProgress.depositRecorded
-                              ? text.depositRecorded
-                              : text.depositPending}
-                          </strong>
-                        </li>
-                        <li className={detail.branchProgress.contractSigned ? "is-complete" : ""}>
-                          <span>{detail.branchProgress.contractSigned ? "✓" : "3"}</span>
-                          <strong>
-                            {detail.branchProgress.contractSigned
-                              ? text.contractSigned
-                              : text.contractPending}
-                          </strong>
-                        </li>
-                        <li className={detail.branchProgress.bookingReference ? "is-complete" : ""}>
-                          <span>{detail.branchProgress.bookingReference ? "✓" : "4"}</span>
-                          <strong>
-                            {detail.branchProgress.bookingReference
-                              ? text.finalBooking
-                              : text.finalPending}
-                          </strong>
-                          {detail.branchProgress.bookingReference && (
-                            <small>
-                              {text.bookingReference}: {detail.branchProgress.bookingReference}
-                            </small>
-                          )}
-                        </li>
-                      </ol>
                     </section>
-                  )}
-                  {detail.branchProgress.bookingReference &&
-                    ["CONFIRMED", "ACTIVE", "COMPLETED"].includes(detail.status) && (
-                      <section className="customer-rental-progress">
-                        <h3>{text.rentalProgressTitle}</h3>
+                    {[
+                      "PRE_APPROVED",
+                      "CONFIRMED",
+                      "ACTIVE",
+                      "COMPLETED",
+                      "CANCELLED",
+                      "NO_SHOW",
+                    ].includes(detail.status) && (
+                      <section className="customer-branch-progress">
+                        <div>
+                          <span>03</span>
+                          <div>
+                            <h3>{text.branchProgressTitle}</h3>
+                            <p>{text.branchProgressCopy}</p>
+                          </div>
+                        </div>
                         <ol>
-                          <li className="is-complete">
-                            <span>✓</span>
-                            <div>
-                              <strong>{text.readyForPickup}</strong>
-                              <small>{detail.branchProgress.bookingReference}</small>
-                            </div>
+                          <li className={detail.branchProgress.attended ? "is-complete" : ""}>
+                            <span>{detail.branchProgress.attended ? "✓" : "1"}</span>
+                            <strong>
+                              {detail.branchProgress.attended
+                                ? text.attended
+                                : text.attendancePending}
+                            </strong>
                           </li>
-                          <li className={detail.rentalProgress.deliveredAt ? "is-complete" : ""}>
-                            <span>{detail.rentalProgress.deliveredAt ? "✓" : "2"}</span>
-                            <div>
-                              <strong>
-                                {detail.rentalProgress.deliveredAt
-                                  ? text.vehicleDelivered
-                                  : text.readyForPickup}
-                              </strong>
-                              {detail.rentalProgress.deliveredAt && (
-                                <small>
-                                  {formatDate(detail.rentalProgress.deliveredAt, locale)}
-                                </small>
-                              )}
-                            </div>
+                          <li
+                            className={detail.branchProgress.depositRecorded ? "is-complete" : ""}
+                          >
+                            <span>{detail.branchProgress.depositRecorded ? "✓" : "2"}</span>
+                            <strong>
+                              {detail.branchProgress.depositRecorded
+                                ? text.depositRecorded
+                                : text.depositPending}
+                            </strong>
                           </li>
-                          <li className={detail.rentalProgress.returnedAt ? "is-complete" : ""}>
-                            <span>{detail.rentalProgress.returnedAt ? "✓" : "3"}</span>
-                            <div>
-                              <strong>
-                                {detail.rentalProgress.returnedAt
-                                  ? text.vehicleReturned
-                                  : text.waitingForReturn}
-                              </strong>
-                              {detail.rentalProgress.returnedAt && (
-                                <small>
-                                  {formatDate(detail.rentalProgress.returnedAt, locale)}
-                                </small>
-                              )}
-                            </div>
+                          <li className={detail.branchProgress.contractSigned ? "is-complete" : ""}>
+                            <span>{detail.branchProgress.contractSigned ? "✓" : "3"}</span>
+                            <strong>
+                              {detail.branchProgress.contractSigned
+                                ? text.contractSigned
+                                : text.contractPending}
+                            </strong>
                           </li>
-                          <li className={detail.rentalProgress.completedAt ? "is-complete" : ""}>
-                            <span>{detail.rentalProgress.completedAt ? "✓" : "4"}</span>
-                            <div>
-                              <strong>{text.rentalCompleted}</strong>
-                              {detail.rentalProgress.completedAt && (
-                                <small>
-                                  {formatDate(detail.rentalProgress.completedAt, locale)}
-                                </small>
-                              )}
-                            </div>
+                          <li
+                            className={detail.branchProgress.bookingReference ? "is-complete" : ""}
+                          >
+                            <span>{detail.branchProgress.bookingReference ? "✓" : "4"}</span>
+                            <strong>
+                              {detail.branchProgress.bookingReference
+                                ? text.finalBooking
+                                : text.finalPending}
+                            </strong>
+                            {detail.branchProgress.bookingReference && (
+                              <small>
+                                {text.bookingReference}: {detail.branchProgress.bookingReference}
+                              </small>
+                            )}
                           </li>
                         </ol>
                       </section>
                     )}
-                  <section>
-                    <h3>{text.documents}</h3>
-                    {detail.documents.length === 0 ? (
-                      <p>{text.noDocuments}</p>
-                    ) : (
-                      <ul className="sales-document-statuses">
-                        {detail.documents.map((document) => (
-                          <li key={document.type}>
-                            <b>{documentLabel(document.type, locale)}</b>
-                            <span>{document.status.replaceAll("_", " ")}</span>
-                            {document.rejectionReason ? <p>{document.rejectionReason}</p> : null}
-                            {document.status === "REJECTED" &&
-                            detail.status === "MORE_INFORMATION_REQUIRED" ? (
-                              <label className="customer-document-replacement">
-                                <span>
-                                  {uploadingDocument === document.type
-                                    ? text.replacingDocument
-                                    : text.replaceDocument}
-                                </span>
-                                <input
-                                  accept="image/jpeg,image/png,application/pdf"
-                                  disabled={uploadingDocument !== ""}
-                                  onChange={(event) =>
-                                    void uploadReplacement(document.type, event.target.files?.[0])
-                                  }
-                                  type="file"
-                                />
-                              </label>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {documentUploadError ? (
-                      <p className="customer-document-upload-error">{text.replacementFailed}</p>
-                    ) : null}
-                  </section>
-                  <section>
-                    <h3>{text.conversation}</h3>
-                    {detail.messages.length === 0 ? (
-                      <p>{text.noMessages}</p>
-                    ) : (
-                      <ol className="customer-conversation">
-                        {detail.messages.map((item) => (
-                          <li
-                            className={item.sender === "CUSTOMER" ? "is-customer" : "is-rahal"}
-                            key={item.id}
-                          >
-                            <span>
-                              {item.sender === "CUSTOMER" ? text.you : text.rahal} ·{" "}
-                              {formatDate(item.createdAt, locale)}
-                            </span>
-                            <p>{item.body}</p>
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                  </section>
-                  {detail.alternativeOffer && (
-                    <section className="customer-alternative-offer">
-                      <h3>{text.alternativeTitle}</h3>
-                      <p>{text.alternativeCopy}</p>
-                      <strong>{detail.alternativeOffer.vehicle.name}</strong>
-                      <dl className="sales-detail-list">
-                        <div>
-                          <dt>{text.alternativePickup}</dt>
-                          <dd>{formatDate(detail.alternativeOffer.proposedPickupAt, locale)}</dd>
-                        </div>
-                        <div>
-                          <dt>{text.alternativeReturn}</dt>
-                          <dd>{formatDate(detail.alternativeOffer.proposedReturnAt, locale)}</dd>
-                        </div>
-                        <div>
-                          <dt>{text.estimate}</dt>
-                          <dd>{formatEgp(detail.alternativeOffer.estimate.total, locale)}</dd>
-                        </div>
-                        <div>
-                          <dt>{text.alternativeExpires}</dt>
-                          <dd>{formatDate(detail.alternativeOffer.expiresAt, locale)}</dd>
-                        </div>
-                      </dl>
-                      {detail.alternativeOffer.note && (
-                        <blockquote>{detail.alternativeOffer.note}</blockquote>
+                    {detail.branchProgress.bookingReference &&
+                      ["CONFIRMED", "ACTIVE", "COMPLETED"].includes(detail.status) && (
+                        <section className="customer-rental-progress">
+                          <h3>{text.rentalProgressTitle}</h3>
+                          <ol>
+                            <li className="is-complete">
+                              <span>✓</span>
+                              <div>
+                                <strong>{text.readyForPickup}</strong>
+                                <small>{detail.branchProgress.bookingReference}</small>
+                              </div>
+                            </li>
+                            <li className={detail.rentalProgress.deliveredAt ? "is-complete" : ""}>
+                              <span>{detail.rentalProgress.deliveredAt ? "✓" : "2"}</span>
+                              <div>
+                                <strong>
+                                  {detail.rentalProgress.deliveredAt
+                                    ? text.vehicleDelivered
+                                    : text.readyForPickup}
+                                </strong>
+                                {detail.rentalProgress.deliveredAt && (
+                                  <small>
+                                    {formatDate(detail.rentalProgress.deliveredAt, locale)}
+                                  </small>
+                                )}
+                              </div>
+                            </li>
+                            <li className={detail.rentalProgress.returnedAt ? "is-complete" : ""}>
+                              <span>{detail.rentalProgress.returnedAt ? "✓" : "3"}</span>
+                              <div>
+                                <strong>
+                                  {detail.rentalProgress.returnedAt
+                                    ? text.vehicleReturned
+                                    : text.waitingForReturn}
+                                </strong>
+                                {detail.rentalProgress.returnedAt && (
+                                  <small>
+                                    {formatDate(detail.rentalProgress.returnedAt, locale)}
+                                  </small>
+                                )}
+                              </div>
+                            </li>
+                            <li className={detail.rentalProgress.completedAt ? "is-complete" : ""}>
+                              <span>{detail.rentalProgress.completedAt ? "✓" : "4"}</span>
+                              <div>
+                                <strong>{text.rentalCompleted}</strong>
+                                {detail.rentalProgress.completedAt && (
+                                  <small>
+                                    {formatDate(detail.rentalProgress.completedAt, locale)}
+                                  </small>
+                                )}
+                              </div>
+                            </li>
+                          </ol>
+                        </section>
                       )}
-                      {detail.alternativeOffer.status === "PENDING" &&
-                        detail.status === "ALTERNATIVE_OFFERED" && (
-                          <div className="customer-alternative-actions">
-                            <button
-                              disabled={offerAction !== null}
-                              type="button"
-                              onClick={() => void respondToAlternative("ACCEPT")}
+                    <section>
+                      <h3>{text.documents}</h3>
+                      {detail.documents.length === 0 ? (
+                        <p>{text.noDocuments}</p>
+                      ) : (
+                        <ul className="sales-document-statuses">
+                          {detail.documents.map((document) => (
+                            <li key={document.type}>
+                              <b>{documentLabel(document.type, locale)}</b>
+                              <span>{document.status.replaceAll("_", " ")}</span>
+                              {document.rejectionReason ? <p>{document.rejectionReason}</p> : null}
+                              {document.status === "REJECTED" &&
+                              detail.status === "MORE_INFORMATION_REQUIRED" ? (
+                                <label className="customer-document-replacement">
+                                  <span>
+                                    {uploadingDocument === document.type
+                                      ? text.replacingDocument
+                                      : text.replaceDocument}
+                                  </span>
+                                  <input
+                                    accept="image/jpeg,image/png,application/pdf"
+                                    disabled={uploadingDocument !== ""}
+                                    onChange={(event) =>
+                                      void uploadReplacement(document.type, event.target.files?.[0])
+                                    }
+                                    type="file"
+                                  />
+                                </label>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {documentUploadError ? (
+                        <p className="customer-document-upload-error">{text.replacementFailed}</p>
+                      ) : null}
+                    </section>
+                    <section>
+                      <h3>{text.conversation}</h3>
+                      {detail.messages.length === 0 ? (
+                        <p>{text.noMessages}</p>
+                      ) : (
+                        <ol className="customer-conversation">
+                          {detail.messages.map((item) => (
+                            <li
+                              className={item.sender === "CUSTOMER" ? "is-customer" : "is-rahal"}
+                              key={item.id}
                             >
-                              {offerAction === "ACCEPT"
-                                ? text.respondingAlternative
-                                : text.acceptAlternative}
-                            </button>
-                            <button
-                              disabled={offerAction !== null}
-                              type="button"
-                              onClick={() => void respondToAlternative("DECLINE")}
-                            >
-                              {offerAction === "DECLINE"
-                                ? text.respondingAlternative
-                                : text.declineAlternative}
-                            </button>
+                              <span>
+                                {item.sender === "CUSTOMER" ? text.you : text.rahal} ·{" "}
+                                {formatDate(item.createdAt, locale)}
+                              </span>
+                              <p>{item.body}</p>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </section>
+                    {detail.alternativeOffer && (
+                      <section className="customer-alternative-offer">
+                        <h3>{text.alternativeTitle}</h3>
+                        <p>{text.alternativeCopy}</p>
+                        <strong>{detail.alternativeOffer.vehicle.name}</strong>
+                        <dl className="sales-detail-list">
+                          <div>
+                            <dt>{text.alternativePickup}</dt>
+                            <dd>{formatDate(detail.alternativeOffer.proposedPickupAt, locale)}</dd>
                           </div>
+                          <div>
+                            <dt>{text.alternativeReturn}</dt>
+                            <dd>{formatDate(detail.alternativeOffer.proposedReturnAt, locale)}</dd>
+                          </div>
+                          <div>
+                            <dt>{text.estimate}</dt>
+                            <dd>{formatEgp(detail.alternativeOffer.estimate.total, locale)}</dd>
+                          </div>
+                          <div>
+                            <dt>{text.alternativeExpires}</dt>
+                            <dd>{formatDate(detail.alternativeOffer.expiresAt, locale)}</dd>
+                          </div>
+                        </dl>
+                        {detail.alternativeOffer.note && (
+                          <blockquote>{detail.alternativeOffer.note}</blockquote>
                         )}
-                      {offerFeedback && (
-                        <p
-                          className={`customer-offer-feedback${offerFeedback === "ERROR" ? " is-error" : ""}`}
+                        {detail.alternativeOffer.status === "PENDING" &&
+                          detail.status === "ALTERNATIVE_OFFERED" && (
+                            <div className="customer-alternative-actions">
+                              <button
+                                disabled={offerAction !== null}
+                                type="button"
+                                onClick={() => void respondToAlternative("ACCEPT")}
+                              >
+                                {offerAction === "ACCEPT"
+                                  ? text.respondingAlternative
+                                  : text.acceptAlternative}
+                              </button>
+                              <button
+                                disabled={offerAction !== null}
+                                type="button"
+                                onClick={() => void respondToAlternative("DECLINE")}
+                              >
+                                {offerAction === "DECLINE"
+                                  ? text.respondingAlternative
+                                  : text.declineAlternative}
+                              </button>
+                            </div>
+                          )}
+                        {offerFeedback && (
+                          <p
+                            className={`customer-offer-feedback${offerFeedback === "ERROR" ? " is-error" : ""}`}
+                          >
+                            {offerFeedback === "ACCEPTED"
+                              ? text.alternativeAccepted
+                              : offerFeedback === "DECLINED"
+                                ? text.alternativeDeclined
+                                : text.alternativeFailed}
+                          </p>
+                        )}
+                      </section>
+                    )}
+                    {detail.needsResponse && (
+                      <section className="customer-reply-panel">
+                        <h3>{text.replyTitle}</h3>
+                        <p>{text.replyCopy}</p>
+                        <label>
+                          <span>{text.replyLabel}</span>
+                          <textarea
+                            value={message}
+                            maxLength={500}
+                            onChange={(event) => setMessage(event.target.value)}
+                            placeholder={text.replyPlaceholder}
+                          />
+                          <small>{text.replyHint}</small>
+                        </label>
+                        <button
+                          className="sales-action sales-action--claim"
+                          disabled={sending || message.trim().length < 10}
+                          type="button"
+                          onClick={() => void sendReply()}
                         >
-                          {offerFeedback === "ACCEPTED"
-                            ? text.alternativeAccepted
-                            : offerFeedback === "DECLINED"
-                              ? text.alternativeDeclined
-                              : text.alternativeFailed}
-                        </p>
-                      )}
-                    </section>
-                  )}
-                  {detail.needsResponse && (
-                    <section className="customer-reply-panel">
-                      <h3>{text.replyTitle}</h3>
-                      <p>{text.replyCopy}</p>
-                      <label>
-                        <span>{text.replyLabel}</span>
-                        <textarea
-                          value={message}
-                          maxLength={500}
-                          onChange={(event) => setMessage(event.target.value)}
-                          placeholder={text.replyPlaceholder}
-                        />
-                        <small>{text.replyHint}</small>
-                      </label>
-                      <button
-                        className="sales-action sales-action--claim"
-                        disabled={sending || message.trim().length < 10}
-                        type="button"
-                        onClick={() => void sendReply()}
-                      >
-                        {sending ? text.sending : text.send}
-                        <span>→</span>
-                      </button>
-                      {sendError && <p className="sales-action-error">{text.sendFailed}</p>}
-                    </section>
-                  )}
-                  {sent && <p className="customer-reply-success">{text.sent}</p>}
-                  {detail.status === "COMPLETED" ? (
-                    <CustomerReviewPanel locale={locale} reservationId={detail.id} />
-                  ) : null}
-                  <p className="sales-safety-note">{text.safety}</p>
-                </div>
-              )}
-            </aside>
-          </div>
+                          {sending ? text.sending : text.send}
+                          <span>→</span>
+                        </button>
+                        {sendError && <p className="sales-action-error">{text.sendFailed}</p>}
+                      </section>
+                    )}
+                    {sent && <p className="customer-reply-success">{text.sent}</p>}
+                    {detail.status === "COMPLETED" ? (
+                      <CustomerReviewPanel locale={locale} reservationId={detail.id} />
+                    ) : null}
+                    <p className="sales-safety-note">{text.safety}</p>
+                  </div>
+                )}
+              </aside>
+            </div>
+          </>
         )}
       </div>
     </WorkspaceShell>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CustomerReservationDraftDetail } from "@rahal/contracts";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
@@ -23,6 +24,9 @@ const requestCopy = {
     signIn: "سجّل الدخول للمتابعة",
     authRequired: "سجّل الدخول بحساب العميل لحفظ اختياراتك.",
     saveFailed: "تعذر حفظ المسودة الآن. حاول مرة أخرى.",
+    resumingDraft: "جاري استرجاع مسودتك الآمنة...",
+    resumedDraft: "تم استرجاع المسودة ويمكنك المتابعة من آخر خطوة.",
+    resumeFailed: "تعذر استرجاع هذه المسودة. ربما انتهى موعدها أو تم إلغاؤها من جهاز آخر.",
     chooseDriver: "اختر هل تريد سائقًا قبل حفظ المسودة.",
     draftNotice: "هذه مسودة فقط وليست طلبًا مرسلًا أو حجزًا مؤكدًا.",
     stepTwo: "الخطوة 2 من 6: بيانات العميل",
@@ -103,6 +107,10 @@ const requestCopy = {
     signIn: "Sign in to continue",
     authRequired: "Sign in with a customer account to save your selections.",
     saveFailed: "The draft could not be saved. Please try again.",
+    resumingDraft: "Restoring your secure draft...",
+    resumedDraft: "Your draft is restored. Continue from the last completed step.",
+    resumeFailed:
+      "This draft could not be restored. It may have expired or been removed on another device.",
     chooseDriver: "Choose whether you want a driver before saving the draft.",
     draftNotice: "This is only a draft. It is not a submitted request or a confirmed booking.",
     stepTwo: "Step 2 of 6: customer details",
@@ -326,18 +334,25 @@ function addDays(value: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function maskDraftPhone(value: string) {
+  if (value.length < 7) return "••••";
+  return `${value.slice(0, 3)}••••${value.slice(-4)}`;
+}
+
 export function ReservationStart({
   locale,
   vehicle,
   requestedPickup,
   requestedReturn,
   requestedDriver,
+  requestedDraft,
 }: {
   locale: PublicLocale;
   vehicle: PublicVehicle;
   requestedPickup?: string;
   requestedReturn?: string;
   requestedDriver?: string;
+  requestedDraft?: string;
 }) {
   const content = getPublicContent(locale);
   const copy = requestCopy[locale];
@@ -428,16 +443,83 @@ export function ReservationStart({
     status: "PENDING_REVIEW";
     submittedAt: string;
   } | null>(null);
+  const [resumingDraft, setResumingDraft] = useState(Boolean(requestedDraft));
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [resumeConsent, setResumeConsent] = useState<
+    CustomerReservationDraftDetail["consents"] | null
+  >(null);
   const selectionParams = new URLSearchParams({
     vehicle: vehicle.id,
     pickup,
     return: returnDate,
     driver: driver === "with-driver" ? "with-driver" : driver === "self-drive" ? "self" : "any",
   });
+  if (requestedDraft) selectionParams.set("draft", requestedDraft);
   const alternateHref = `${localizedPath(locale === "ar" ? "en" : "ar", "/reservation")}?${selectionParams.toString()}`;
   const backParams = new URLSearchParams(selectionParams);
   backParams.delete("vehicle");
   const backHref = `${localizedPath(locale, "/cars")}/${vehicle.id}?${backParams.toString()}`;
+
+  useEffect(() => {
+    if (!requestedDraft) return;
+    const controller = new AbortController();
+    setResumingDraft(true);
+    setResumeError(null);
+    fetch(
+      `/api/reservations/customer/drafts/${encodeURIComponent(requestedDraft)}?locale=${locale}`,
+      {
+        credentials: "include",
+        signal: controller.signal,
+      },
+    )
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          data?: CustomerReservationDraftDetail;
+          error?: { message?: string };
+        };
+        if (!response.ok || !payload.data || payload.data.vehicle.id !== vehicle.id) {
+          throw new Error(payload.error?.message ?? "draft unavailable");
+        }
+        const draft = payload.data;
+        setPickup(draft.pickupAt.slice(0, 10));
+        setReturnDate(draft.returnAt.slice(0, 10));
+        setDriver(draft.driverRequested ? "with-driver" : "self-drive");
+        setSavedDraft({
+          id: draft.id,
+          reference: draft.reference,
+          estimatedTotalEgp: draft.estimate.total,
+        });
+        setReviewing(true);
+        if (draft.customerDetails) {
+          setNationality(draft.customerDetails.nationality);
+          setCustomerCategory(draft.customerDetails.customerCategory);
+          setAddress(draft.customerDetails.address);
+          setEmergencyContactName(draft.customerDetails.emergencyContactName);
+          setEmergencyContactPhone(draft.customerDetails.emergencyContactPhone);
+          setSavedDetails({
+            emailMasked: draft.customerDetails.emailMasked,
+            phoneMasked: draft.customerDetails.phoneMasked,
+            emergencyContactPhoneMasked: maskDraftPhone(
+              draft.customerDetails.emergencyContactPhone,
+            ),
+          });
+        }
+        setResumeConsent(draft.consents);
+        setMarketingAccepted(draft.consents.marketingAccepted);
+        if (draft.consents.requiredAccepted && draft.consents.policyVersion) {
+          setSavedConsents({
+            policyVersion: draft.consents.policyVersion,
+            marketingAccepted: draft.consents.marketingAccepted,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setResumeError(copy.resumeFailed);
+      })
+      .finally(() => setResumingDraft(false));
+    return () => controller.abort();
+  }, [copy.resumeFailed, locale, requestedDraft, vehicle.id]);
 
   useEffect(() => {
     if (!savedDetails) return;
@@ -454,14 +536,27 @@ export function ReservationStart({
         };
         if (!response.ok || !payload.data) throw new Error("policy bundle unavailable");
         setConsentBundle(payload.data);
-        setAcceptedPolicies({});
+        if (
+          resumeConsent?.requiredAccepted &&
+          resumeConsent.policyVersion === payload.data.version
+        ) {
+          setAcceptedPolicies(
+            Object.fromEntries(payload.data.policies.map((policy) => [policy.key, true])),
+          );
+        } else {
+          setAcceptedPolicies({});
+          if (resumeConsent?.requiredAccepted) {
+            setSavedConsents(null);
+            setDocumentChecklist(null);
+          }
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setPolicyError(copy.policiesFailed);
       });
     return () => controller.abort();
-  }, [copy.policiesFailed, locale, savedDetails]);
+  }, [copy.policiesFailed, locale, resumeConsent, savedDetails]);
 
   useEffect(() => {
     if (!savedDraft || !savedConsents) return;
@@ -825,6 +920,19 @@ export function ReservationStart({
                   </span>
                 ))}
               </div>
+              {resumingDraft || requestedDraft ? (
+                <p
+                  className={`reservation-resume-state${resumeError ? " is-error" : ""}`}
+                  role={resumeError ? "alert" : "status"}
+                >
+                  <span aria-hidden="true">{resumeError ? "!" : "↻"}</span>
+                  {resumeError
+                    ? resumeError
+                    : resumingDraft
+                      ? copy.resumingDraft
+                      : copy.resumedDraft}
+                </p>
+              ) : null}
             </header>
 
             <div className="reservation-form-heading">

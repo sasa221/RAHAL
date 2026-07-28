@@ -255,7 +255,12 @@ describe("RAHAL API", () => {
       .useValue({ assertAllowed: () => undefined })
       .overrideProvider(ReservationsRepository)
       .useValue({
-        expireStaleReviewWindows: async () => ({ expiredOffers: 0, expiredPreApprovals: 0 }),
+        expireStaleReviewWindows: async () => ({
+          expiredDrafts: 0,
+          expiredOffers: 0,
+          expiredPreApprovals: 0,
+          removedDraftStorageKeys: [],
+        }),
         findVehicle: async () => ({
           id: "silver-executive",
           branchId: "demo-branch-cairo",

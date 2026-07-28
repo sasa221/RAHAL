@@ -67,6 +67,56 @@ export type ReservationDraft = {
   estimatedTotalEgp: number;
 };
 
+export type CustomerReservationDraftStep = "CUSTOMER_DETAILS" | "CONSENTS" | "DOCUMENTS" | "REVIEW";
+
+export type CustomerReservationDraftSummary = {
+  id: string;
+  reference: string;
+  status: "DRAFT";
+  createdAt: string;
+  updatedAt: string;
+  pickupAt: string;
+  returnAt: string;
+  expiresAt: string;
+  driverRequested: boolean;
+  estimate: { currency: "EGP"; total: number };
+  vehicle: { id: string; name: string };
+  branch: { id: string; name: string };
+  progress: {
+    completedSteps: number;
+    totalSteps: 5;
+    customerDetailsComplete: boolean;
+    consentsComplete: boolean;
+    documentsUploaded: number;
+    documentsRequired: number;
+    nextStep: CustomerReservationDraftStep;
+  };
+};
+
+export type CustomerReservationDraftDetail = CustomerReservationDraftSummary & {
+  customerDetails: {
+    nationality: string;
+    customerCategory: "EGYPTIAN" | "FOREIGN";
+    address: string;
+    emergencyContactName: string;
+    emergencyContactPhone: string;
+    emailMasked: string;
+    phoneMasked: string;
+  } | null;
+  consents: {
+    policyVersion: string | null;
+    requiredAccepted: boolean;
+    marketingAccepted: boolean;
+  };
+};
+
+export type CustomerReservationDraftAbandonResult = {
+  id: string;
+  reference: string;
+  status: "EXPIRED";
+  abandonedAt: string;
+};
+
 export type ReservationCustomerDetails = {
   draftId: string;
   reference: string;

@@ -139,6 +139,71 @@ export class ReservationsRepository {
     });
   }
 
+  findCustomerDrafts(customerId: string, now: Date) {
+    return this.prisma.client.reservation.findMany({
+      where: { customerId, status: "DRAFT", pickupAt: { gt: now } },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      take: 20,
+      select: customerDraftSelect,
+    });
+  }
+
+  findCustomerDraft(id: string, customerId: string, now: Date) {
+    return this.prisma.client.reservation.findFirst({
+      where: { id, customerId, status: "DRAFT", pickupAt: { gt: now } },
+      select: customerDraftSelect,
+    });
+  }
+
+  async abandonCustomerDraft(id: string, customerId: string) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const draft = await transaction.reservation.findFirst({
+        where: { id, customerId, status: "DRAFT" },
+        select: {
+          id: true,
+          reference: true,
+          documents: {
+            where: { deletedAt: null, status: { not: "DELETED" } },
+            select: { storageKey: true },
+          },
+        },
+      });
+      if (!draft) return null;
+
+      const abandonedAt = new Date();
+      const updated = await transaction.reservation.updateMany({
+        where: { id, customerId, status: "DRAFT" },
+        data: { status: "EXPIRED" },
+      });
+      if (!updated.count) return null;
+
+      await transaction.reservationDocument.updateMany({
+        where: { reservationId: id, deletedAt: null, status: { not: "DELETED" } },
+        data: { status: "DELETED", deletedAt: abandonedAt },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: id,
+          fromStatus: "DRAFT",
+          toStatus: "EXPIRED",
+          actorId: customerId,
+          note: "Customer abandoned the reservation draft.",
+          metadata: { abandonedAt: abandonedAt.toISOString() },
+        },
+      });
+
+      return {
+        data: {
+          id: draft.id,
+          reference: draft.reference,
+          status: "EXPIRED" as const,
+          abandonedAt: abandonedAt.toISOString(),
+        },
+        storageKeys: draft.documents.map((document) => document.storageKey),
+      };
+    });
+  }
+
   findOwnedDocumentContext(id: string, customerId: string) {
     return this.prisma.client.reservation.findFirst({
       where: { id, customerId, status: { in: ["DRAFT", "MORE_INFORMATION_REQUIRED"] } },
@@ -1952,6 +2017,47 @@ export class ReservationsRepository {
 
   async expireStaleReviewWindows(now: Date) {
     return this.prisma.client.$transaction(async (transaction) => {
+      const dueDrafts = await transaction.reservation.findMany({
+        where: { status: "DRAFT", pickupAt: { lte: now } },
+        orderBy: { pickupAt: "asc" },
+        take: 100,
+        select: {
+          id: true,
+          documents: {
+            where: { deletedAt: null, status: { not: "DELETED" } },
+            select: { storageKey: true },
+          },
+        },
+      });
+      let expiredDrafts = 0;
+      const removedDraftStorageKeys: string[] = [];
+      for (const draft of dueDrafts) {
+        const updated = await transaction.reservation.updateMany({
+          where: { id: draft.id, status: "DRAFT", pickupAt: { lte: now } },
+          data: { status: "EXPIRED" },
+        });
+        if (!updated.count) continue;
+        expiredDrafts += 1;
+        removedDraftStorageKeys.push(...draft.documents.map((document) => document.storageKey));
+        await transaction.reservationDocument.updateMany({
+          where: {
+            reservationId: draft.id,
+            deletedAt: null,
+            status: { not: "DELETED" },
+          },
+          data: { status: "DELETED", deletedAt: now },
+        });
+        await transaction.reservationEvent.create({
+          data: {
+            reservationId: draft.id,
+            fromStatus: "DRAFT",
+            toStatus: "EXPIRED",
+            note: "The unsubmitted draft expired when its pickup time passed.",
+            metadata: { expiredAt: now.toISOString() },
+          },
+        });
+      }
+
       const dueOffers = await transaction.alternativeOffer.findMany({
         where: { status: "PENDING", expiresAt: { lte: now } },
         orderBy: { expiresAt: "asc" },
@@ -2094,7 +2200,12 @@ export class ReservationsRepository {
         });
       }
 
-      return { expiredOffers, expiredPreApprovals };
+      return {
+        expiredDrafts,
+        expiredOffers,
+        expiredPreApprovals,
+        removedDraftStorageKeys,
+      };
     });
   }
 
@@ -2419,6 +2530,39 @@ const draftSelect = {
   returnAt: true,
   driverRequested: true,
   estimatedTotal: true,
+} as const;
+
+const customerDraftSelect = {
+  id: true,
+  reference: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  pickupAt: true,
+  returnAt: true,
+  driverRequested: true,
+  estimatedTotal: true,
+  customerEmailSnapshot: true,
+  customerPhoneSnapshot: true,
+  nationalitySnapshot: true,
+  customerCategorySnapshot: true,
+  addressSnapshot: true,
+  emergencyContactNameSnapshot: true,
+  emergencyContactPhoneSnapshot: true,
+  customerDetailsCompletedAt: true,
+  termsVersion: true,
+  termsAcceptedAt: true,
+  privacyConsentAt: true,
+  documentConsentAt: true,
+  operationalConsentAt: true,
+  marketingConsentAt: true,
+  vehicle: { select: { id: true, nameAr: true, nameEn: true } },
+  branch: { select: { id: true, nameAr: true, nameEn: true } },
+  documents: {
+    where: { deletedAt: null, status: { not: "DELETED" } },
+    orderBy: { createdAt: "desc" },
+    select: { type: true, status: true },
+  },
 } as const;
 
 const salesQueueSelect = {

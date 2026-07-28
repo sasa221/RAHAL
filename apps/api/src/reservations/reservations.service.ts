@@ -10,6 +10,9 @@ import {
 import type {
   CustomerAlternativeOfferResponse,
   CustomerInformationResponse,
+  CustomerReservationDraftAbandonResult,
+  CustomerReservationDraftDetail,
+  CustomerReservationDraftSummary,
   CustomerReservationDetail,
   CustomerReservationStatus,
   CustomerReservationSummary,
@@ -480,18 +483,21 @@ export class ReservationsService {
     throw new ConflictException("Complete verification and every required step before submission.");
   }
 
-  async getSalesQueue(token: string | undefined): Promise<SalesReservationQueueItem[]> {
+  async getSalesQueue(
+    token: string | undefined,
+    requestedLocale?: string,
+  ): Promise<SalesReservationQueueItem[]> {
     const session = await this.requireStaffPermission(token, "reservations.view");
     const canSeeAll = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
     const records = await this.reservations.findSalesQueue(session.user.id, canSeeAll);
-    return records.map((record) =>
-      toSalesQueueItem(record, session.user.id, session.user.preferredLocale),
-    );
+    const locale = resolveCustomerLocale(requestedLocale, session.user.preferredLocale);
+    return records.map((record) => toSalesQueueItem(record, session.user.id, locale));
   }
 
   async getSalesReview(
     token: string | undefined,
     reservationId: string,
+    requestedLocale?: string,
   ): Promise<SalesReservationReview> {
     const session = await this.requireStaffPermission(token, "reservations.view");
     const record = await this.reservations.findSalesReview(reservationId);
@@ -510,8 +516,9 @@ export class ReservationsService {
       record.documentConsentAt &&
       record.operationalConsentAt,
     );
+    const locale = resolveCustomerLocale(requestedLocale, session.user.preferredLocale);
     return {
-      ...toSalesQueueItem(record, session.user.id, session.user.preferredLocale),
+      ...toSalesQueueItem(record, session.user.id, locale),
       canReviewDocuments:
         session.user.role !== "SALES" || record.assignedSalesId === session.user.id,
       customer: {
@@ -545,10 +552,7 @@ export class ReservationsService {
         note: event.note,
         createdAt: event.createdAt.toISOString(),
       })),
-      alternativeOffer: toAlternativeOffer(
-        record.alternativeOffers[0] ?? null,
-        session.user.preferredLocale,
-      ),
+      alternativeOffer: toAlternativeOffer(record.alternativeOffers[0] ?? null, locale),
       branchProgress: {
         expectedDepositEgp: record.vehicle.depositAmount?.toNumber?.() ?? null,
         attendedAt: record.branchAttendedAt?.toISOString() ?? null,
@@ -587,6 +591,7 @@ export class ReservationsService {
   async claimSalesReview(
     token: string | undefined,
     reservationId: string,
+    requestedLocale?: string,
   ): Promise<SalesReservationReview> {
     const session = await this.requireStaffPermission(token, "reservations.review");
     const result = await this.reservations.claimSalesReview({
@@ -600,7 +605,7 @@ export class ReservationsService {
     if (result.kind === "ALREADY_ASSIGNED") {
       throw new ConflictException("Another sales employee already claimed this request.");
     }
-    return this.getSalesReview(token, reservationId);
+    return this.getSalesReview(token, reservationId, requestedLocale);
   }
 
   async accessSalesDocument(
@@ -872,23 +877,100 @@ export class ReservationsService {
     return result.data;
   }
 
-  async getCustomerRequests(token: string | undefined): Promise<CustomerReservationSummary[]> {
+  async getCustomerRequests(
+    token: string | undefined,
+    requestedLocale?: string,
+  ): Promise<CustomerReservationSummary[]> {
     const session = await this.auth.getSession(token);
     assertCustomerAccess(session.user.role);
     const records = await this.reservations.findCustomerRequests(session.user.id);
-    return records.map((record) => toCustomerRequestSummary(record, session.user.preferredLocale));
+    const locale = resolveCustomerLocale(requestedLocale, session.user.preferredLocale);
+    return records.map((record) => toCustomerRequestSummary(record, locale));
+  }
+
+  async getCustomerDrafts(
+    token: string | undefined,
+    requestedLocale?: string,
+  ): Promise<CustomerReservationDraftSummary[]> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const records = await this.reservations.findCustomerDrafts(session.user.id, new Date());
+    const rules = await this.loadDraftRequirementRules(records);
+    const locale = resolveCustomerLocale(requestedLocale, session.user.preferredLocale);
+    return records.map((record) =>
+      toCustomerDraftSummary(
+        record,
+        locale,
+        record.customerCategorySnapshot ? (rules.get(record.customerCategorySnapshot) ?? []) : [],
+      ),
+    );
+  }
+
+  async getCustomerDraft(
+    token: string | undefined,
+    draftId: string,
+    requestedLocale?: string,
+  ): Promise<CustomerReservationDraftDetail> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const record = await this.reservations.findCustomerDraft(draftId, session.user.id, new Date());
+    if (!record) throw new NotFoundException("The reservation draft was not found.");
+    const rules = record.customerCategorySnapshot
+      ? await this.reservations.findDocumentRequirementRules(record.customerCategorySnapshot)
+      : [];
+    const locale = resolveCustomerLocale(requestedLocale, session.user.preferredLocale);
+    const summary = toCustomerDraftSummary(record, locale, rules);
+    const requiredAccepted = hasRequiredDraftConsents(record);
+    return {
+      ...summary,
+      customerDetails:
+        record.customerDetailsCompletedAt && record.customerCategorySnapshot
+          ? {
+              nationality: record.nationalitySnapshot ?? "",
+              customerCategory: record.customerCategorySnapshot,
+              address: record.addressSnapshot ?? "",
+              emergencyContactName: record.emergencyContactNameSnapshot ?? "",
+              emergencyContactPhone: record.emergencyContactPhoneSnapshot ?? "",
+              emailMasked: maskEmail(record.customerEmailSnapshot ?? "hidden@rahal.local"),
+              phoneMasked: maskPhone(record.customerPhoneSnapshot ?? "+20000000000"),
+            }
+          : null,
+      consents: {
+        policyVersion: record.termsVersion,
+        requiredAccepted,
+        marketingAccepted: Boolean(record.marketingConsentAt),
+      },
+    };
+  }
+
+  async abandonCustomerDraft(
+    token: string | undefined,
+    draftId: string,
+  ): Promise<CustomerReservationDraftAbandonResult> {
+    const session = await this.auth.getSession(token);
+    assertCustomerAccess(session.user.role);
+    const abandoned = await this.reservations.abandonCustomerDraft(draftId, session.user.id);
+    if (!abandoned) throw new NotFoundException("The reservation draft was not found.");
+    await Promise.allSettled(
+      abandoned.storageKeys.map((storageKey) => this.documentStorage.remove(storageKey)),
+    );
+    return abandoned.data;
   }
 
   async getCustomerRequest(
     token: string | undefined,
     reservationId: string,
+    requestedLocale?: string,
   ): Promise<CustomerReservationDetail> {
     const session = await this.auth.getSession(token);
     assertCustomerAccess(session.user.role);
     const record = await this.reservations.findCustomerRequest(reservationId, session.user.id);
     if (!record) throw new NotFoundException("The reservation request was not found.");
     return {
-      ...toCustomerRequestSummary(record, session.user.preferredLocale),
+      ...toCustomerRequestSummary(
+        record,
+        resolveCustomerLocale(requestedLocale, session.user.preferredLocale),
+      ),
       documents: record.documents.map((document) => ({
         id: document.id,
         type: document.type as ReservationDocumentType,
@@ -944,6 +1026,28 @@ export class ReservationsService {
       throw new ConflictException("Replace every rejected document before sending your response.");
     }
     return result.data;
+  }
+
+  private async loadDraftRequirementRules(
+    records: Awaited<ReturnType<ReservationsRepository["findCustomerDrafts"]>>,
+  ) {
+    const categories = [
+      ...new Set(
+        records
+          .map((record) => record.customerCategorySnapshot)
+          .filter(
+            (category): category is "EGYPTIAN" | "FOREIGN" =>
+              category === "EGYPTIAN" || category === "FOREIGN",
+          ),
+      ),
+    ];
+    const entries = await Promise.all(
+      categories.map(
+        async (category) =>
+          [category, await this.reservations.findDocumentRequirementRules(category)] as const,
+      ),
+    );
+    return new Map(entries);
   }
 
   async respondToAlternativeOffer(
@@ -1151,6 +1255,91 @@ function toCustomerRequestSummary(
     },
     needsResponse: ["MORE_INFORMATION_REQUIRED", "ALTERNATIVE_OFFERED"].includes(record.status),
     preApprovalExpiresAt: record.preApprovalExpiresAt?.toISOString() ?? null,
+  };
+}
+
+type CustomerDraftRecord = Awaited<
+  ReturnType<ReservationsRepository["findCustomerDrafts"]>
+>[number];
+type CustomerDraftRequirementRule = Awaited<
+  ReturnType<ReservationsRepository["findDocumentRequirementRules"]>
+>[number];
+
+function hasRequiredDraftConsents(record: CustomerDraftRecord) {
+  return Boolean(
+    record.termsVersion &&
+    record.termsAcceptedAt &&
+    record.privacyConsentAt &&
+    record.documentConsentAt &&
+    record.operationalConsentAt,
+  );
+}
+
+function resolveCustomerLocale(requested: string | undefined, preferred: string): "ar" | "en" {
+  if (requested === "ar" || requested === "en") return requested;
+  return preferred === "en" ? "en" : "ar";
+}
+
+function toCustomerDraftSummary(
+  record: CustomerDraftRecord,
+  locale: "ar" | "en",
+  rules: CustomerDraftRequirementRule[],
+): CustomerReservationDraftSummary {
+  const customerDetailsComplete = Boolean(
+    record.customerDetailsCompletedAt && record.customerCategorySnapshot,
+  );
+  const consentsComplete = hasRequiredDraftConsents(record);
+  const applicableRules = rules.filter(
+    (rule) => !rule.requiresSelfDrive || !record.driverRequested,
+  );
+  const uploadedTypes = new Set(
+    record.documents
+      .filter((document) => ["UPLOADED", "UNDER_REVIEW", "VERIFIED"].includes(document.status))
+      .map((document) => document.type),
+  );
+  const documentsUploaded = applicableRules.filter((rule) =>
+    uploadedTypes.has(rule.documentType),
+  ).length;
+  const documentsRequired = applicableRules.length;
+  const documentsComplete = documentsRequired > 0 && documentsUploaded === documentsRequired;
+  const nextStep = !customerDetailsComplete
+    ? ("CUSTOMER_DETAILS" as const)
+    : !consentsComplete
+      ? ("CONSENTS" as const)
+      : !documentsComplete
+        ? ("DOCUMENTS" as const)
+        : ("REVIEW" as const);
+  const completedSteps =
+    1 + Number(customerDetailsComplete) + Number(consentsComplete) + Number(documentsComplete);
+
+  return {
+    id: record.id,
+    reference: record.reference,
+    status: "DRAFT",
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+    pickupAt: record.pickupAt.toISOString(),
+    returnAt: record.returnAt.toISOString(),
+    expiresAt: record.pickupAt.toISOString(),
+    driverRequested: record.driverRequested,
+    estimate: { currency: "EGP", total: record.estimatedTotal.toNumber() },
+    vehicle: {
+      id: record.vehicle.id,
+      name: locale === "ar" ? record.vehicle.nameAr : record.vehicle.nameEn,
+    },
+    branch: {
+      id: record.branch.id,
+      name: locale === "ar" ? record.branch.nameAr : record.branch.nameEn,
+    },
+    progress: {
+      completedSteps,
+      totalSteps: 5,
+      customerDetailsComplete,
+      consentsComplete,
+      documentsUploaded,
+      documentsRequired,
+      nextStep,
+    },
   };
 }
 

@@ -17,6 +17,7 @@ export default async function EnglishReservationPage({
     <ReservationStart
       locale="en"
       requestedDriver={firstValue(query.driver)}
+      requestedDraft={firstValue(query.draft)}
       requestedPickup={firstValue(query.pickup)}
       requestedReturn={firstValue(query.return)}
       vehicle={vehicle}

@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   Res,
   StreamableFile,
@@ -16,6 +17,9 @@ import type {
   ApiSuccess,
   CustomerInformationResponse,
   CustomerAlternativeOfferResponse,
+  CustomerReservationDraftAbandonResult,
+  CustomerReservationDraftDetail,
+  CustomerReservationDraftSummary,
   CustomerReservationDetail,
   CustomerReservationSummary,
   ReservationConsentBundle,
@@ -142,24 +146,29 @@ export class ReservationsController {
   }
 
   @Get("sales/queue")
-  async salesQueue(@Req() request: Request): Promise<ApiSuccess<SalesReservationQueueItem[]>> {
-    return { data: await this.reservations.getSalesQueue(readAuthCookie(request)) };
+  async salesQueue(
+    @Query("locale") locale: string | undefined,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesReservationQueueItem[]>> {
+    return { data: await this.reservations.getSalesQueue(readAuthCookie(request), locale) };
   }
 
   @Get("sales/:id")
   async salesReview(
     @Param("id") id: string,
+    @Query("locale") locale: string | undefined,
     @Req() request: Request,
   ): Promise<ApiSuccess<SalesReservationReview>> {
-    return { data: await this.reservations.getSalesReview(readAuthCookie(request), id) };
+    return { data: await this.reservations.getSalesReview(readAuthCookie(request), id, locale) };
   }
 
   @Post("sales/:id/claim")
   async claimForSalesReview(
     @Param("id") id: string,
+    @Query("locale") locale: string | undefined,
     @Req() request: Request,
   ): Promise<ApiSuccess<SalesReservationReview>> {
-    return { data: await this.reservations.claimSalesReview(readAuthCookie(request), id) };
+    return { data: await this.reservations.claimSalesReview(readAuthCookie(request), id, locale) };
   }
 
   @Post("sales/:id/documents/:documentId/access")
@@ -260,17 +269,46 @@ export class ReservationsController {
 
   @Get("customer/requests")
   async customerRequests(
+    @Query("locale") locale: string | undefined,
     @Req() request: Request,
   ): Promise<ApiSuccess<CustomerReservationSummary[]>> {
-    return { data: await this.reservations.getCustomerRequests(readAuthCookie(request)) };
+    return { data: await this.reservations.getCustomerRequests(readAuthCookie(request), locale) };
+  }
+
+  @Get("customer/drafts")
+  async customerDrafts(
+    @Query("locale") locale: string | undefined,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerReservationDraftSummary[]>> {
+    return { data: await this.reservations.getCustomerDrafts(readAuthCookie(request), locale) };
+  }
+
+  @Get("customer/drafts/:id")
+  async customerDraft(
+    @Param("id") id: string,
+    @Query("locale") locale: string | undefined,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerReservationDraftDetail>> {
+    return { data: await this.reservations.getCustomerDraft(readAuthCookie(request), id, locale) };
+  }
+
+  @Delete("customer/drafts/:id")
+  async abandonCustomerDraft(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<CustomerReservationDraftAbandonResult>> {
+    return { data: await this.reservations.abandonCustomerDraft(readAuthCookie(request), id) };
   }
 
   @Get("customer/requests/:id")
   async customerRequest(
     @Param("id") id: string,
+    @Query("locale") locale: string | undefined,
     @Req() request: Request,
   ): Promise<ApiSuccess<CustomerReservationDetail>> {
-    return { data: await this.reservations.getCustomerRequest(readAuthCookie(request), id) };
+    return {
+      data: await this.reservations.getCustomerRequest(readAuthCookie(request), id, locale),
+    };
   }
 
   @Post("customer/requests/:id/respond")

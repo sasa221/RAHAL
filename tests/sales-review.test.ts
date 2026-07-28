@@ -26,7 +26,8 @@ describe("sales review workspace", () => {
     expect(controller).toContain('@Get("sales/queue")');
     expect(controller).toContain('@Post("sales/:id/claim")');
     expect(controller).toContain('@Post("sales/:id/decision")');
-    expect(workspace).toContain('fetch("/api/reservations/sales/queue"');
+    expect(workspace).toContain("sales/queue?locale=${locale}");
+    expect(workspace).toContain("encodeURIComponent(id)}?locale=${locale}");
     expect(workspace).toContain("emailMasked");
     expect(workspace).toContain("phoneMasked");
     expect(workspace).toContain("addressMasked");

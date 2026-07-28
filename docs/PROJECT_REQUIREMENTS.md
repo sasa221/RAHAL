@@ -52,6 +52,7 @@ RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management 
 - Translatable records should store Arabic and English text explicitly.
 - Do not apply English-oriented letter spacing to Arabic text.
 - All user-facing dates, numbers, currency labels, statuses, and notifications must be localized.
+- The active Arabic/English route controls presentation locale for customer, sales, draft, and in-app notification reads; changing routes must not require rewriting the account preference.
 
 ## Forbidden content
 
@@ -93,6 +94,8 @@ Permissions must be enforced server-side. UI hiding is not authorization.
 ## Reservation request requirements
 
 An authenticated customer may save the dates/vehicle/driver selection as a `DRAFT` before completing verification. A draft is not a submitted request, does not notify sales, and does not reserve availability. Submission to `PENDING_REVIEW` remains blocked until both email and phone are verified and the required consent/document steps are complete.
+
+Customers must be able to list, resume, and deliberately abandon only their own live drafts. The draft center must derive its next step from current customer details, active document rules, uploaded document metadata, and the saved consent version rather than claiming a fixed completion state. A draft remains live only before its requested pickup time; an expiry sweep changes stale drafts to `EXPIRED`, soft-deletes their document metadata, and removes their private objects. No unapproved legal-retention duration is inferred.
 
 The implemented final-review endpoint exposes only masked customer contacts, safe document status labels, the EGP estimate, and explicit readiness blockers. The submit endpoint independently rechecks every prerequisite and availability inside one database transaction before moving to `PENDING_REVIEW`; it also records the status event, customer notification, and notification outbox event. It does not create a confirmed booking. The current `DEV-` policy bundle deliberately keeps submission disabled until approved production legal text is published.
 

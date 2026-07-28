@@ -40,19 +40,29 @@ describe("in-app notification center", () => {
     expect(notificationContract).not.toContain("payload");
   });
 
-  it("ships one shared bilingual drawer with unread and important states", () => {
+  it("ships one shared bilingual dialog with visible metrics and filters", () => {
     expect(center).toContain("ar: {");
     expect(center).toContain("en: {");
     expect(center).toContain('className="notification-drawer"');
+    expect(center).toContain('role="dialog"');
+    expect(center).toContain('aria-modal="true"');
+    expect(center).toContain("createPortal(");
+    expect(center).toContain("document.body");
+    expect(center).toContain('"UNREAD"');
+    expect(center).toContain('"IMPORTANT"');
+    expect(center).toContain("notification-drawer__metrics");
     expect(center).toContain("notification.important");
     expect(center).toContain("inbox.unreadCount > 99");
     expect(shell).toContain("<NotificationCenter");
   });
 
-  it("refreshes lightly and opens the exact reservation workspace", () => {
+  it("refreshes lightly, supports keyboard close, and opens the exact reservation workspace", () => {
     expect(center).toContain("30_000");
     expect(center).toContain('"visibilitychange"');
+    expect(center).toContain('event.key === "Escape"');
+    expect(center).toContain('document.body.style.overflow = "hidden"');
     expect(center).toContain('cache: "no-store"');
+    expect(center).toContain("/api/notifications?locale=${locale}");
     expect(center).toContain("?request=");
     expect(read("apps/web/components/customer-requests-workspace.tsx")).toContain('get("request")');
     expect(read("apps/web/components/sales-review-workspace.tsx")).toContain('get("request")');

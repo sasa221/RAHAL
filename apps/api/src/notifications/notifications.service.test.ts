@@ -56,6 +56,18 @@ describe("NotificationsService", () => {
     expect(repository.inbox).toHaveBeenCalledWith("user-1");
   });
 
+  it("uses the active page locale without changing the account preference", async () => {
+    const { service } = setup("en");
+    await expect(service.inbox("session", "ar")).resolves.toMatchObject({
+      items: [
+        {
+          title: "قيد المراجعة",
+          body: "طلبك قيد المراجعة.",
+        },
+      ],
+    });
+  });
+
   it("marks an owned notification through the repository", async () => {
     const { service, repository } = setup();
     await expect(service.markRead("session", "notification-1")).resolves.toEqual({

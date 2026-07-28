@@ -1,31 +1,56 @@
 "use client";
 
 import type { ApiSuccess, InAppNotification, NotificationInbox } from "@rahal/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
+
+type InboxFilter = "ALL" | "UNREAD" | "IMPORTANT";
 
 const copy = {
   ar: {
     label: "الإشعارات",
-    title: "آخر التحديثات",
-    unread: "غير مقروء",
+    signal: "RAHAL SIGNAL",
+    title: "كل تحديث في مكان واضح",
+    subtitle: "تحديثات الطلبات وإجراءات الفرع التي تهمك الآن.",
+    unread: "جديد",
+    importantCount: "مهم",
+    total: "الإجمالي",
     markAll: "تعليم الكل كمقروء",
+    all: "الكل",
+    unreadOnly: "الجديدة",
+    importantOnly: "المهمة",
     empty: "لا توجد إشعارات حتى الآن.",
-    loading: "جاري تحميل الإشعارات…",
+    emptyFiltered: "لا توجد تحديثات في هذا القسم.",
+    loading: "جاري تجهيز مركز الإشعارات…",
     error: "تعذر تحديث الإشعارات الآن.",
-    close: "إغلاق",
-    important: "مهم",
+    retry: "إعادة المحاولة",
+    close: "إغلاق مركز الإشعارات",
+    important: "أولوية",
+    openUpdate: "فتح التحديث المرتبط",
+    live: "متصل",
   },
   en: {
     label: "Notifications",
-    title: "Latest updates",
-    unread: "Unread",
+    signal: "RAHAL SIGNAL",
+    title: "Every update, clearly in view",
+    subtitle: "Request and branch updates that matter right now.",
+    unread: "New",
+    importantCount: "Priority",
+    total: "Total",
     markAll: "Mark all as read",
+    all: "All",
+    unreadOnly: "New",
+    importantOnly: "Priority",
     empty: "No notifications yet.",
-    loading: "Loading notifications…",
+    emptyFiltered: "There are no updates in this view.",
+    loading: "Preparing your notification center…",
     error: "Notifications could not be refreshed.",
-    close: "Close",
-    important: "Important",
+    retry: "Try again",
+    close: "Close notification center",
+    important: "Priority",
+    openUpdate: "Open linked update",
+    live: "Live",
   },
 } as const;
 
@@ -39,28 +64,32 @@ export function NotificationCenter({
   const text = copy[locale];
   const [inbox, setInbox] = useState<NotificationInbox | null>(null);
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<InboxFilter>("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
 
-  const load = useCallback(async (quiet = false) => {
-    if (!quiet) setLoading(true);
-    try {
-      const response = await fetch("/api/notifications", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (response.status === 401) return;
-      const payload = (await response.json()) as ApiSuccess<NotificationInbox>;
-      if (!response.ok) throw new Error("NOTIFICATIONS_UNAVAILABLE");
-      setInbox(payload.data);
-      setError(false);
-    } catch {
-      setError(true);
-    } finally {
-      if (!quiet) setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (quiet = false) => {
+      if (!quiet) setLoading(true);
+      try {
+        const response = await fetch(`/api/notifications?locale=${locale}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (response.status === 401) return;
+        const payload = (await response.json()) as ApiSuccess<NotificationInbox>;
+        if (!response.ok) throw new Error("NOTIFICATIONS_UNAVAILABLE");
+        setInbox(payload.data);
+        setError(false);
+      } catch {
+        setError(true);
+      } finally {
+        if (!quiet) setLoading(false);
+      }
+    },
+    [locale],
+  );
 
   useEffect(() => {
     void load();
@@ -74,6 +103,32 @@ export function NotificationCenter({
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!open) return;
+    void load(true);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [load, open]);
+
+  const filteredItems = useMemo(
+    () =>
+      (inbox?.items ?? []).filter((item) => {
+        if (filter === "UNREAD") return !item.readAt;
+        if (filter === "IMPORTANT") return item.important;
+        return true;
+      }),
+    [filter, inbox],
+  );
+  const importantCount = inbox?.items.filter((item) => item.important).length ?? 0;
 
   async function markRead(notification: InAppNotification) {
     if (!notification.readAt) {
@@ -128,90 +183,185 @@ export function NotificationCenter({
     <div className="notification-center">
       <button
         aria-expanded={open}
+        aria-haspopup="dialog"
         aria-label={text.label}
         className="notification-trigger"
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.7"
-          />
-        </svg>
+        <span className="notification-trigger__icon">
+          <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+            <path
+              d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.7"
+            />
+          </svg>
+        </span>
+        <span className="notification-trigger__label">{text.label}</span>
         {inbox?.unreadCount ? (
-          <span aria-label={`${inbox.unreadCount} ${text.unread}`}>
+          <b aria-label={`${inbox.unreadCount} ${text.unread}`}>
             {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
-          </span>
+          </b>
         ) : null}
       </button>
 
-      {open ? (
-        <>
-          <button
-            aria-label={text.close}
-            className="notification-backdrop"
-            onClick={() => setOpen(false)}
-            type="button"
-          />
-          <aside className="notification-drawer" aria-label={text.label}>
-            <header>
-              <div>
-                <span>{text.label}</span>
-                <h2>{text.title}</h2>
-              </div>
-              <button onClick={() => setOpen(false)} type="button">
-                ×
-              </button>
-            </header>
-            <div className="notification-drawer__tools">
-              <strong>
-                {inbox?.unreadCount ?? 0} {text.unread}
-              </strong>
+      {open
+        ? createPortal(
+            <div className="notification-layer" dir={locale === "ar" ? "rtl" : "ltr"}>
               <button
-                disabled={markingAll || !inbox?.unreadCount}
-                onClick={() => void markAllRead()}
+                aria-label={text.close}
+                className="notification-backdrop"
+                onClick={() => setOpen(false)}
                 type="button"
+              />
+              <aside
+                aria-label={text.label}
+                aria-modal="true"
+                className="notification-drawer"
+                role="dialog"
               >
-                {text.markAll}
-              </button>
-            </div>
-            {error ? <p className="notification-error">{text.error}</p> : null}
-            {loading ? <p className="notification-state">{text.loading}</p> : null}
-            {!loading && !inbox?.items.length ? (
-              <p className="notification-state">{text.empty}</p>
-            ) : null}
-            <ol className="notification-list">
-              {inbox?.items.map((notification) => (
-                <li
-                  className={`${notification.readAt ? "is-read" : "is-unread"}${notification.important ? " is-important" : ""}`}
-                  key={notification.id}
-                >
-                  <button onClick={() => void markRead(notification)} type="button">
-                    <span>
-                      {notification.important ? <b>{text.important}</b> : null}
-                      <time dateTime={notification.createdAt}>
-                        {formatNotificationDate(notification.createdAt, locale)}
-                      </time>
-                    </span>
-                    <strong>{notification.title}</strong>
-                    <p>{notification.body}</p>
+                <header className="notification-drawer__header">
+                  <div className="notification-drawer__signal">
+                    <span>{text.signal}</span>
+                    <b>
+                      <i aria-hidden="true" />
+                      {text.live}
+                    </b>
+                  </div>
+                  <div className="notification-drawer__heading">
+                    <div>
+                      <h2>{text.title}</h2>
+                      <p>{text.subtitle}</p>
+                    </div>
+                    <button aria-label={text.close} onClick={() => setOpen(false)} type="button">
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                  <div className="notification-drawer__metrics">
+                    <article>
+                      <strong>{String(inbox?.unreadCount ?? 0).padStart(2, "0")}</strong>
+                      <span>{text.unread}</span>
+                    </article>
+                    <article>
+                      <strong>{String(importantCount).padStart(2, "0")}</strong>
+                      <span>{text.importantCount}</span>
+                    </article>
+                    <article>
+                      <strong>{String(inbox?.items.length ?? 0).padStart(2, "0")}</strong>
+                      <span>{text.total}</span>
+                    </article>
+                  </div>
+                </header>
+
+                <div className="notification-drawer__tools">
+                  <div aria-label={text.label} className="notification-filters" role="tablist">
+                    {(["ALL", "UNREAD", "IMPORTANT"] as const).map((value) => (
+                      <button
+                        aria-selected={filter === value}
+                        key={value}
+                        onClick={() => setFilter(value)}
+                        role="tab"
+                        type="button"
+                      >
+                        {value === "ALL"
+                          ? text.all
+                          : value === "UNREAD"
+                            ? text.unreadOnly
+                            : text.importantOnly}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    disabled={markingAll || !inbox?.unreadCount}
+                    onClick={() => void markAllRead()}
+                    type="button"
+                  >
+                    {text.markAll}
                   </button>
-                </li>
-              ))}
-            </ol>
-          </aside>
-        </>
-      ) : null}
+                </div>
+
+                <div className="notification-drawer__feed">
+                  {error ? (
+                    <div className="notification-error" role="alert">
+                      <p>{text.error}</p>
+                      <button onClick={() => void load()} type="button">
+                        {text.retry}
+                      </button>
+                    </div>
+                  ) : null}
+                  {loading ? (
+                    <div aria-label={text.loading} className="notification-skeleton" role="status">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  ) : null}
+                  {!loading && !inbox?.items.length ? (
+                    <p className="notification-state">{text.empty}</p>
+                  ) : null}
+                  {!loading && inbox?.items.length && !filteredItems.length ? (
+                    <p className="notification-state">{text.emptyFiltered}</p>
+                  ) : null}
+                  <ol className="notification-list">
+                    {filteredItems.map((notification, index) => (
+                      <li
+                        className={`${notification.readAt ? "is-read" : "is-unread"}${notification.important ? " is-important" : ""}`}
+                        key={notification.id}
+                        style={{ "--notification-index": index } as React.CSSProperties}
+                      >
+                        <button onClick={() => void markRead(notification)} type="button">
+                          <span
+                            aria-hidden="true"
+                            className={`notification-event-icon notification-event-icon--${notificationTone(notification.eventKey)}`}
+                          >
+                            {notificationGlyph(notification.eventKey)}
+                          </span>
+                          <span className="notification-item__content">
+                            <span className="notification-item__meta">
+                              {notification.important ? <b>{text.important}</b> : <i />}
+                              <time dateTime={notification.createdAt}>
+                                {formatNotificationDate(notification.createdAt, locale)}
+                              </time>
+                            </span>
+                            <strong>{notification.title}</strong>
+                            <p>{notification.body}</p>
+                            {notification.target ? <small>{text.openUpdate} →</small> : null}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </aside>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
 
+function notificationTone(eventKey: string) {
+  if (eventKey.includes("REJECT") || eventKey.includes("FAILED")) return "alert";
+  if (eventKey.includes("APPROV") || eventKey.includes("CONFIRM")) return "success";
+  if (eventKey.includes("DOCUMENT") || eventKey.includes("INFORMATION")) return "document";
+  if (eventKey.includes("ALTERNATIVE")) return "alternative";
+  return "update";
+}
+
+function notificationGlyph(eventKey: string) {
+  if (eventKey.includes("DOCUMENT") || eventKey.includes("INFORMATION")) return "▤";
+  if (eventKey.includes("APPROV") || eventKey.includes("CONFIRM")) return "✓";
+  if (eventKey.includes("REJECT") || eventKey.includes("FAILED")) return "!";
+  if (eventKey.includes("ALTERNATIVE")) return "↔";
+  return "R";
+}
+
 function formatNotificationDate(value: string, locale: PublicLocale) {
-  return new Intl.DateTimeFormat(locale, {
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-EG", {
     day: "numeric",
     month: "short",
     hour: "numeric",

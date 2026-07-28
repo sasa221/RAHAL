@@ -736,6 +736,43 @@ Status: implemented locally on 2026-07-27.
 - Static coverage for DTO limits, audited transactions, sensitive-data exclusions, bilingual routes, simulator logic, responsive layouts, and reduced motion.
 - Browser verification of real database rules, driver/category scenarios, audited save, English parity, and mobile editor composition.
 
+## Milestone 18: Customer draft recovery and dynamic workspace polish
+
+Goal: prevent customers from losing unfinished reservation work while making customer, sales, notification, vehicle-detail, and document-policy surfaces feel coherent and responsive across mobile and desktop.
+
+Status: implemented locally on 2026-07-27.
+
+### Completed scope
+
+- Added owner-scoped customer draft list, detail/resume, and abandonment endpoints.
+- Added truthful progress and next-step projection from customer details, active document rules, uploaded metadata, and consent state.
+- Added pickup-time draft expiry to the existing non-overlapping review-window worker.
+- Soft-deleted draft document metadata and removed private object bytes for both deliberate abandonment and automatic expiry.
+- Added a bilingual saved-draft studio to the customer request workspace with progress, pickup, document count, EGP estimate, last update, expiry copy, resume, and inline abandonment confirmation.
+- Restored saved dates, driver choice, safe customer inputs, and consent state in the reservation wizard.
+- Rebuilt the in-app notification surface as a body-level modal drawer with visible metrics, filters, priority states, loading/empty/error handling, direct request navigation, mobile full-screen composition, and reduced-motion behavior.
+- Made the active route locale authoritative for customer requests, drafts, sales review reads, and notifications without changing session ownership or account preference.
+- Corrected the mobile vehicle-detail hero overhang and the administrator document-policy layout at phone, tablet, and compact desktop widths.
+- Verified the customer draft creation/resume journey, localized customer and sales workspaces, notification drawer, public fleet/detail/auth pages, and administrator document-policy/staff pages in the local browser.
+
+### Acceptance criteria
+
+- A customer can list, open, and abandon only their own live drafts.
+- Sales employees never receive or see a draft until the customer submits it.
+- Draft progress never claims that missing required self-drive documents are complete.
+- Resuming restores the saved dates, driver choice, safe customer data, and consent state without exposing identity values or document objects.
+- Abandonment and pickup-time expiry are conditional and idempotent, record an event, soft-delete document metadata, and remove private objects.
+- Arabic routes render Arabic vehicle, branch, and notification copy even when the account preference is English; English routes retain equivalent behavior.
+- Notification UI cannot be clipped by a sticky/filtered shell and remains usable with keyboard, reduced motion, mobile, and desktop layouts.
+- Vehicle detail and document-policy layouts produce no horizontal page overflow at audited mobile/tablet sizes.
+
+### Tests
+
+- Service coverage for owner-scoped draft summaries, required-document next-step calculation, safe abandonment, private-object cleanup, pickup-time expiry, and notification locale override.
+- Static coverage for endpoint ownership, resume hydration, bilingual copy, responsive draft states, notification portal/filter behavior, and sensitive-data exclusions.
+- Browser verification with fictional customer and sales accounts at mobile, compact desktop, and wide desktop sizes.
+- Full repository formatting, lint, tests, typecheck, and production build.
+
 ## Decisions not blocking Milestone 1
 
 - Final provider choices for media, private storage, email, push, WhatsApp, and Redis hosting.

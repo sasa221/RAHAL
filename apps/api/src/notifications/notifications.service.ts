@@ -10,9 +10,14 @@ export class NotificationsService {
     private readonly notifications: NotificationsRepository,
   ) {}
 
-  async inbox(token: string | undefined): Promise<NotificationInbox> {
+  async inbox(token: string | undefined, requestedLocale?: string): Promise<NotificationInbox> {
     const session = await this.auth.getSession(token);
-    const locale = session.user.preferredLocale === "ar" ? "ar" : "en";
+    const locale =
+      requestedLocale === "ar" || requestedLocale === "en"
+        ? requestedLocale
+        : session.user.preferredLocale === "ar"
+          ? "ar"
+          : "en";
     const inbox = await this.notifications.inbox(session.user.id);
     return {
       unreadCount: inbox.unreadCount,
