@@ -8,5 +8,5 @@
     "rewriteRelativeImportExtensions": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "generated/client/**/*.ts"]
+  "include": ["src/**/*.ts", "generated/client/**/*.cts"]
 }
