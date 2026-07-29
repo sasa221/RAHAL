@@ -15,21 +15,21 @@ This file is the working release gate for the first real RAHAL launch. A product
 
 ## Release gates
 
-| Area                            | State              | Required closure                                                                                                                                                           |
-| ------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public storefront and fleet     | Code-complete      | Local Arabic/English mobile and desktop route, overflow, semantics, metadata, and accessibility audits pass; owner must replace fictional fleet/media.                     |
-| Customer request journey        | Code-complete      | Run a clean account-to-submission staging journey after approved policies, real providers, and private storage are configured.                                             |
-| Sales and booking lifecycle     | Code-complete      | Run claim through completion/cancellation/no-show as one staging E2E suite against managed dependencies.                                                                   |
-| Administration                  | Code-complete      | Branch, fleet, documents, policy publication, staff/access, reviews, audit, and operations are implemented; owner content/provider operations remain external.             |
-| Legal copy                      | **Launch blocker** | Owner and qualified Egyptian legal review must approve versioned rental, privacy, document-processing, cancellation, retention, and deposit-settlement wording.            |
-| Branch and contact data         | **Launch blocker** | Owner must confirm the real address, map coordinates, hours, phone, WhatsApp, and social links.                                                                            |
-| Fleet and public media          | **Launch blocker** | Replace fictional fleet records and images with approved vehicles, prices, rules, alt text, and CDN media identifiers.                                                     |
-| Private documents and contracts | **Launch blocker** | Code is complete for private S3-compatible storage, signed scanning, signed-contract upload/access, and audit; provision services and approve retention/deletion.          |
-| External notifications          | **Launch blocker** | Outbox, retries, channel idempotency, preferences, quiet hours, Resend, Meta templates, and Web Push are implemented; provision/verify production provider accounts.       |
-| Shared rate limiting            | **Launch blocker** | Redis-backed atomic throttling and readiness are implemented; provision a production TLS Redis service.                                                                    |
-| Secrets                         | **Launch blocker** | Provision unique production database, auth, MFA, provider, webhook, storage, and queue secrets through the deployment secret manager.                                      |
-| Production operations           | **Launch blocker** | Readiness, bounded request logging, dependency audit, containers, backup/restore, deploy, and rollback procedures exist; provision monitoring and execute a restore drill. |
-| CI and staging                  | **Launch blocker** | CI quality gates are committed; deploy staging, apply migrations, seed fictional staging data, and complete role-based E2E acceptance.                                     |
+| Area                            | State              | Required closure                                                                                                                                                                         |
+| ------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public storefront and fleet     | Code-complete      | Local Arabic/English mobile and desktop route, overflow, semantics, metadata, and accessibility audits pass; owner must replace fictional fleet/media.                                   |
+| Customer request journey        | Code-complete      | Run a clean account-to-submission staging journey after approved policies, real providers, and private storage are configured.                                                           |
+| Sales and booking lifecycle     | Code-complete      | Run claim through completion/cancellation/no-show as one staging E2E suite against managed dependencies.                                                                                 |
+| Administration                  | Code-complete      | Branch, fleet, documents, policy publication, staff/access, reviews, audit, and operations are implemented; owner content/provider operations remain external.                           |
+| Legal copy                      | **Launch blocker** | Owner and qualified Egyptian legal review must approve versioned rental, privacy, document-processing, cancellation, retention, and deposit-settlement wording.                          |
+| Branch and contact data         | **Launch blocker** | Owner must confirm the real address, map coordinates, hours, phone, WhatsApp, and social links.                                                                                          |
+| Fleet and public media          | **Launch blocker** | Replace fictional fleet records and images with approved vehicles, prices, rules, alt text, and CDN media identifiers.                                                                   |
+| Private documents and contracts | **Launch blocker** | Code is complete for private S3-compatible storage, signed scanning, signed-contract upload/access, and audit; provision services and approve retention/deletion.                        |
+| External notifications          | **Launch blocker** | Outbox, retries, channel idempotency, preferences, quiet hours, Brevo with Resend fallback, Meta templates, and Web Push are implemented; provision/verify production provider accounts. |
+| Shared rate limiting            | **Launch blocker** | Redis-backed atomic throttling and readiness are implemented; provision a production TLS Redis service.                                                                                  |
+| Secrets                         | **Launch blocker** | Provision unique production database, auth, MFA, provider, webhook, storage, and queue secrets through the deployment secret manager.                                                    |
+| Production operations           | **Launch blocker** | Readiness, bounded request logging, dependency audit, containers, backup/restore, deploy, and rollback procedures exist; provision monitoring and execute a restore drill.               |
+| CI and staging                  | **Launch blocker** | CI quality gates are committed; deploy staging, apply migrations, seed fictional staging data, and complete role-based E2E acceptance.                                                   |
 
 ## UI route matrix
 
@@ -87,7 +87,7 @@ These items cannot be guessed or silently replaced by demo values:
 - Real branch details and operational hours.
 - Real fleet, registration identifiers, prices, deposits, driver rules, mileage, fuel, and insurance policies.
 - Company domain and DNS control.
-- Resend, Meta WhatsApp Business, VAPID Web Push, private object storage, malware-scanning, Redis, monitoring, and hosting credentials.
+- Authenticated Brevo or Resend sender, Meta WhatsApp Business, VAPID Web Push, private object storage, malware-scanning, Redis, monitoring, and hosting credentials.
 - Deposit refund, cancellation, damage, no-show, and traffic-violation policy.
 
 ## Final approval rule

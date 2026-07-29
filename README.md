@@ -90,7 +90,7 @@ confirmation, and the final booking receives an immutable EGP price snapshot.
 RAHAL has an idempotent transactional outbox for:
 
 - In-app notifications
-- Email through Resend
+- Transactional email through Brevo with Resend fallback
 - WhatsApp through approved Meta templates
 - Browser Web Push
 
@@ -107,7 +107,7 @@ flowchart LR
     API --> Redis[("Redis rate limits")]
     API --> Storage[("Private S3 storage")]
     API --> Scanner["Malware scanner"]
-    API --> Providers["Resend · Meta WhatsApp · Web Push"]
+    API --> Providers["Brevo / Resend · Meta WhatsApp · Web Push"]
 ```
 
 ```text

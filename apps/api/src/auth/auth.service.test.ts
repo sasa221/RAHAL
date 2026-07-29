@@ -48,7 +48,13 @@ describe("AuthService", () => {
     process.env.VERIFICATION_DELIVERY_WEBHOOK_URL = "http://localhost:9999/verification";
     process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET =
       "test-verification-delivery-secret-32-characters";
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({}),
+      }),
+    );
   });
 
   afterEach(() => {
@@ -57,6 +63,9 @@ describe("AuthService", () => {
       "VERIFICATION_DELIVERY_WEBHOOK_SECRET",
       "RESEND_API_KEY",
       "VERIFICATION_EMAIL_FROM",
+      "BREVO_API_KEY",
+      "BREVO_SENDER_EMAIL",
+      "BREVO_SENDER_NAME",
       "GMAIL_SMTP_USER",
       "GMAIL_SMTP_APP_PASSWORD",
       "WHATSAPP_CLOUD_ACCESS_TOKEN",
@@ -197,6 +206,44 @@ describe("AuthService", () => {
     );
     expect(body.to).toEqual([activeUser.email]);
     expect(body.text).toMatch(/\d{6}/);
+    expect(result).not.toHaveProperty("code");
+    expect(result).not.toHaveProperty("developmentCode");
+  });
+
+  it("prefers Brevo and sends verification to the registering user's address", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    process.env.BREVO_API_KEY = "brevo-test-key";
+    process.env.BREVO_SENDER_EMAIL = "rahal.sender@gmail.com";
+    process.env.BREVO_SENDER_NAME = "RAHAL | رحال";
+    process.env.RESEND_API_KEY = "resend-fallback-key";
+    process.env.VERIFICATION_EMAIL_FROM = "RAHAL <accounts@rahal.example>";
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: { ...activeUser, emailVerifiedAt: null },
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    const result = await service.requestVerification("session-token", { channel: "email" }, {});
+    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
+    const body = JSON.parse(String(deliveryRequest?.[1]?.body)) as {
+      sender: { email: string; name: string };
+      to: Array<{ email: string }>;
+      textContent: string;
+    };
+
+    expect(deliveryRequest?.[0]).toBe("https://api.brevo.com/v3/smtp/email");
+    expect(deliveryRequest?.[1]?.headers).toEqual(
+      expect.objectContaining({ "api-key": "brevo-test-key" }),
+    );
+    expect(body.sender).toEqual({
+      email: "rahal.sender@gmail.com",
+      name: "RAHAL | رحال",
+    });
+    expect(body.to).toEqual([{ email: activeUser.email }]);
+    expect(body.textContent).toMatch(/\d{6}/);
     expect(result).not.toHaveProperty("code");
     expect(result).not.toHaveProperty("developmentCode");
   });

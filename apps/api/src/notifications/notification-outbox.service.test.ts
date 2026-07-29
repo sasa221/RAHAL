@@ -1,7 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotificationOutboxService, quietHoursEnd } from "./notification-outbox.service";
 
 describe("NotificationOutboxService", () => {
+  afterEach(() => {
+    delete process.env.BREVO_API_KEY;
+    delete process.env.BREVO_SENDER_EMAIL;
+    delete process.env.BREVO_SENDER_NAME;
+    vi.unstubAllGlobals();
+  });
+
   it("records in-app delivery and processes a claimed event once", async () => {
     const repository = {
       claimNextEvent: vi.fn().mockResolvedValue({
@@ -65,6 +72,78 @@ describe("NotificationOutboxService", () => {
     );
     expect(repository.markEventProcessed).toHaveBeenCalledWith("event-1");
     expect(repository.retryEvent).not.toHaveBeenCalled();
+  });
+
+  it("sends verified-customer email notifications through Brevo", async () => {
+    process.env.BREVO_API_KEY = "brevo-test-key";
+    process.env.BREVO_SENDER_EMAIL = "rahal.sender@gmail.com";
+    process.env.BREVO_SENDER_NAME = "RAHAL | رحال";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: vi.fn().mockResolvedValue({ messageId: "brevo-notification-1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const repository = {
+      claimNextEvent: vi.fn().mockResolvedValue({
+        id: "event-email-1",
+        eventKey: "RESERVATION_UNDER_REVIEW",
+        aggregateId: "reservation-email-1",
+        payload: { customerId: "customer-email-1" },
+        attempts: 1,
+      }),
+      deliveryContext: vi.fn().mockResolvedValue({
+        id: "notification-email-1",
+        titleAr: "طلبك قيد المراجعة",
+        titleEn: "Your request is under review",
+        bodyAr: "يراجع فريق رحال طلبك الآن.",
+        bodyEn: "The Rahal team is reviewing your request.",
+        important: true,
+        reservationId: "reservation-email-1",
+        user: {
+          id: "customer-email-1",
+          email: "customer@example.com",
+          phone: "+201000000001",
+          preferredLocale: "en",
+          emailVerifiedAt: new Date("2026-07-29T00:00:00.000Z"),
+          phoneVerifiedAt: null,
+          notificationPreference: {
+            inAppEnabled: false,
+            pushEnabled: false,
+            emailEnabled: true,
+            whatsappEnabled: false,
+            quietHoursStart: null,
+            quietHoursEnd: null,
+          },
+          pushSubscriptions: [],
+        },
+      }),
+      upsertDelivery: vi.fn().mockResolvedValue({
+        id: "delivery-email-1",
+        status: "QUEUED",
+      }),
+      markDelivery: vi.fn(),
+      markEventProcessed: vi.fn(),
+      retryEvent: vi.fn(),
+      deferEvent: vi.fn(),
+    };
+    const worker = new NotificationOutboxService(repository as never, {} as never);
+
+    await expect(worker.drainOne()).resolves.toBe(true);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.brevo.com/v3/smtp/email");
+    const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      to: Array<{ email: string }>;
+    };
+    expect(requestBody.to).toEqual([{ email: "customer@example.com" }]);
+    expect(repository.markDelivery).toHaveBeenCalledWith(
+      "delivery-email-1",
+      expect.objectContaining({
+        status: "SENT",
+        providerId: "brevo-notification-1",
+      }),
+    );
+    expect(repository.markEventProcessed).toHaveBeenCalledWith("event-email-1");
   });
 
   it("does not resend a channel that already succeeded on an earlier attempt", async () => {

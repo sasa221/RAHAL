@@ -24,6 +24,7 @@ import type { VerificationPurpose } from "@rahal/database";
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import nodemailer from "nodemailer";
 import { loadApiConfig } from "../config";
+import { sendConfiguredEmail } from "../email-delivery";
 import { AuthRepository, type AuthUserRecord } from "./auth.repository";
 import type {
   ConfirmVerificationDto,
@@ -714,7 +715,10 @@ export class AuthService {
       await this.deliverGmailVerification(input);
       return;
     }
-    if (input.channel === "email" && this.config.verificationEmail) {
+    if (
+      input.channel === "email" &&
+      (this.config.verificationBrevo || this.config.verificationEmail)
+    ) {
       await this.deliverEmailVerification(input);
       return;
     }
@@ -761,7 +765,7 @@ export class AuthService {
       await this.deliverGmailVerification({ ...input, email });
       return;
     }
-    if (this.config.verificationEmail) {
+    if (this.config.verificationBrevo || this.config.verificationEmail) {
       await this.deliverEmailVerification({ ...input, email, category: "password_reset" });
       return;
     }
@@ -795,6 +799,7 @@ export class AuthService {
     return channel === "email"
       ? Boolean(
           this.config.verificationGmail ||
+          this.config.verificationBrevo ||
           this.config.verificationEmail ||
           this.config.verificationDelivery,
         )
@@ -838,29 +843,16 @@ export class AuthService {
     email?: { subject: string; text: string; html: string };
     category?: string;
   }) {
-    const delivery = this.config.verificationEmail;
-    if (!delivery) return;
     const email = input.email ?? buildVerificationEmail(input);
 
     try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${delivery.apiKey}`,
-          "content-type": "application/json",
-          "idempotency-key": `rahal-auth-${randomBytes(16).toString("hex")}`,
-          "user-agent": "rahal-platform/1.0",
-        },
-        body: JSON.stringify({
-          from: delivery.from,
-          to: [input.destination],
-          subject: email.subject,
-          text: email.text,
-          html: email.html,
-          tags: [{ name: "category", value: input.category ?? "account_verification" }],
-        }),
+      await sendConfiguredEmail(this.config, {
+        to: input.destination,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+        category: input.category ?? "account_verification",
       });
-      if (!response.ok) throw new Error("Email provider rejected the request.");
     } catch {
       throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
     }

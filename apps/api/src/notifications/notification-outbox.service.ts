@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import * as webPush from "web-push";
 import { loadApiConfig } from "../config";
+import { sendConfiguredEmail } from "../email-delivery";
 import { NotificationsRepository } from "./notifications.repository";
 import { PushSubscriptionCryptoService } from "./push-subscription-crypto.service";
 
@@ -174,10 +175,27 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
     reservationId: string | null,
   ) {
     const provider = this.config.verificationEmail;
-    if (!provider) throw new Error("Email provider is not configured.");
+    if (!provider && !this.config.verificationBrevo) {
+      throw new Error("Email provider is not configured.");
+    }
     const target = reservationId
       ? `${this.config.webUrl}${locale === "en" ? "/en" : ""}/account/requests?request=${encodeURIComponent(reservationId)}`
       : `${this.config.webUrl}${locale === "en" ? "/en" : ""}/account/requests`;
+    if (this.config.verificationBrevo) {
+      const linkLabel =
+        locale === "ar"
+          ? "\u0641\u062a\u062d \u062d\u0633\u0627\u0628 \u0631\u062d\u0627\u0644"
+          : "Open your Rahal account";
+      const result = await sendConfiguredEmail(this.config, {
+        to: email,
+        subject: title,
+        text: `${body}\n\n${target}`,
+        html: `<div dir="${locale === "ar" ? "rtl" : "ltr"}" style="font-family:Arial,sans-serif;line-height:1.7"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="${escapeHtml(target)}">${linkLabel}</a></p></div>`,
+        category: "reservation_notification",
+      });
+      return { providerId: result.providerId };
+    }
+    if (!provider) throw new Error("Email provider is not configured.");
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {

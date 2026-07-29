@@ -36,6 +36,11 @@ export type ApiConfig = {
     apiKey: string;
     from: string;
   };
+  verificationBrevo?: {
+    apiKey: string;
+    senderEmail: string;
+    senderName: string;
+  };
   verificationGmail?: {
     user: string;
     appPassword: string;
@@ -158,12 +163,30 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     ? { apiKey: emailDelivery[0]!, from: emailDelivery[1]! }
     : undefined;
 
+  const brevoDelivery = readCompleteGroup(env, ["BREVO_API_KEY", "BREVO_SENDER_EMAIL"]);
+  const verificationBrevo = brevoDelivery
+    ? {
+        apiKey: brevoDelivery[0]!,
+        senderEmail: brevoDelivery[1]!,
+        senderName: env.BREVO_SENDER_NAME?.trim() || "RAHAL | رحال",
+      }
+    : undefined;
+  if (verificationBrevo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(verificationBrevo.senderEmail)) {
+    throw new Error("BREVO_SENDER_EMAIL must be a valid email address.");
+  }
+  if (
+    verificationBrevo &&
+    (/[\r\n]/.test(verificationBrevo.senderName) || verificationBrevo.senderName.length > 100)
+  ) {
+    throw new Error("BREVO_SENDER_NAME must be a single line of at most 100 characters.");
+  }
+
   const gmailDelivery = readCompleteGroup(env, ["GMAIL_SMTP_USER", "GMAIL_SMTP_APP_PASSWORD"]);
   const verificationGmail = gmailDelivery
     ? { user: gmailDelivery[0]!, appPassword: gmailDelivery[1]! }
     : undefined;
   if (production && verificationGmail) {
-    throw new Error("Gmail SMTP is development-only; production email must use Resend.");
+    throw new Error("Gmail SMTP is development-only; production email must use Brevo or Resend.");
   }
 
   const whatsAppDelivery = readCompleteGroup(env, [
@@ -188,8 +211,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         : {}),
     };
   }
-  if (launchValidated && !verificationEmail) {
-    throw new Error("RESEND_API_KEY and VERIFICATION_EMAIL_FROM are required in production.");
+  if (launchValidated && !verificationBrevo && !verificationEmail) {
+    throw new Error("A configured Brevo or Resend email provider is required in production.");
   }
   if (launchValidated && !verificationWhatsApp) {
     throw new Error(
@@ -330,6 +353,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     documentScan,
     webPush,
     verificationDelivery,
+    verificationBrevo,
     verificationEmail,
     verificationGmail,
     verificationWhatsApp,

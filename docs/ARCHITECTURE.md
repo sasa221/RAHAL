@@ -46,7 +46,9 @@ Use the existing choices unless an ADR changes them:
 - Public vehicle media: Cloudinary or approved CDN-backed public media service.
 - Private customer documents: private S3-compatible object storage.
 - Push: standards-based VAPID Web Push.
-- Email: Resend from a verified Rahal domain.
+- Email: Brevo is the primary transactional adapter, with Resend fallback. A verified Rahal
+  domain remains required before the final production launch; staging may use a verified
+  single-sender address whose provider-managed rewrite is accepted explicitly.
 - WhatsApp: official Meta WhatsApp Business Platform Cloud API.
 - Tests: Vitest for unit/integration and browser-controlled acceptance checks.
 - Password hashing: Node.js memory-hard scrypt.
@@ -155,7 +157,7 @@ Use an outbox pattern:
 - Webhook callbacks update delivery state idempotently.
 - Read status is recorded only when the product or provider can verify it.
 
-The implemented worker claims outbox rows conditionally, resolves an explicit customer or assigned-staff recipient, and reads the corresponding privacy-bounded `Notification` presentation row. It records unique per-notification/channel deliveries for In-App, Resend Email, approved-template Meta WhatsApp, and VAPID Web Push. Successful channels are not resent when another channel retries. Failed events use bounded exponential backoff, invalid browser subscriptions are disabled, and configured quiet hours defer only optional external channels while the in-app record remains available. Push endpoint/key material is encrypted with AES-256-GCM and the browser is prompted only after an explicit user action.
+The implemented worker claims outbox rows conditionally, resolves an explicit customer or assigned-staff recipient, and reads the corresponding privacy-bounded `Notification` presentation row. It records unique per-notification/channel deliveries for In-App, Brevo-or-Resend Email, approved-template Meta WhatsApp, and VAPID Web Push. Brevo takes precedence when both email providers are configured so verification, recovery, and notification email use the same transport. Successful channels are not resent when another channel retries. Failed events use bounded exponential backoff, invalid browser subscriptions are disabled, and configured quiet hours defer only optional external channels while the in-app record remains available. Push endpoint/key material is encrypted with AES-256-GCM and the browser is prompted only after an explicit user action.
 
 The in-app channel reads directly from owner-scoped `Notification` rows rather than exposing `NotificationEvent` payloads or delivery attempts. The inbox is bounded to 50 presentation records, while unread count is calculated separately. Read mutations use conditional owner-scoped updates and preserve the first read timestamp. The shared shell uses 30-second no-store polling plus visibility refresh; external channel delivery remains the responsibility of the outbox worker.
 
@@ -211,7 +213,8 @@ The web `/api/*` boundary is a runtime server-side proxy. It forwards only bound
 
 ## Architecture decisions and external inputs needed later
 
-- Production vendors/accounts for public media, S3-compatible storage, malware scanning, Resend, Meta WhatsApp, Web Push, Redis, and monitoring.
+- Production vendors/accounts for public media, S3-compatible storage, malware scanning, an
+  authenticated Brevo or Resend sender, Meta WhatsApp, Web Push, Redis, and monitoring.
 - Whether shared validation contracts use Zod or Nest DTO classes as the primary source.
 - Final legal/privacy copy and document retention policy.
 - Branch address/contact data from the owner and storefront image.

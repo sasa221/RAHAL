@@ -174,7 +174,7 @@ Status: account verification, account security, mandatory staff/admin MFA, first
 - Shared Arabic and English sign-in and registration screens with responsive cinematic layouts.
 - Same-origin web-to-API authentication proxying so secure session cookies are not exposed to client code.
 - Six-digit email and phone verification with HMAC-only code storage, 10-minute expiry, five-attempt limits, resend invalidation, and account activation after both channels are verified.
-- Provider-gated verification delivery with Gmail SMTP for arbitrary-recipient local testing, direct Resend production email, Meta WhatsApp authentication-template adapters, a signed webhook fallback, no plaintext code in API responses or browser UI, and fail-closed issuance when the required channel provider is absent.
+- Provider-gated verification delivery with Gmail SMTP for local testing, Brevo-first transactional email with Resend fallback, Meta WhatsApp authentication-template adapters, a signed webhook fallback, no plaintext code in API responses or browser UI, and fail-closed issuance when the required channel provider is absent.
 - Staff password success creates a five-minute HTTP-only MFA challenge instead of an operational session.
 - Authenticator enrollment uses encrypted TOTP secrets, one-time hashed recovery codes, replay-resistant counters, and an MFA-bound session timestamp.
 - Staff and administrator API access fails closed until MFA is complete and an administrator-issued temporary password has been replaced.
@@ -182,7 +182,7 @@ Status: account verification, account security, mandatory staff/admin MFA, first
 
 ### Remaining scope
 
-- Production Resend domain/API credentials and Meta WhatsApp Business credentials plus approved Arabic/English authentication templates.
+- Production-authenticated Brevo or Resend sender credentials and Meta WhatsApp Business credentials plus approved Arabic/English authentication templates.
 - Shared production rate-limit storage and operational monitoring.
 - A production-only 32-byte `MFA_ENCRYPTION_KEY` supplied through the deployment secret manager.
 
@@ -514,7 +514,7 @@ Status: implemented and verified locally. Staff MFA and mandatory first-login pa
 
 Goal: give every Rahal account a complete password-recovery and browser-session control flow without exposing account existence or sensitive session metadata.
 
-Status: implemented and verified locally on 2026-07-26. Real recovery email delivery uses the configured Gmail, Resend, or signed delivery adapter; production credentials remain an environment deployment requirement.
+Status: implemented and verified locally on 2026-07-26, with Brevo support added on 2026-07-29. Real recovery email delivery uses the configured Gmail, Brevo, Resend, or signed delivery adapter; production credentials remain an environment deployment requirement.
 
 ### Completed scope
 
@@ -864,7 +864,7 @@ Status: implemented locally on 2026-07-28. Real services, staging evidence, appr
 - Added signed malware-scanning for customer documents and contracts.
 - Replaced the branch signed-contract checkbox with a real protected PDF upload, protected staff access reason, access audit, and contract preview. Confirmation now requires a stored signed contract.
 - Added Redis-backed atomic authentication throttling with TLS-only production configuration, safe local fallback, readiness, and shutdown.
-- Added a transactional notification outbox worker for In-App, Resend Email, approved-template Meta WhatsApp, and encrypted VAPID Web Push.
+- Added a transactional notification outbox worker for In-App, Brevo-or-Resend Email, approved-template Meta WhatsApp, and encrypted VAPID Web Push.
 - Added channel-level idempotency, bounded retries, dead-subscription cleanup, correct customer/staff recipient routing, booking-to-reservation resolution, preference checks, and quiet-hour deferral.
 - Added explicit browser notification opt-in and a service worker without automatic permission prompts.
 - Added audited administrator branch management.

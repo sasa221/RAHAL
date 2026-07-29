@@ -9,6 +9,7 @@ describe("loadApiConfig verification delivery", () => {
   it("keeps delivery disabled when no provider credentials are present", () => {
     const config = loadApiConfig(baseEnv);
 
+    expect(config.verificationBrevo).toBeUndefined();
     expect(config.verificationEmail).toBeUndefined();
     expect(config.verificationGmail).toBeUndefined();
     expect(config.verificationWhatsApp).toBeUndefined();
@@ -27,6 +28,27 @@ describe("loadApiConfig verification delivery", () => {
     expect(() => loadApiConfig({ ...baseEnv, RESEND_API_KEY: "re_test" })).toThrow(
       "RESEND_API_KEY, VERIFICATION_EMAIL_FROM must be configured together.",
     );
+  });
+
+  it("requires complete Brevo credentials and validates its sender", () => {
+    expect(() => loadApiConfig({ ...baseEnv, BREVO_API_KEY: "brevo-test-key" })).toThrow(
+      "BREVO_API_KEY, BREVO_SENDER_EMAIL must be configured together.",
+    );
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        BREVO_API_KEY: "brevo-test-key",
+        BREVO_SENDER_EMAIL: "not-an-email",
+      }),
+    ).toThrow("BREVO_SENDER_EMAIL must be a valid email address.");
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        BREVO_API_KEY: "brevo-test-key",
+        BREVO_SENDER_EMAIL: "sender@example.com",
+        BREVO_SENDER_NAME: "RAHAL\nInjected",
+      }),
+    ).toThrow("BREVO_SENDER_NAME must be a single line of at most 100 characters.");
   });
 
   it("requires complete Gmail SMTP credentials", () => {
@@ -63,6 +85,9 @@ describe("loadApiConfig verification delivery", () => {
   it("maps complete direct-provider credentials", () => {
     const config = loadApiConfig({
       ...baseEnv,
+      BREVO_API_KEY: "brevo-test-key",
+      BREVO_SENDER_EMAIL: "sender@gmail.com",
+      BREVO_SENDER_NAME: "RAHAL | رحال",
       RESEND_API_KEY: "re_test",
       VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
       GMAIL_SMTP_USER: "sender@gmail.com",
@@ -73,6 +98,11 @@ describe("loadApiConfig verification delivery", () => {
       WHATSAPP_GRAPH_API_VERSION: "v23.0",
     });
 
+    expect(config.verificationBrevo).toEqual({
+      apiKey: "brevo-test-key",
+      senderEmail: "sender@gmail.com",
+      senderName: "RAHAL | رحال",
+    });
     expect(config.verificationEmail).toEqual({
       apiKey: "re_test",
       from: "RAHAL <accounts@rahal.example>",
@@ -98,7 +128,17 @@ describe("loadApiConfig verification delivery", () => {
 
     expect(() => loadApiConfig(production)).toThrow("WEB_URL must use HTTPS in production.");
     expect(() => loadApiConfig({ ...production, WEB_URL: "https://rahal.example" })).toThrow(
-      "RESEND_API_KEY and VERIFICATION_EMAIL_FROM are required in production.",
+      "A configured Brevo or Resend email provider is required in production.",
+    );
+    expect(() =>
+      loadApiConfig({
+        ...production,
+        WEB_URL: "https://rahal.example",
+        BREVO_API_KEY: "brevo-production-key",
+        BREVO_SENDER_EMAIL: "sender@example.com",
+      }),
+    ).toThrow(
+      "Approved WhatsApp Business authentication-template credentials are required in production.",
     );
     expect(() =>
       loadApiConfig({
