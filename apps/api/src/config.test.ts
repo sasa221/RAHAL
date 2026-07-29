@@ -13,6 +13,7 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.verificationEmail).toBeUndefined();
     expect(config.verificationGmail).toBeUndefined();
     expect(config.verificationWhatsApp).toBeUndefined();
+    expect(config.verificationTwilioWhatsApp).toBeUndefined();
     expect(Buffer.from(config.mfaEncryptionKey, "base64url")).toHaveLength(32);
   });
 
@@ -82,6 +83,35 @@ describe("loadApiConfig verification delivery", () => {
     ).toThrow("WHATSAPP_GRAPH_API_VERSION must use the v00.0 format.");
   });
 
+  it("requires complete and valid Twilio WhatsApp sandbox credentials", () => {
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
+      }),
+    ).toThrow(
+      "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID must be configured together.",
+    );
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        TWILIO_ACCOUNT_SID: "invalid",
+        TWILIO_AUTH_TOKEN: "test-token",
+        TWILIO_WHATSAPP_FROM: "+14155238886",
+        TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID: `HX${"2".repeat(32)}`,
+      }),
+    ).toThrow("TWILIO_ACCOUNT_SID must be a valid account SID.");
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
+        TWILIO_AUTH_TOKEN: "test-token",
+        TWILIO_WHATSAPP_FROM: "14155238886",
+        TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID: `HX${"2".repeat(32)}`,
+      }),
+    ).toThrow("TWILIO_WHATSAPP_FROM must use E.164 format.");
+  });
+
   it("maps complete direct-provider credentials", () => {
     const config = loadApiConfig({
       ...baseEnv,
@@ -96,6 +126,10 @@ describe("loadApiConfig verification delivery", () => {
       WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
       WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
       WHATSAPP_GRAPH_API_VERSION: "v23.0",
+      TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
+      TWILIO_AUTH_TOKEN: "twilio-test-token",
+      TWILIO_WHATSAPP_FROM: "+14155238886",
+      TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID: `HX${"2".repeat(32)}`,
     });
 
     expect(config.verificationBrevo).toEqual({
@@ -116,6 +150,12 @@ describe("loadApiConfig verification delivery", () => {
       phoneNumberId: "123",
       templateName: "rahal_account_verification",
       graphApiVersion: "v23.0",
+    });
+    expect(config.verificationTwilioWhatsApp).toEqual({
+      accountSid: `AC${"1".repeat(32)}`,
+      authToken: "twilio-test-token",
+      from: "+14155238886",
+      verificationContentSid: `HX${"2".repeat(32)}`,
     });
   });
 

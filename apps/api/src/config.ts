@@ -52,6 +52,12 @@ export type ApiConfig = {
     notificationTemplateName?: string;
     graphApiVersion: string;
   };
+  verificationTwilioWhatsApp?: {
+    accountSid: string;
+    authToken: string;
+    from: string;
+    verificationContentSid: string;
+  };
 };
 
 function readCompleteGroup(env: NodeJS.ProcessEnv, names: string[]) {
@@ -211,6 +217,32 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         : {}),
     };
   }
+
+  const twilioWhatsAppDelivery = readCompleteGroup(env, [
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_WHATSAPP_FROM",
+    "TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID",
+  ]);
+  let verificationTwilioWhatsApp: ApiConfig["verificationTwilioWhatsApp"];
+  if (twilioWhatsAppDelivery) {
+    const [accountSid, authToken, from, verificationContentSid] = twilioWhatsAppDelivery;
+    if (!/^AC[0-9a-f]{32}$/i.test(accountSid!)) {
+      throw new Error("TWILIO_ACCOUNT_SID must be a valid account SID.");
+    }
+    if (!/^\+[1-9]\d{7,14}$/.test(from!)) {
+      throw new Error("TWILIO_WHATSAPP_FROM must use E.164 format.");
+    }
+    if (!/^HX[0-9a-f]{32}$/i.test(verificationContentSid!)) {
+      throw new Error("TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID must be a valid content SID.");
+    }
+    verificationTwilioWhatsApp = {
+      accountSid: accountSid!,
+      authToken: authToken!,
+      from: from!,
+      verificationContentSid: verificationContentSid!,
+    };
+  }
   if (launchValidated && !verificationBrevo && !verificationEmail) {
     throw new Error("A configured Brevo or Resend email provider is required in production.");
   }
@@ -357,5 +389,6 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     verificationEmail,
     verificationGmail,
     verificationWhatsApp,
+    verificationTwilioWhatsApp,
   };
 }

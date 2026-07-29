@@ -67,4 +67,12 @@ describe("in-app notification center", () => {
     expect(read("apps/web/components/customer-requests-workspace.tsx")).toContain('get("request")');
     expect(read("apps/web/components/sales-review-workspace.tsx")).toContain('get("request")');
   });
+
+  it("surfaces a new unread update outside the drawer on desktop and mobile", () => {
+    expect(center).toContain("featuredNotification");
+    expect(center).toContain("rahal:notification-preview:");
+    expect(center).toContain("className={`notification-preview");
+    expect(center).toContain("document.body");
+    expect(read("apps/web/app/globals.css")).toContain("@media (max-width: 560px)");
+  });
 });

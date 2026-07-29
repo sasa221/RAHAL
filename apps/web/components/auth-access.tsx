@@ -43,12 +43,15 @@ const authCopy = {
     verified: "تم التحقق",
     pending: "بانتظار التحقق",
     verifyEmail: "تحقق من البريد",
-    verifyPhone: "تحقق من الهاتف",
+    verifyPhone: "تحقق عبر واتساب",
     codeTitle: "أدخل رمز التحقق",
     codeCopy: "الرمز صالح لمدة 10 دقائق وبحد أقصى 5 محاولات.",
+    phoneCodeCopy:
+      "أرسلنا الرمز إلى رقمك عبر واتساب. الرمز صالح لمدة 10 دقائق وبحد أقصى 5 محاولات.",
     codeLabel: "رمز من 6 أرقام",
     confirmCode: "تأكيد الرمز",
     sendCode: "إرسال رمز التحقق",
+    sendWhatsAppCode: "إرسال رمز واتساب",
     cancelVerification: "رجوع",
     verifiedMessage: "تم التحقق بنجاح.",
     requestingCode: "جاري إنشاء الرمز...",
@@ -97,12 +100,15 @@ const authCopy = {
     verified: "Verified",
     pending: "Verification pending",
     verifyEmail: "Verify email",
-    verifyPhone: "Verify phone",
+    verifyPhone: "Verify through WhatsApp",
     codeTitle: "Enter your verification code",
     codeCopy: "The code expires in 10 minutes and allows up to 5 attempts.",
+    phoneCodeCopy:
+      "We sent the code to your number through WhatsApp. It expires in 10 minutes and allows up to 5 attempts.",
     codeLabel: "Six-digit code",
     confirmCode: "Confirm code",
     sendCode: "Send verification code",
+    sendWhatsAppCode: "Send WhatsApp code",
     cancelVerification: "Back",
     verifiedMessage: "Verification completed.",
     requestingCode: "Creating code...",
@@ -422,10 +428,13 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
               </div>
               {verificationChannel ? (
                 <form className="auth-verification auth-panel" onSubmit={confirmVerification}>
-                  <span className="eyebrow">{copy.sendCode}</span>
+                  <span className="eyebrow">
+                    {verificationChannel === "phone" ? copy.sendWhatsAppCode : copy.sendCode}
+                  </span>
                   <h3>{copy.codeTitle}</h3>
                   <p>
-                    {copy.codeCopy} <strong>{verificationDestination}</strong>
+                    {verificationChannel === "phone" ? copy.phoneCodeCopy : copy.codeCopy}{" "}
+                    <strong>{verificationDestination}</strong>
                   </p>
                   <label>
                     <span>{copy.codeLabel}</span>

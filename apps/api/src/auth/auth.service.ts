@@ -726,6 +726,10 @@ export class AuthService {
       await this.deliverWhatsAppVerification(input);
       return;
     }
+    if (input.channel === "phone" && this.config.verificationTwilioWhatsApp) {
+      await this.deliverTwilioWhatsAppVerification(input);
+      return;
+    }
 
     const delivery = this.config.verificationDelivery;
     if (!delivery) {
@@ -803,7 +807,11 @@ export class AuthService {
           this.config.verificationEmail ||
           this.config.verificationDelivery,
         )
-      : Boolean(this.config.verificationWhatsApp || this.config.verificationDelivery);
+      : Boolean(
+          this.config.verificationWhatsApp ||
+          this.config.verificationTwilioWhatsApp ||
+          this.config.verificationDelivery,
+        );
   }
 
   private async deliverGmailVerification(input: {
@@ -901,6 +909,41 @@ export class AuthService {
         },
       );
       if (!response.ok) throw new Error("WhatsApp provider rejected the request.");
+    } catch {
+      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
+    }
+  }
+
+  private async deliverTwilioWhatsAppVerification(input: {
+    destination: string;
+    locale: string;
+    code: string;
+  }) {
+    const delivery = this.config.verificationTwilioWhatsApp;
+    if (!delivery) return;
+    const body = new URLSearchParams({
+      To: `whatsapp:${input.destination}`,
+      From: `whatsapp:${delivery.from}`,
+      ContentSid: delivery.verificationContentSid,
+      ContentVariables: JSON.stringify({
+        "1": input.locale === "en" ? "RAHAL" : "رحال",
+        "2": input.code,
+      }),
+    });
+
+    try {
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${delivery.accountSid}/Messages.json`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Basic ${Buffer.from(`${delivery.accountSid}:${delivery.authToken}`).toString("base64")}`,
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          body,
+        },
+      );
+      if (!response.ok) throw new Error("WhatsApp sandbox rejected the request.");
     } catch {
       throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
     }

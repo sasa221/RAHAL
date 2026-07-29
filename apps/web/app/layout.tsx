@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { headers } from "next/headers";
+import { PushPermissionGate } from "../components/push-permission-gate";
 import "./globals.css";
 
 const manrope = localFont({
@@ -27,6 +28,20 @@ const alexandria = localFont({
 export const metadata: Metadata = {
   title: "RAHAL | رحال لتأجير السيارات",
   description: "استعرض سيارات رحال، تحقق من المواعيد، وأرسل طلب الحجز.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "RAHAL",
+  },
+  icons: {
+    icon: "/images/rahal-logo.png",
+    apple: "/images/rahal-logo.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1c1d1a",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -38,6 +53,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body
         className={`${manrope.className} ${manrope.variable} ${cormorant.variable} ${alexandria.variable}`}
       >
+        <PushPermissionGate locale={locale} />
         {children}
       </body>
     </html>

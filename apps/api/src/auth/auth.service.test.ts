@@ -72,6 +72,10 @@ describe("AuthService", () => {
       "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
       "WHATSAPP_AUTH_TEMPLATE_NAME",
       "WHATSAPP_GRAPH_API_VERSION",
+      "TWILIO_ACCOUNT_SID",
+      "TWILIO_AUTH_TOKEN",
+      "TWILIO_WHATSAPP_FROM",
+      "TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID",
     ]) {
       delete process.env[name];
     }
@@ -306,6 +310,44 @@ describe("AuthService", () => {
     expect(body.to).toBe("201001112222");
     expect(body.template.name).toBe("rahal_account_verification");
     expect(body.template.components[0]?.parameters[0]?.text).toMatch(/^\d{6}$/);
+    expect(result).not.toHaveProperty("code");
+    expect(result).not.toHaveProperty("developmentCode");
+  });
+
+  it("sends phone verification through the Twilio WhatsApp sandbox template", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    const accountSid = `AC${"1".repeat(32)}`;
+    process.env.TWILIO_ACCOUNT_SID = accountSid;
+    process.env.TWILIO_AUTH_TOKEN = "twilio-test-token";
+    process.env.TWILIO_WHATSAPP_FROM = "+14155238886";
+    process.env.TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID = `HX${"2".repeat(32)}`;
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: activeUser,
+    });
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    const result = await service.requestVerification("session-token", { channel: "phone" }, {});
+    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
+    const body = new URLSearchParams(String(deliveryRequest?.[1]?.body));
+    const variables = JSON.parse(String(body.get("ContentVariables"))) as Record<string, string>;
+
+    expect(deliveryRequest?.[0]).toBe(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+    );
+    expect(deliveryRequest?.[1]?.headers).toEqual(
+      expect.objectContaining({
+        authorization: `Basic ${Buffer.from(`${accountSid}:twilio-test-token`).toString("base64")}`,
+        "content-type": "application/x-www-form-urlencoded",
+      }),
+    );
+    expect(body.get("To")).toBe("whatsapp:+201001112222");
+    expect(body.get("From")).toBe("whatsapp:+14155238886");
+    expect(body.get("ContentSid")).toBe(`HX${"2".repeat(32)}`);
+    expect(variables["2"]).toMatch(/^\d{6}$/);
     expect(result).not.toHaveProperty("code");
     expect(result).not.toHaveProperty("developmentCode");
   });

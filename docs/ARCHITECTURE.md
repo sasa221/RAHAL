@@ -49,7 +49,9 @@ Use the existing choices unless an ADR changes them:
 - Email: Brevo is the primary transactional adapter, with Resend fallback. A verified Rahal
   domain remains required before the final production launch; staging may use a verified
   single-sender address whose provider-managed rewrite is accepted explicitly.
-- WhatsApp: official Meta WhatsApp Business Platform Cloud API.
+- WhatsApp: official Meta WhatsApp Business Platform Cloud API for production. Staging may use the
+  Twilio WhatsApp Sandbox solely for account phone verification while provider onboarding is in
+  progress; it is never accepted as production readiness.
 - Tests: Vitest for unit/integration and browser-controlled acceptance checks.
 - Password hashing: Node.js memory-hard scrypt.
 - Session storage: secure HTTP-only cookies with server-side session records and refresh rotation.
@@ -157,7 +159,12 @@ Use an outbox pattern:
 - Webhook callbacks update delivery state idempotently.
 - Read status is recorded only when the product or provider can verify it.
 
-The implemented worker claims outbox rows conditionally, resolves an explicit customer or assigned-staff recipient, and reads the corresponding privacy-bounded `Notification` presentation row. It records unique per-notification/channel deliveries for In-App, Brevo-or-Resend Email, approved-template Meta WhatsApp, and VAPID Web Push. Brevo takes precedence when both email providers are configured so verification, recovery, and notification email use the same transport. Successful channels are not resent when another channel retries. Failed events use bounded exponential backoff, invalid browser subscriptions are disabled, and configured quiet hours defer only optional external channels while the in-app record remains available. Push endpoint/key material is encrypted with AES-256-GCM and the browser is prompted only after an explicit user action.
+The implemented worker claims outbox rows conditionally, resolves an explicit customer or assigned-staff recipient, and reads the corresponding privacy-bounded `Notification` presentation row. It records unique per-notification/channel deliveries for In-App, Brevo-or-Resend Email, approved-template Meta WhatsApp, and VAPID Web Push. Brevo takes precedence when both email providers are configured so verification, recovery, and notification email use the same transport. Successful channels are not resent when another channel retries. Failed events use bounded exponential backoff, invalid browser subscriptions are disabled, and configured quiet hours defer only optional external channels while the in-app record remains available. Push endpoint/key material is encrypted with AES-256-GCM. After authentication, customers receive a first-party explanation and explicit opt-in action; deferral leaves a persistent reminder, and unread inbox events receive a mobile-visible in-page preview outside the drawer. The browser permission request still runs only from the customer's action because browser policy does not permit a site to grant itself notification access.
+
+The Twilio WhatsApp Sandbox adapter is deliberately scoped to verification codes and uses a
+pre-approved content template. It does not send general notification-outbox events. The verified
+Meta adapter remains the production path for both authentication and approved notification
+templates.
 
 The in-app channel reads directly from owner-scoped `Notification` rows rather than exposing `NotificationEvent` payloads or delivery attempts. The inbox is bounded to 50 presentation records, while unread count is calculated separately. Read mutations use conditional owner-scoped updates and preserve the first read timestamp. The shared shell uses 30-second no-store polling plus visibility refresh; external channel delivery remains the responsibility of the outbox worker.
 

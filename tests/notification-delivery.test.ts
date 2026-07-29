@@ -29,11 +29,28 @@ describe("external notification delivery", () => {
 
   it("provides an explicit browser opt-in instead of prompting on page load", () => {
     const center = read("apps/web/components/notification-center.tsx");
+    const gate = read("apps/web/components/push-permission-gate.tsx");
+    const pushSetup = read("apps/web/lib/push-notifications.ts");
+    const layout = read("apps/web/app/layout.tsx");
     const worker = read("apps/web/public/push-sw.js");
     expect(center).toContain("async function enablePush");
-    expect(center).toContain("pushManager.subscribe");
     expect(center).toContain("onClick={() => void enablePush()}");
+    expect(pushSetup).toContain("Notification.requestPermission()");
+    expect(pushSetup).toContain("pushManager.subscribe");
+    expect(gate).toContain("rahal:session-changed");
+    expect(gate).toContain('setState("REMINDER")');
+    expect(gate).toContain("onClick={() => void enable()}");
+    expect(layout).toContain("<PushPermissionGate");
     expect(worker).toContain('globalThis.addEventListener("push"');
     expect(worker).toContain('globalThis.addEventListener("notificationclick"');
+  });
+
+  it("ships an installable mobile web app manifest", () => {
+    const layout = read("apps/web/app/layout.tsx");
+    const manifest = read("apps/web/app/manifest.ts");
+    expect(layout).toContain('manifest: "/manifest.webmanifest"');
+    expect(layout).toContain("appleWebApp");
+    expect(manifest).toContain('display: "standalone"');
+    expect(manifest).toContain('orientation: "portrait-primary"');
   });
 });

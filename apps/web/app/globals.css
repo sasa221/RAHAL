@@ -5695,6 +5695,494 @@ body {
   }
 }
 
+.notification-preview {
+  position: fixed;
+  z-index: 84;
+  inset-block-start: 92px;
+  inset-inline-end: 24px;
+  display: grid;
+  width: min(410px, calc(100vw - 32px));
+  overflow: hidden;
+  color: #f8f1e5;
+  background: radial-gradient(circle at 100% 0%, rgb(211 173 96 / 22%), transparent 13rem), #1d1e1b;
+  border: 1px solid rgb(221 185 111 / 30%);
+  border-radius: 12px;
+  box-shadow: 0 26px 70px rgb(10 10 8 / 28%);
+  animation: notification-preview-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.notification-preview::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  content: "";
+  background: #c99d4f;
+}
+
+.notification-preview.is-success::before {
+  background: #5d9871;
+}
+
+.notification-preview.is-alert::before {
+  background: #b45b4c;
+}
+
+.notification-preview__content {
+  display: grid;
+  grid-template-columns: 43px minmax(0, 1fr);
+  gap: 13px;
+  width: 100%;
+  padding: 18px 48px 18px 19px;
+  color: inherit;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+[dir="rtl"].notification-preview .notification-preview__content {
+  padding: 18px 19px 18px 48px;
+}
+
+.notification-preview__content > span:last-child {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.notification-preview__content small {
+  color: #c9a75e;
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.notification-preview__content strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-preview__content p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #b9b7af;
+  font-size: 0.65rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.notification-preview__close {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 9px;
+  inset-inline-end: 10px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: #aeadab;
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 50%;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.push-consent-layer {
+  position: fixed;
+  z-index: 200;
+  display: grid;
+  inset: 0;
+  place-items: center;
+  padding: 22px;
+}
+
+.push-consent-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 16%, rgb(201 157 79 / 16%), transparent 30rem),
+    rgb(12 12 10 / 66%);
+  backdrop-filter: blur(13px);
+  animation: notification-backdrop-in 260ms ease both;
+}
+
+.push-consent-layer > section {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(340px, 1.28fr);
+  width: min(920px, 96vw);
+  max-height: min(720px, calc(100vh - 44px));
+  overflow: auto;
+  color: #20211e;
+  background: #f4f0e7;
+  border: 1px solid rgb(255 255 255 / 44%);
+  border-radius: 18px;
+  box-shadow: 0 42px 130px rgb(0 0 0 / 43%);
+  animation: push-consent-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.push-consent-visual {
+  position: relative;
+  display: flex;
+  min-height: 490px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-direction: column;
+  padding: 34px;
+  overflow: hidden;
+  color: #f6eedf;
+  background: linear-gradient(145deg, transparent 15%, rgb(211 174 99 / 9%)), #1d1e1b;
+}
+
+.push-consent-visual::before,
+.push-consent-visual::after {
+  position: absolute;
+  content: "";
+  border: 1px solid rgb(218 180 103 / 18%);
+  border-radius: 50%;
+}
+
+.push-consent-visual::before {
+  width: 320px;
+  height: 320px;
+  inset: 85px auto auto -155px;
+}
+
+.push-consent-visual::after {
+  width: 205px;
+  height: 205px;
+  inset: auto -83px -67px auto;
+}
+
+.push-consent-visual b,
+.push-consent-visual small {
+  position: relative;
+  z-index: 2;
+}
+
+.push-consent-visual b {
+  color: #d8b46c;
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+}
+
+.push-consent-visual small {
+  color: #85867f;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.push-consent-bell {
+  position: absolute;
+  z-index: 2;
+  inset: 50% auto auto 50%;
+  display: grid;
+  width: 112px;
+  height: 112px;
+  place-items: center;
+  color: #1e1f1c;
+  background: linear-gradient(145deg, #efd79f, #b98735);
+  border: 1px solid #f4d99e;
+  border-radius: 50%;
+  box-shadow:
+    0 28px 65px rgb(0 0 0 / 32%),
+    0 0 0 15px rgb(210 169 86 / 7%);
+  transform: translate(-50%, -50%);
+  animation: push-bell-float 3.6s ease-in-out infinite;
+}
+
+.push-consent-bell svg {
+  width: 48px;
+  height: 48px;
+}
+
+.push-consent-orbit {
+  position: absolute;
+  z-index: 1;
+  inset: 50% auto auto 50%;
+  width: 210px;
+  height: 210px;
+  border: 1px dashed rgb(218 180 103 / 34%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: push-orbit-spin 18s linear infinite;
+}
+
+.push-consent-orbit::before {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  inset: 18px 28px auto auto;
+  content: "";
+  background: #d4ac5a;
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px rgb(212 172 90 / 10%);
+}
+
+.push-consent-content {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  padding: clamp(34px, 6vw, 68px);
+}
+
+.push-consent-content > span {
+  color: #a47729;
+  font-size: 0.61rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.push-consent-content h2 {
+  max-width: 590px;
+  margin: 17px 0 14px;
+  font-family: var(--font-display);
+  font-size: clamp(2.35rem, 5vw, 4.5rem);
+  font-weight: 520;
+  line-height: 0.94;
+  letter-spacing: -0.055em;
+}
+
+[dir="rtl"] .push-consent-content h2 {
+  font-family: var(--font-arabic);
+  font-size: clamp(2.05rem, 4.5vw, 3.7rem);
+  font-weight: 690;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.push-consent-content > p {
+  max-width: 590px;
+  margin: 0;
+  color: #6f6c65;
+  font-size: 0.82rem;
+  line-height: 1.8;
+}
+
+.push-consent-content ul {
+  display: grid;
+  gap: 0;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  border-block: 1px solid #d8d1c5;
+}
+
+.push-consent-content li {
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 2px;
+  color: #3f3e39;
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.push-consent-content li + li {
+  border-top: 1px solid #ded8cd;
+}
+
+.push-consent-content li i {
+  color: #a47729;
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.push-consent-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.push-consent-actions button {
+  min-height: 54px;
+  padding: 12px 22px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.push-consent-actions button:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fffaf0;
+  background: #20211e;
+  border: 1px solid #20211e;
+}
+
+.push-consent-actions button:first-child svg {
+  width: 19px;
+  height: 19px;
+}
+
+.push-consent-actions button:first-child:disabled {
+  cursor: progress;
+  opacity: 0.66;
+}
+
+.push-consent-actions button:last-child {
+  color: #5f5c54;
+  background: transparent;
+  border: 1px solid #c9c1b4;
+}
+
+.push-consent-reminder {
+  position: fixed;
+  z-index: 82;
+  left: 50%;
+  inset-block-end: 22px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  width: min(680px, calc(100vw - 30px));
+  padding: 13px 14px;
+  color: #f8f2e7;
+  background: rgb(29 30 27 / 96%);
+  border: 1px solid rgb(216 180 108 / 32%);
+  border-radius: 11px;
+  box-shadow: 0 24px 60px rgb(12 12 10 / 28%);
+  transform: translateX(-50%);
+  animation: push-reminder-in 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backdrop-filter: blur(14px);
+}
+
+.push-consent-reminder > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #2a251b;
+  background: #d3ad62;
+  border-radius: 50%;
+}
+
+.push-consent-reminder svg {
+  width: 20px;
+  height: 20px;
+}
+
+.push-consent-reminder div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.push-consent-reminder strong {
+  font-size: 0.7rem;
+}
+
+.push-consent-reminder p {
+  margin: 0;
+  overflow: hidden;
+  color: #aba9a2;
+  font-size: 0.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.push-consent-reminder button {
+  min-height: 39px;
+  padding: 8px 18px;
+  color: #1f201d;
+  background: #d3ad62;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.push-consent-success {
+  position: fixed;
+  z-index: 205;
+  left: 50%;
+  inset-block-start: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 30px);
+  padding: 13px 18px;
+  color: #f5f7f2;
+  background: #365d42;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 999px;
+  box-shadow: 0 18px 50px rgb(28 67 40 / 28%);
+  font-size: 0.68rem;
+  font-weight: 800;
+  transform: translateX(-50%);
+  animation: push-success-in 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.push-consent-success span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: #365d42;
+  background: #f5f7f2;
+  border-radius: 50%;
+}
+
+@keyframes notification-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+}
+
+@keyframes push-consent-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.975);
+  }
+}
+
+@keyframes push-bell-float {
+  50% {
+    transform: translate(-50%, calc(-50% - 9px));
+  }
+}
+
+@keyframes push-orbit-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes push-reminder-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 24px);
+  }
+}
+
+@keyframes push-success-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -18px);
+  }
+}
+
 @media (max-width: 560px) {
   .notification-drawer {
     width: 100vw;
@@ -5751,6 +6239,88 @@ body {
   .notification-trigger {
     gap: 4px;
     padding-inline-end: 5px;
+  }
+
+  .notification-preview {
+    inset-block: auto 18px;
+    inset-inline: 14px;
+    width: auto;
+    border-radius: 14px;
+  }
+
+  .notification-preview__content {
+    min-height: 104px;
+    align-items: center;
+    padding-block: 15px;
+  }
+
+  .push-consent-layer {
+    align-items: end;
+    padding: 0;
+  }
+
+  .push-consent-layer > section {
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-height: min(92dvh, 780px);
+    border-radius: 22px 22px 0 0;
+  }
+
+  .push-consent-visual {
+    min-height: 170px;
+    padding: 22px 24px;
+  }
+
+  .push-consent-bell {
+    width: 70px;
+    height: 70px;
+  }
+
+  .push-consent-bell svg {
+    width: 31px;
+    height: 31px;
+  }
+
+  .push-consent-orbit {
+    width: 130px;
+    height: 130px;
+  }
+
+  .push-consent-content {
+    padding: 28px 24px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .push-consent-content h2 {
+    margin-top: 11px;
+    font-size: 2.6rem;
+  }
+
+  [dir="rtl"] .push-consent-content h2 {
+    font-size: 2.25rem;
+  }
+
+  .push-consent-content ul {
+    margin-top: 19px;
+  }
+
+  .push-consent-actions {
+    grid-template-columns: 1fr;
+    margin-top: 21px;
+  }
+
+  .push-consent-actions button {
+    width: 100%;
+  }
+
+  .push-consent-reminder {
+    inset-block-end: calc(14px + env(safe-area-inset-bottom));
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    width: calc(100vw - 24px);
+    padding: 11px;
+  }
+
+  .push-consent-reminder p {
+    white-space: normal;
   }
 }
 
@@ -18447,7 +19017,14 @@ select {
   .notification-list li,
   .notification-trigger > b,
   .notification-drawer__signal i,
-  .notification-skeleton span {
+  .notification-skeleton span,
+  .notification-preview,
+  .push-consent-layer > section,
+  .push-consent-backdrop,
+  .push-consent-bell,
+  .push-consent-orbit,
+  .push-consent-reminder,
+  .push-consent-success {
     animation: none;
   }
 

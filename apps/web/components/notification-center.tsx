@@ -4,6 +4,11 @@ import type { ApiSuccess, InAppNotification, NotificationInbox } from "@rahal/co
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
+import {
+  currentPushSubscription,
+  enablePushNotifications,
+  supportsWebPush,
+} from "../lib/push-notifications";
 
 type InboxFilter = "ALL" | "UNREAD" | "IMPORTANT";
 
@@ -33,6 +38,8 @@ const copy = {
     enablingPush: "جارٍ التفعيل...",
     pushEnabled: "تنبيهات المتصفح مفعّلة",
     pushUnavailable: "تعذر تفعيل تنبيهات المتصفح على هذا الجهاز.",
+    newSignal: "تحديث جديد من رحال",
+    dismissPreview: "إخفاء معاينة الإشعار",
   },
   en: {
     label: "Notifications",
@@ -59,6 +66,8 @@ const copy = {
     enablingPush: "Enabling alerts...",
     pushEnabled: "Browser alerts enabled",
     pushUnavailable: "Browser alerts could not be enabled on this device.",
+    newSignal: "New Rahal update",
+    dismissPreview: "Dismiss notification preview",
   },
 } as const;
 
@@ -77,6 +86,7 @@ export function NotificationCenter({
   const [error, setError] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [pushState, setPushState] = useState<"IDLE" | "ENABLING" | "ENABLED" | "FAILED">("IDLE");
+  const [featuredNotification, setFeaturedNotification] = useState<InAppNotification | null>(null);
 
   const load = useCallback(
     async (quiet = false) => {
@@ -90,6 +100,14 @@ export function NotificationCenter({
         const payload = (await response.json()) as ApiSuccess<NotificationInbox>;
         if (!response.ok) throw new Error("NOTIFICATIONS_UNAVAILABLE");
         setInbox(payload.data);
+        const latestUnread = payload.data.items.find((item) => !item.readAt);
+        if (latestUnread) {
+          const previewKey = `rahal:notification-preview:${latestUnread.id}`;
+          if (!sessionStorage.getItem(previewKey)) {
+            sessionStorage.setItem(previewKey, "shown");
+            setFeaturedNotification(latestUnread);
+          }
+        }
         setError(false);
       } catch {
         setError(true);
@@ -129,14 +147,17 @@ export function NotificationCenter({
   }, [load, open]);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    navigator.serviceWorker
-      .getRegistration("/push-sw.js")
-      .then((registration) => registration?.pushManager.getSubscription())
-      .then((subscription) => {
-        if (subscription) setPushState("ENABLED");
-      })
-      .catch(() => undefined);
+    if (!supportsWebPush()) return;
+    const syncPushState = () => {
+      void currentPushSubscription()
+        .then((subscription) => {
+          if (subscription) setPushState("ENABLED");
+        })
+        .catch(() => undefined);
+    };
+    syncPushState();
+    window.addEventListener("rahal:push-state-changed", syncPushState);
+    return () => window.removeEventListener("rahal:push-state-changed", syncPushState);
   }, []);
 
   const filteredItems = useMemo(
@@ -151,6 +172,7 @@ export function NotificationCenter({
   const importantCount = inbox?.items.filter((item) => item.important).length ?? 0;
 
   async function markRead(notification: InAppNotification) {
+    setFeaturedNotification((current) => (current?.id === notification.id ? null : current));
     if (!notification.readAt) {
       const now = new Date().toISOString();
       setInbox((current) =>
@@ -200,36 +222,13 @@ export function NotificationCenter({
   }
 
   async function enablePush() {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    if (!supportsWebPush()) {
       setPushState("FAILED");
       return;
     }
     setPushState("ENABLING");
     try {
-      const keyResponse = await fetch("/api/notifications/push-key", {
-        credentials: "include",
-      });
-      const keyPayload = (await keyResponse.json()) as ApiSuccess<{ publicKey: string | null }>;
-      if (!keyResponse.ok || !keyPayload.data.publicKey) throw new Error("push unavailable");
-      const registration = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
-      const subscription =
-        (await registration.pushManager.getSubscription()) ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: decodeBase64Url(keyPayload.data.publicKey),
-        }));
-      const serialized = subscription.toJSON();
-      const response = await fetch("/api/notifications/push-subscriptions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          endpoint: serialized.endpoint,
-          p256dh: serialized.keys?.p256dh,
-          auth: serialized.keys?.auth,
-        }),
-      });
-      if (!response.ok) throw new Error("push registration failed");
+      await enablePushNotifications(locale);
       setPushState("ENABLED");
     } catch {
       setPushState("FAILED");
@@ -264,6 +263,44 @@ export function NotificationCenter({
           </b>
         ) : null}
       </button>
+
+      {featuredNotification
+        ? createPortal(
+            <aside
+              aria-label={text.newSignal}
+              aria-live="polite"
+              className={`notification-preview is-${notificationTone(featuredNotification.eventKey)}`}
+              dir={locale === "ar" ? "rtl" : "ltr"}
+            >
+              <button
+                aria-label={text.dismissPreview}
+                className="notification-preview__close"
+                onClick={() => setFeaturedNotification(null)}
+                type="button"
+              >
+                ×
+              </button>
+              <button
+                className="notification-preview__content"
+                onClick={() => void markRead(featuredNotification)}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`notification-event-icon notification-event-icon--${notificationTone(featuredNotification.eventKey)}`}
+                >
+                  {notificationGlyph(featuredNotification.eventKey)}
+                </span>
+                <span>
+                  <small>{text.newSignal}</small>
+                  <strong>{featuredNotification.title}</strong>
+                  <p>{featuredNotification.body}</p>
+                </span>
+              </button>
+            </aside>,
+            document.body,
+          )
+        : null}
 
       {open
         ? createPortal(
@@ -443,10 +480,4 @@ function formatNotificationDate(value: string, locale: PublicLocale) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function decodeBase64Url(value: string) {
-  const padding = "=".repeat((4 - (value.length % 4)) % 4);
-  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
 }
