@@ -12,6 +12,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
 import { AccountModule } from "./account/account.module";
 import { AdminOperationsModule } from "./admin-operations/admin-operations.module";
 import { DocumentRequirementsModule } from "./document-requirements/document-requirements.module";
+import { PoliciesModule } from "./policies/policies.module";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DocumentRequirementsModule } from "./document-requirements/document-req
     AccountModule,
     AdminOperationsModule,
     DocumentRequirementsModule,
+    PoliciesModule,
   ],
   controllers: [HealthController],
 })

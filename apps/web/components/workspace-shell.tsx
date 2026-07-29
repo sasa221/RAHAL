@@ -20,7 +20,9 @@ const shellCopy = {
     overview: "نظرة عامة",
     requests: "الطلبات",
     fleet: "السيارات",
+    branches: "الفروع",
     documents: "سياسة المستندات",
+    policies: "السياسات والموافقات",
     staff: "الفريق والصلاحيات",
     reviews: "تقييمات العملاء",
     audit: "سجل العمليات",
@@ -45,7 +47,9 @@ const shellCopy = {
     overview: "Overview",
     requests: "Requests",
     fleet: "Fleet",
+    branches: "Branches",
     documents: "Document policy",
+    policies: "Policies & consent",
     staff: "Staff & access",
     reviews: "Customer reviews",
     audit: "Audit log",
@@ -72,7 +76,16 @@ export function WorkspaceShell({
   kind: WorkspaceKind;
   locale: PublicLocale;
   activePage?:
-    "overview" | "fleet" | "documents" | "staff" | "reviews" | "audit" | "profile" | "security";
+    | "overview"
+    | "fleet"
+    | "branches"
+    | "documents"
+    | "policies"
+    | "staff"
+    | "reviews"
+    | "audit"
+    | "profile"
+    | "security";
 }) {
   const text = shellCopy[locale];
   const isStaff = kind !== "customer";
@@ -89,19 +102,23 @@ export function WorkspaceShell({
       ? isStaff
         ? activePage === "fleet"
           ? "/en/fleet"
-          : activePage === "documents"
-            ? "/en/admin/documents"
-            : activePage === "staff"
-              ? "/en/admin/staff"
-              : activePage === "reviews"
-                ? "/en/admin/reviews"
-                : activePage === "audit"
-                  ? "/en/admin/audit"
-                  : activePage === "security"
-                    ? "/en/account/security"
-                    : kind === "admin"
-                      ? "/en/admin"
-                      : "/en/sales"
+          : activePage === "branches"
+            ? "/en/admin/branches"
+            : activePage === "documents"
+              ? "/en/admin/documents"
+              : activePage === "policies"
+                ? "/en/admin/policies"
+                : activePage === "staff"
+                  ? "/en/admin/staff"
+                  : activePage === "reviews"
+                    ? "/en/admin/reviews"
+                    : activePage === "audit"
+                      ? "/en/admin/audit"
+                      : activePage === "security"
+                        ? "/en/account/security"
+                        : kind === "admin"
+                          ? "/en/admin"
+                          : "/en/sales"
         : activePage === "security"
           ? "/en/account/security"
           : activePage === "profile"
@@ -110,19 +127,23 @@ export function WorkspaceShell({
       : isStaff
         ? activePage === "fleet"
           ? "/fleet"
-          : activePage === "documents"
-            ? "/admin/documents"
-            : activePage === "staff"
-              ? "/admin/staff"
-              : activePage === "reviews"
-                ? "/admin/reviews"
-                : activePage === "audit"
-                  ? "/admin/audit"
-                  : activePage === "security"
-                    ? "/account/security"
-                    : kind === "admin"
-                      ? "/admin"
-                      : "/sales"
+          : activePage === "branches"
+            ? "/admin/branches"
+            : activePage === "documents"
+              ? "/admin/documents"
+              : activePage === "policies"
+                ? "/admin/policies"
+                : activePage === "staff"
+                  ? "/admin/staff"
+                  : activePage === "reviews"
+                    ? "/admin/reviews"
+                    : activePage === "audit"
+                      ? "/admin/audit"
+                      : activePage === "security"
+                        ? "/account/security"
+                        : kind === "admin"
+                          ? "/admin"
+                          : "/sales"
         : activePage === "security"
           ? "/account/security"
           : activePage === "profile"
@@ -138,6 +159,8 @@ export function WorkspaceShell({
           : kind === "admin" || canManageStaff
             ? [
                 [text.documents, localizedPath(locale, "/admin/documents"), "document"],
+                [text.policies, localizedPath(locale, "/admin/policies"), "document"],
+                [text.branches, localizedPath(locale, "/admin/branches"), "car"],
                 [text.staff, localizedPath(locale, "/admin/staff"), "document"],
                 [text.reviews, localizedPath(locale, "/admin/reviews"), "users"],
                 [text.audit, localizedPath(locale, "/admin/audit"), "calendar"],
@@ -154,25 +177,35 @@ export function WorkspaceShell({
   const activeTarget =
     activePage === "fleet"
       ? fleetHref
-      : activePage === "documents"
-        ? localizedPath(locale, "/admin/documents")
-        : activePage === "staff"
-          ? localizedPath(locale, "/admin/staff")
-          : activePage === "reviews"
-            ? localizedPath(locale, "/admin/reviews")
-            : activePage === "audit"
-              ? localizedPath(locale, "/admin/audit")
-              : activePage === "profile"
-                ? localizedPath(locale, "/account/profile")
-                : activePage === "security"
-                  ? localizedPath(locale, "/account/security")
-                  : currentHref;
-  const mobileNavigation =
+      : activePage === "branches"
+        ? localizedPath(locale, "/admin/branches")
+        : activePage === "documents"
+          ? localizedPath(locale, "/admin/documents")
+          : activePage === "policies"
+            ? localizedPath(locale, "/admin/policies")
+            : activePage === "staff"
+              ? localizedPath(locale, "/admin/staff")
+              : activePage === "reviews"
+                ? localizedPath(locale, "/admin/reviews")
+                : activePage === "audit"
+                  ? localizedPath(locale, "/admin/audit")
+                  : activePage === "profile"
+                    ? localizedPath(locale, "/account/profile")
+                    : activePage === "security"
+                      ? localizedPath(locale, "/account/security")
+                      : currentHref;
+  const preferredMobileNavigation =
     activePage === "reviews"
       ? navigation.filter((_, index) => index !== 3).slice(0, 4)
       : activePage === "security" && !isStaff
         ? navigation.filter((_, index) => index !== 3).slice(0, 4)
         : navigation.slice(0, 4);
+  const activeNavigationItem = navigation.find(([, href]) => href === activeTarget);
+  const mobileNavigation =
+    activeNavigationItem &&
+    !preferredMobileNavigation.some(([, href]) => href === activeNavigationItem[1])
+      ? [...preferredMobileNavigation.slice(0, 3), activeNavigationItem]
+      : preferredMobileNavigation;
 
   useEffect(() => {
     if (!isStaff) return;

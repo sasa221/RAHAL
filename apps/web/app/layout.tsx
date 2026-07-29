@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const manrope = localFont({
@@ -28,9 +29,12 @@ export const metadata: Metadata = {
   description: "استعرض سيارات رحال، تحقق من المواعيد، وأرسل طلب الحجز.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const requestHeaders = await headers();
+  const locale = requestHeaders.get("x-rahal-locale") === "en" ? "en" : "ar";
+
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={locale === "en" ? "en-EG" : "ar-EG"} dir={locale === "en" ? "ltr" : "rtl"}>
       <body
         className={`${manrope.className} ${manrope.variable} ${cormorant.variable} ${alexandria.variable}`}
       >

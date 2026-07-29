@@ -1,8 +1,14 @@
-import { Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
-import type { ApiSuccess, NotificationInbox, NotificationReadResult } from "@rahal/contracts";
+import { Body, Controller, Delete, Get, Param, Post, Query, Req } from "@nestjs/common";
+import type {
+  ApiSuccess,
+  NotificationInbox,
+  NotificationReadResult,
+  PushSubscriptionResult,
+} from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
 import { NotificationsService } from "./notifications.service";
+import { RemovePushSubscriptionDto, SavePushSubscriptionDto } from "./notifications.dto";
 
 @Controller("notifications")
 export class NotificationsController {
@@ -19,6 +25,35 @@ export class NotificationsController {
   @Post("read-all")
   async markAllRead(@Req() request: Request): Promise<ApiSuccess<{ readAt: string }>> {
     return { data: await this.notifications.markAllRead(readAuthCookie(request)) };
+  }
+
+  @Get("push-key")
+  pushKey(): ApiSuccess<{ publicKey: string | null }> {
+    return { data: { publicKey: this.notifications.pushPublicKey() } };
+  }
+
+  @Post("push-subscriptions")
+  async savePushSubscription(
+    @Body() input: SavePushSubscriptionDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<PushSubscriptionResult>> {
+    return {
+      data: await this.notifications.savePushSubscription(
+        readAuthCookie(request),
+        input,
+        request.headers["user-agent"],
+      ),
+    };
+  }
+
+  @Delete("push-subscriptions")
+  async removePushSubscription(
+    @Body() input: RemovePushSubscriptionDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<PushSubscriptionResult>> {
+    return {
+      data: await this.notifications.removePushSubscription(readAuthCookie(request), input),
+    };
   }
 
   @Post(":id/read")

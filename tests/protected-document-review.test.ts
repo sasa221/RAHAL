@@ -35,7 +35,8 @@ describe("protected customer document review", () => {
 
   it("uses safe path resolution for reads as well as deletion", () => {
     expect(storage).toContain("async read(storageKey: string)");
-    expect(storage).toContain("this.resolveKey(storageKey)");
+    expect(storage).toContain("this.resolveLocalKey(storageKey)");
+    expect(storage).toContain("this.assertStorageKey(storageKey)");
     expect(storage).toContain('relativePath.startsWith("..")');
     expect(storage).toContain("isAbsolute(relativePath)");
     expect(storage).toContain('code === "ENOENT"');

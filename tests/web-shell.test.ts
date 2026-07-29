@@ -12,7 +12,9 @@ describe("public site localization", () => {
     const layout = read("apps/web/app/layout.tsx");
     const arabicPage = read("apps/web/app/page.tsx");
 
-    expect(layout).toContain('<html lang="ar" dir="rtl">');
+    expect(layout).toContain('requestHeaders.get("x-rahal-locale") === "en"');
+    expect(layout).toContain('lang={locale === "en" ? "en-EG" : "ar-EG"}');
+    expect(layout).toContain('dir={locale === "en" ? "ltr" : "rtl"}');
     expect(layout).toContain("RAHAL | رحال لتأجير السيارات");
     expect(arabicPage).toContain('<PublicHome locale="ar" />');
   });

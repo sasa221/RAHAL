@@ -6,15 +6,18 @@ import { ReservationsRepository } from "./reservations.repository";
 import { ReservationsService } from "./reservations.service";
 import { ReservationExpiryService } from "./reservation-expiry.service";
 import { StaffModule } from "../staff/staff.module";
+import { DocumentScanService } from "./document-scan.service";
 
 @Module({
   imports: [AuthModule, StaffModule],
   controllers: [ReservationsController],
   providers: [
     PrivateDocumentStorage,
+    DocumentScanService,
     ReservationsRepository,
     ReservationsService,
     ReservationExpiryService,
   ],
+  exports: [PrivateDocumentStorage],
 })
 export class ReservationsModule {}

@@ -263,11 +263,20 @@ export function localizedPath(locale: PublicLocale, path = "/") {
 }
 
 export function getPublicNavigation(locale: PublicLocale) {
+  if (locale === "ar") {
+    return [
+      ["السيارات", "/cars"],
+      ["طريقة الحجز", "/how-it-works"],
+      ["عن رحال", "/about"],
+      ["الفرع", "/contact"],
+    ] as const;
+  }
+
   return [
-    [locale === "ar" ? "السيارات" : "Fleet", localizedPath(locale, "/cars")],
-    [locale === "ar" ? "الفئات" : "Categories", `${localizedPath(locale)}#categories`],
-    [locale === "ar" ? "طريقة الحجز" : "How it works", `${localizedPath(locale)}#process`],
-    [locale === "ar" ? "الفرع" : "Branch", `${localizedPath(locale)}#branch`],
+    ["Fleet", "/en/cars"],
+    ["How it works", "/en/how-it-works"],
+    ["About Rahal", "/en/about"],
+    ["Branch", "/en/contact"],
   ] as const;
 }
 

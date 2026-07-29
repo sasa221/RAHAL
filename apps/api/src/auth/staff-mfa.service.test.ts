@@ -12,7 +12,8 @@ describe("StaffMfaService", () => {
     expect(first).not.toBe(secret);
     expect(first).not.toBe(second);
     expect(service.decryptSecret(first)).toBe(secret);
-    expect(() => service.decryptSecret(`${first.slice(0, -1)}A`)).toThrow();
+    const replacement = first.endsWith("A") ? "B" : "A";
+    expect(() => service.decryptSecret(`${first.slice(0, -1)}${replacement}`)).toThrow();
   });
 
   it("verifies RFC-compatible six-digit TOTP values and rejects replay", () => {

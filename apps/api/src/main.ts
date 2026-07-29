@@ -13,7 +13,7 @@ if (localEnvPath) process.loadEnvFile(localEnvPath);
 async function bootstrap() {
   const config = loadApiConfig();
   const app = await NestFactory.create(AppModule);
-  setupApp(app);
+  setupApp(app, { production: config.production });
   app.enableCors({ origin: config.webUrl, credentials: true });
   await app.listen(config.port);
 }

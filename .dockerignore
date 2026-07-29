@@ -1,0 +1,13 @@
+.git
+.github
+.next
+**/.next
+**/dist
+node_modules
+.private-storage
+.env
+.env.*
+coverage
+design-reference
+*.log
+*.tsbuildinfo

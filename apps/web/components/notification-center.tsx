@@ -29,6 +29,10 @@ const copy = {
     important: "أولوية",
     openUpdate: "فتح التحديث المرتبط",
     live: "متصل",
+    enablePush: "تفعيل تنبيهات المتصفح",
+    enablingPush: "جارٍ التفعيل...",
+    pushEnabled: "تنبيهات المتصفح مفعّلة",
+    pushUnavailable: "تعذر تفعيل تنبيهات المتصفح على هذا الجهاز.",
   },
   en: {
     label: "Notifications",
@@ -51,6 +55,10 @@ const copy = {
     important: "Priority",
     openUpdate: "Open linked update",
     live: "Live",
+    enablePush: "Enable browser alerts",
+    enablingPush: "Enabling alerts...",
+    pushEnabled: "Browser alerts enabled",
+    pushUnavailable: "Browser alerts could not be enabled on this device.",
   },
 } as const;
 
@@ -68,6 +76,7 @@ export function NotificationCenter({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [pushState, setPushState] = useState<"IDLE" | "ENABLING" | "ENABLED" | "FAILED">("IDLE");
 
   const load = useCallback(
     async (quiet = false) => {
@@ -118,6 +127,17 @@ export function NotificationCenter({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [load, open]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    navigator.serviceWorker
+      .getRegistration("/push-sw.js")
+      .then((registration) => registration?.pushManager.getSubscription())
+      .then((subscription) => {
+        if (subscription) setPushState("ENABLED");
+      })
+      .catch(() => undefined);
+  }, []);
 
   const filteredItems = useMemo(
     () =>
@@ -176,6 +196,43 @@ export function NotificationCenter({
       setError(true);
     } finally {
       setMarkingAll(false);
+    }
+  }
+
+  async function enablePush() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushState("FAILED");
+      return;
+    }
+    setPushState("ENABLING");
+    try {
+      const keyResponse = await fetch("/api/notifications/push-key", {
+        credentials: "include",
+      });
+      const keyPayload = (await keyResponse.json()) as ApiSuccess<{ publicKey: string | null }>;
+      if (!keyResponse.ok || !keyPayload.data.publicKey) throw new Error("push unavailable");
+      const registration = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
+      const subscription =
+        (await registration.pushManager.getSubscription()) ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: decodeBase64Url(keyPayload.data.publicKey),
+        }));
+      const serialized = subscription.toJSON();
+      const response = await fetch("/api/notifications/push-subscriptions", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          endpoint: serialized.endpoint,
+          p256dh: serialized.keys?.p256dh,
+          auth: serialized.keys?.auth,
+        }),
+      });
+      if (!response.ok) throw new Error("push registration failed");
+      setPushState("ENABLED");
+    } catch {
+      setPushState("FAILED");
     }
   }
 
@@ -282,6 +339,25 @@ export function NotificationCenter({
                     {text.markAll}
                   </button>
                 </div>
+                <div className={`notification-push-state is-${pushState.toLowerCase()}`}>
+                  <span aria-hidden="true">{pushState === "ENABLED" ? "✓" : "↗"}</span>
+                  <p>
+                    {pushState === "ENABLED"
+                      ? text.pushEnabled
+                      : pushState === "FAILED"
+                        ? text.pushUnavailable
+                        : text.enablePush}
+                  </p>
+                  {pushState !== "ENABLED" ? (
+                    <button
+                      disabled={pushState === "ENABLING"}
+                      onClick={() => void enablePush()}
+                      type="button"
+                    >
+                      {pushState === "ENABLING" ? text.enablingPush : text.enablePush}
+                    </button>
+                  ) : null}
+                </div>
 
                 <div className="notification-drawer__feed">
                   {error ? (
@@ -367,4 +443,10 @@ function formatNotificationDate(value: string, locale: PublicLocale) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function decodeBase64Url(value: string) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
 }

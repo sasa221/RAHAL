@@ -52,7 +52,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiSuccess<AuthSession>> {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(`register:${context.ipHash ?? "unknown"}`, 3, 60 * 60 * 1000);
+    await this.rateLimits.assertAllowed(
+      `register:${context.ipHash ?? "unknown"}`,
+      3,
+      60 * 60 * 1000,
+    );
     const result = await this.auth.register(input, context);
     this.setSessionCookie(response, result.token);
     return { data: result.session };
@@ -65,7 +69,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiSuccess<AuthLoginResult>> {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(`login:${context.ipHash ?? "unknown"}`, 5, 15 * 60 * 1000);
+    await this.rateLimits.assertAllowed(`login:${context.ipHash ?? "unknown"}`, 5, 15 * 60 * 1000);
     const result = await this.auth.login(input, context);
     if ("challengeToken" in result) {
       response.clearCookie(authCookieName, this.cookieOptions());
@@ -96,7 +100,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiSuccess<StaffMfaCompletion>> {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(`staff-mfa:${context.ipHash ?? "unknown"}`, 8, 10 * 60 * 1000);
+    await this.rateLimits.assertAllowed(
+      `staff-mfa:${context.ipHash ?? "unknown"}`,
+      8,
+      10 * 60 * 1000,
+    );
     const result = await this.auth.completeStaffMfaChallenge(
       readStaffMfaChallengeCookie(request),
       input,
@@ -129,7 +137,7 @@ export class AuthController {
     @Req() request: Request,
   ): Promise<ApiSuccess<PasswordChangeResult>> {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(
+    await this.rateLimits.assertAllowed(
       `password-change:${context.ipHash ?? "unknown"}`,
       5,
       15 * 60 * 1000,
@@ -145,7 +153,7 @@ export class AuthController {
     @Req() request: Request,
   ): Promise<ApiSuccess<PasswordResetRequestResult>> {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(
+    await this.rateLimits.assertAllowed(
       `password-reset-request:${context.ipHash ?? "unknown"}`,
       3,
       15 * 60 * 1000,
@@ -160,7 +168,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiSuccess<PasswordResetResult>> {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(
+    await this.rateLimits.assertAllowed(
       `password-reset-confirm:${context.ipHash ?? "unknown"}`,
       8,
       15 * 60 * 1000,
@@ -197,7 +205,7 @@ export class AuthController {
   @Post("verification/request")
   async requestVerification(@Body() input: RequestVerificationDto, @Req() request: Request) {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(
+    await this.rateLimits.assertAllowed(
       `verification-request:${context.ipHash ?? "unknown"}:${input.channel}`,
       3,
       15 * 60 * 1000,
@@ -210,7 +218,7 @@ export class AuthController {
   @Post("verification/confirm")
   async confirmVerification(@Body() input: ConfirmVerificationDto, @Req() request: Request) {
     const context = this.context(request);
-    this.rateLimits.assertAllowed(
+    await this.rateLimits.assertAllowed(
       `verification-confirm:${context.ipHash ?? "unknown"}:${input.channel}`,
       8,
       15 * 60 * 1000,

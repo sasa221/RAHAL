@@ -28,6 +28,20 @@ describe("branch completion and booking confirmation", () => {
     expect(service).toContain("BRANCH_REQUIREMENTS_INCOMPLETE");
   });
 
+  it("requires a scanned protected PDF instead of trusting a signed checkbox", () => {
+    expect(controller).toContain('@Post("sales/:id/signed-contract")');
+    expect(service).toContain("uploadSignedContract");
+    expect(service).toContain("documentScanner.assertClean");
+    expect(repository).toContain("async recordSignedContract");
+    expect(repository).toContain("storageKey: input.storageKey");
+    expect(controller).toContain('@Post("sales/:id/signed-contract/access")');
+    expect(repository).toContain("recordContractAccess");
+    expect(schema).toContain("model ContractAccessLog");
+    expect(read("apps/web/components/sales-review-workspace.tsx")).not.toContain(
+      "contractSigned: true",
+    );
+  });
+
   it("rechecks availability and relies on the database overlap constraint", () => {
     expect(repository).toContain("transaction.vehicleBlock.findFirst");
     expect(repository).toContain("transaction.booking.findFirst");
@@ -38,12 +52,19 @@ describe("branch completion and booking confirmation", () => {
   it("creates an EGP snapshot and privacy-minimized notification", () => {
     const confirmationImplementation = repository
       .split("async confirmBooking")[1]!
-      .split("findCustomerRequests")[0]!;
+      .split("async recordBookingOperation")[0]!;
     expect(repository).toContain('currency: "EGP"');
     expect(repository).toContain('eventKey: "RESERVATION_BOOKING_CONFIRMED"');
     expect(repository).toContain("transaction.booking.create");
     expect(contracts).toContain("SalesBookingConfirmationResult");
-    expect(confirmationImplementation).not.toContain("storageKey:");
+    expect(confirmationImplementation).toContain(
+      'where: { status: "SIGNED", signedAt: { not: null }, storageKey: { not: null } }',
+    );
+    expect(confirmationImplementation).toContain("select: { id: true }");
+    const confirmationContract = contracts
+      .split("export type SalesBookingConfirmationResult")[1]!
+      .split("export type SalesBookingOperationResult")[0]!;
+    expect(confirmationContract).not.toContain("storageKey");
   });
 
   it("ships a reviewable migration for branch attendance", () => {

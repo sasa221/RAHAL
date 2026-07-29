@@ -1,13 +1,20 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { NotificationInbox, NotificationReadResult } from "@rahal/contracts";
+import { createHmac } from "node:crypto";
 import { AuthService } from "../auth/auth.service";
+import { loadApiConfig } from "../config";
+import type { RemovePushSubscriptionDto, SavePushSubscriptionDto } from "./notifications.dto";
 import { NotificationsRepository } from "./notifications.repository";
+import { PushSubscriptionCryptoService } from "./push-subscription-crypto.service";
 
 @Injectable()
 export class NotificationsService {
+  private readonly config = loadApiConfig();
+
   constructor(
     private readonly auth: AuthService,
     private readonly notifications: NotificationsRepository,
+    private readonly pushCrypto: PushSubscriptionCryptoService = new PushSubscriptionCryptoService(),
   ) {}
 
   async inbox(token: string | undefined, requestedLocale?: string): Promise<NotificationInbox> {
@@ -47,5 +54,43 @@ export class NotificationsService {
     const session = await this.auth.getSession(token);
     const result = await this.notifications.markAllRead(session.user.id, new Date());
     return { readAt: result.readAt.toISOString() };
+  }
+
+  pushPublicKey() {
+    return this.pushCrypto.publicKey();
+  }
+
+  async savePushSubscription(
+    token: string | undefined,
+    input: SavePushSubscriptionDto,
+    userAgent?: string,
+  ) {
+    const session = await this.auth.getSession(token);
+    if (!this.pushCrypto.available()) {
+      throw new NotFoundException("Browser push is not available.");
+    }
+    await this.notifications.savePushSubscription({
+      userId: session.user.id,
+      tokenHash: this.pushTokenHash(input.endpoint),
+      subscriptionCiphertext: this.pushCrypto.encrypt(session.user.id, {
+        endpoint: input.endpoint,
+        keys: { p256dh: input.p256dh, auth: input.auth },
+      }),
+      userAgent: userAgent?.slice(0, 500),
+    });
+    return { enabled: true };
+  }
+
+  async removePushSubscription(token: string | undefined, input: RemovePushSubscriptionDto) {
+    const session = await this.auth.getSession(token);
+    await this.notifications.removePushSubscription(
+      session.user.id,
+      this.pushTokenHash(input.endpoint),
+    );
+    return { enabled: false };
+  }
+
+  private pushTokenHash(endpoint: string) {
+    return createHmac("sha256", this.config.authSecret).update(endpoint).digest("hex");
   }
 }

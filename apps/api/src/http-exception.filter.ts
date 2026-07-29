@@ -1,5 +1,12 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
-import type { Response } from "express";
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import type { Request, Response } from "express";
 import type { ApiError } from "@rahal/contracts";
 
 function errorCodeFromStatus(statusCode: number) {
@@ -23,7 +30,10 @@ function errorCodeFromStatus(statusCode: number) {
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpErrorFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
+    const request = host.switchToHttp().getRequest<Request>();
     const response = host.switchToHttp().getResponse<Response>();
     const isHttpException = exception instanceof HttpException;
     const statusCode = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -36,14 +46,30 @@ export class HttpErrorFilter implements ExceptionFilter {
         : isHttpException
           ? exception.message
           : "Unexpected server error.";
+    const requestId =
+      typeof response.locals.requestId === "string" ? response.locals.requestId : undefined;
 
     const payload: ApiError = {
       error: {
         code: errorCodeFromStatus(statusCode),
         message: Array.isArray(message) ? message.join("; ") : String(message),
         statusCode,
+        requestId,
       },
     };
+
+    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(
+        JSON.stringify({
+          event: "HTTP_REQUEST_FAILED",
+          requestId,
+          method: request.method,
+          path: request.path,
+          statusCode,
+          exceptionType: exception instanceof Error ? exception.name : "UnknownError",
+        }),
+      );
+    }
 
     response.status(statusCode).json(payload);
   }

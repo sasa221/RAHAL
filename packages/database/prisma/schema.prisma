@@ -205,6 +205,7 @@ model User {
   internalNotes             InternalNote[]           @relation("InternalNoteAuthor")
   customerMessages          CustomerMessage[]        @relation("CustomerMessageSender")
   documentAccesses          DocumentAccessLog[]      @relation("DocumentAccessActor")
+  contractAccesses          ContractAccessLog[]      @relation("ContractAccessActor")
   alternativeOffers         AlternativeOffer[]       @relation("AlternativeOfferCreator")
   contractsRecorded         Contract[]               @relation("ContractRecorder")
   bookingOperations         BookingOperation[]       @relation("BookingOperationActor")
@@ -733,22 +734,39 @@ model CustomerMessage {
 }
 
 model Contract {
-  id            String         @id @default(cuid())
+  id            String              @id @default(cuid())
   reservationId String
-  reservation   Reservation    @relation(fields: [reservationId], references: [id])
+  reservation   Reservation         @relation(fields: [reservationId], references: [id])
   bookingId     String?
-  booking       Booking?       @relation(fields: [bookingId], references: [id])
-  status        ContractStatus @default(DRAFT)
-  version       Int            @default(1)
+  booking       Booking?            @relation(fields: [bookingId], references: [id])
+  status        ContractStatus      @default(DRAFT)
+  version       Int                 @default(1)
   storageKey    String?
   signedAt      DateTime?
   recordedById  String?
-  recordedBy    User?          @relation("ContractRecorder", fields: [recordedById], references: [id])
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  recordedBy    User?               @relation("ContractRecorder", fields: [recordedById], references: [id])
+  accessLogs    ContractAccessLog[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@unique([reservationId, version])
   @@index([bookingId, status])
+}
+
+model ContractAccessLog {
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User     @relation("ContractAccessActor", fields: [actorId], references: [id])
+  action     String
+  reason     String
+  ipHash     String?
+  succeeded  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([contractId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 model ReservationEvent {
@@ -824,6 +842,7 @@ model NotificationDelivery {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
+  @@unique([notificationId, channel])
   @@index([status, channel, createdAt])
 }
 
@@ -862,15 +881,16 @@ model NotificationTemplate {
 }
 
 model PushSubscription {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String   @unique
-  platform   String
-  userAgent  String?
-  active     Boolean  @default(true)
-  lastSeenAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id                     String   @id @default(cuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash              String   @unique
+  subscriptionCiphertext String?
+  platform               String
+  userAgent              String?
+  active                 Boolean  @default(true)
+  lastSeenAt             DateTime @default(now())
+  createdAt              DateTime @default(now())
 
   @@index([userId, active])
 }

@@ -33,11 +33,13 @@ import type {
   SalesReservationQueueItem,
   SalesReservationDecisionResult,
   SalesReservationReview,
+  SalesSignedContractResult,
   SubmittedReservation,
 } from "@rahal/contracts";
 import { basename } from "node:path";
 import { AuthService } from "../auth/auth.service";
 import { StaffAccessService } from "../staff/staff-access.service";
+import { DocumentScanService } from "./document-scan.service";
 import { PrivateDocumentStorage } from "./private-document-storage";
 import type {
   CustomerAlternativeOfferDecisionDto,
@@ -69,6 +71,7 @@ export class ReservationsService {
     private readonly reservations: ReservationsRepository,
     private readonly documentStorage: PrivateDocumentStorage = new PrivateDocumentStorage(),
     @Optional() private readonly staffAccess?: StaffAccessService,
+    private readonly documentScanner: DocumentScanService = new DocumentScanService(),
   ) {}
 
   async saveDraft(
@@ -296,6 +299,7 @@ export class ReservationsService {
         throw new ForbiddenException("Only a rejected document can be replaced after submission.");
       }
     }
+    await this.documentScanner.assertClean(file.buffer, file.mimetype);
     const storageKey = await this.documentStorage.put(draftId, file.mimetype, file.buffer);
     let saved;
     try {
@@ -702,6 +706,54 @@ export class ReservationsService {
     };
   }
 
+  async accessSignedContract(
+    token: string | undefined,
+    reservationId: string,
+    input: SalesDocumentAccessDto,
+    ipHash?: string,
+  ) {
+    const session = await this.requireStaffPermission(token, "documents.view");
+    const contract = await this.reservations.findSignedContract(reservationId);
+    if (!contract?.storageKey) throw new NotFoundException("The signed contract was not found.");
+    const allowed =
+      session.user.role !== "SALES" ||
+      (contract.reservation.assignedSalesId !== null &&
+        contract.reservation.assignedSalesId === session.user.id);
+    if (!allowed) {
+      await this.reservations.recordContractAccess({
+        contractId: contract.id,
+        actorId: session.user.id,
+        action: "VIEW_INLINE",
+        reason: input.reason.trim(),
+        ipHash,
+        succeeded: false,
+      });
+      throw new ForbiddenException("Only the assigned reviewer can view this contract.");
+    }
+    try {
+      const bytes = await this.documentStorage.read(contract.storageKey);
+      await this.reservations.recordContractAccess({
+        contractId: contract.id,
+        actorId: session.user.id,
+        action: "VIEW_INLINE",
+        reason: input.reason.trim(),
+        ipHash,
+        succeeded: true,
+      });
+      return { bytes };
+    } catch (error) {
+      await this.reservations.recordContractAccess({
+        contractId: contract.id,
+        actorId: session.user.id,
+        action: "VIEW_INLINE",
+        reason: input.reason.trim(),
+        ipHash,
+        succeeded: false,
+      });
+      throw error;
+    }
+  }
+
   async decideSalesReview(
     token: string | undefined,
     reservationId: string,
@@ -804,7 +856,60 @@ export class ReservationsService {
     if (result.kind === "RECEIPT_IN_USE") {
       throw new ConflictException("This branch receipt number is already in use.");
     }
+    if (result.kind === "SIGNED_CONTRACT_REQUIRED") {
+      throw new ConflictException(
+        "Upload the signed branch contract before recording attendance and deposit.",
+      );
+    }
     return result.data;
+  }
+
+  async uploadSignedContract(
+    token: string | undefined,
+    reservationId: string,
+    file: { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined,
+  ): Promise<SalesSignedContractResult> {
+    const session = await this.requireStaffPermission(token, "deposits.record");
+    if (!file) throw new BadRequestException("A signed contract PDF is required.");
+    if (file.mimetype !== "application/pdf" || !matchesFileSignature(file.mimetype, file.buffer)) {
+      throw new BadRequestException("The signed contract must be a valid PDF document.");
+    }
+    if (file.size < 5 || file.size > 10 * 1024 * 1024 || file.buffer.length !== file.size) {
+      throw new BadRequestException("The signed contract PDF must not exceed 10 MB.");
+    }
+
+    await this.documentScanner.assertClean(file.buffer, file.mimetype);
+    const storageKey = await this.documentStorage.put(
+      reservationId,
+      file.mimetype,
+      file.buffer,
+      "contracts",
+    );
+    try {
+      const result = await this.reservations.recordSignedContract({
+        reservationId,
+        actorId: session.user.id,
+        canOverrideAssignment: ["ADMIN", "SUPER_ADMIN"].includes(session.user.role),
+        storageKey,
+      });
+      if (result.kind !== "RECORDED") await this.documentStorage.remove(storageKey);
+      if (result.kind === "NOT_FOUND") {
+        throw new NotFoundException("A valid pre-approved request was not found.");
+      }
+      if (result.kind === "NOT_ASSIGNED") {
+        throw new ForbiddenException("Only the assigned sales employee can record the contract.");
+      }
+      if (result.kind === "PRE_APPROVAL_EXPIRED") {
+        throw new ConflictException("The pre-approval expired before contract recording.");
+      }
+      if (result.kind === "ALREADY_RECORDED") {
+        throw new ConflictException("A signed contract is already protected for this request.");
+      }
+      return result.data;
+    } catch (error) {
+      await this.documentStorage.remove(storageKey).catch(() => undefined);
+      throw error;
+    }
   }
 
   async confirmBooking(

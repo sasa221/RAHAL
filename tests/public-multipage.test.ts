@@ -128,6 +128,7 @@ describe("public multi-page experience", () => {
     const home = read("apps/web/components/public-home.tsx");
     const accountEntry = read("apps/web/components/account-entry-link.tsx");
     const nextConfig = read("apps/web/next.config.ts");
+    const apiProxy = read("apps/web/app/api/[...path]/route.ts");
 
     expect(arabicRoute).toMatch(/<AuthAccess\s+locale="ar"/);
     expect(englishRoute).toMatch(/<AuthAccess\s+locale="en"/);
@@ -147,7 +148,8 @@ describe("public multi-page experience", () => {
     expect(accountEntry).toContain('localizedPath(locale, "/auth")');
     expect(accountEntry).toContain('session.user.role === "CUSTOMER"');
     expect(home).not.toContain('aria-disabled="true"');
-    expect(nextConfig).toContain('source: "/api/:path*"');
+    expect(apiProxy).toContain("process.env.API_URL");
+    expect(apiProxy).toContain("export const POST = forward");
     expect(nextConfig).toContain("devIndicators: false");
     expect(auth).toContain('fetch("/api/auth/verification/request"');
     expect(auth).toContain('fetch("/api/auth/verification/confirm"');

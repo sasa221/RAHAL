@@ -35,6 +35,7 @@ import type {
   SalesAlternativeOfferResult,
   SalesReservationQueueItem,
   SalesReservationReview,
+  SalesSignedContractResult,
   SubmittedReservation,
   ReservationDraft,
 } from "@rahal/contracts";
@@ -213,6 +214,28 @@ export class ReservationsController {
     };
   }
 
+  @Post("sales/:id/signed-contract/access")
+  async accessSignedContract(
+    @Param("id") id: string,
+    @Body() input: SalesDocumentAccessDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const contract = await this.reservations.accessSignedContract(
+      readAuthCookie(request),
+      id,
+      input,
+      hashRequestIp(request),
+    );
+    response.set({
+      "Cache-Control": "private, no-store, max-age=0",
+      "Content-Disposition": "inline; filename=rahal-signed-contract.pdf",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "X-Content-Type-Options": "nosniff",
+    });
+    return new StreamableFile(contract.bytes, { type: "application/pdf" });
+  }
+
   @Post("sales/:id/decision")
   async decideSalesReview(
     @Param("id") id: string,
@@ -243,6 +266,19 @@ export class ReservationsController {
   ): Promise<ApiSuccess<SalesBranchChecklistResult>> {
     return {
       data: await this.reservations.recordBranchChecklist(readAuthCookie(request), id, input),
+    };
+  }
+
+  @Post("sales/:id/signed-contract")
+  @UseInterceptors(FileInterceptor("file", { limits: { files: 1, fileSize: 10 * 1024 * 1024 } }))
+  async uploadSignedContract(
+    @Param("id") id: string,
+    @UploadedFile()
+    file: { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<SalesSignedContractResult>> {
+    return {
+      data: await this.reservations.uploadSignedContract(readAuthCookie(request), id, file),
     };
   }
 

@@ -554,7 +554,6 @@ describe("reservation draft service", () => {
         customerAttended: true,
         depositAmountEgp: 10_000,
         receiptNumber: "RCP-2026-001",
-        contractSigned: true,
       }),
     ).resolves.toMatchObject({ status: "PRE_APPROVED" });
     expect(recordBranchChecklist).toHaveBeenCalledWith(
@@ -562,6 +561,112 @@ describe("reservation draft service", () => {
         actorId: "sales-1",
         depositAmountEgp: 10_000,
         receiptNumber: "RCP-2026-001",
+      }),
+    );
+  });
+
+  it("protects a valid signed contract PDF before recording its metadata", async () => {
+    const recordSignedContract = vi.fn().mockResolvedValue({
+      kind: "RECORDED",
+      data: {
+        id: "reservation-1",
+        reference: "RHL-2026-123456",
+        status: "SIGNED",
+        signedAt: "2026-07-26T17:55:00.000Z",
+      },
+    });
+    const put = vi.fn().mockResolvedValue("contracts/reservation-1/opaque.pdf");
+    const remove = vi.fn();
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "sales-1", role: "SALES", preferredLocale: "en" },
+        }),
+      } as never,
+      { recordSignedContract } as never,
+      { put, remove } as never,
+      { require: vi.fn() } as never,
+    );
+    const buffer = Buffer.from("%PDF-signed-contract");
+
+    await expect(
+      service.uploadSignedContract("session-token", "reservation-1", {
+        originalname: "signed-contract.pdf",
+        mimetype: "application/pdf",
+        size: buffer.length,
+        buffer,
+      }),
+    ).resolves.toMatchObject({ status: "SIGNED" });
+    expect(put).toHaveBeenCalledWith("reservation-1", "application/pdf", buffer, "contracts");
+    expect(recordSignedContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reservationId: "reservation-1",
+        actorId: "sales-1",
+        storageKey: "contracts/reservation-1/opaque.pdf",
+      }),
+    );
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid signed-contract bytes before protected storage", async () => {
+    const put = vi.fn();
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "sales-1", role: "SALES", preferredLocale: "en" },
+        }),
+      } as never,
+      {} as never,
+      { put } as never,
+      { require: vi.fn() } as never,
+    );
+    const buffer = Buffer.from("not-a-pdf");
+
+    await expect(
+      service.uploadSignedContract("session-token", "reservation-1", {
+        originalname: "signed-contract.pdf",
+        mimetype: "application/pdf",
+        size: buffer.length,
+        buffer,
+      }),
+    ).rejects.toThrow("The signed contract must be a valid PDF document.");
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("opens a protected signed contract only for the assigned reviewer and audits access", async () => {
+    const recordContractAccess = vi.fn();
+    const read = vi.fn().mockResolvedValue(Buffer.from("%PDF-signed"));
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "sales-1", role: "SALES", preferredLocale: "en" },
+        }),
+      } as never,
+      {
+        findSignedContract: vi.fn().mockResolvedValue({
+          id: "contract-1",
+          storageKey: "contracts/reservation-1/opaque.pdf",
+          reservation: { assignedSalesId: "sales-1" },
+        }),
+        recordContractAccess,
+      } as never,
+      { read } as never,
+      { require: vi.fn() } as never,
+    );
+
+    await expect(
+      service.accessSignedContract(
+        "session-token",
+        "reservation-1",
+        { reason: "Confirming the protected branch contract" },
+        "ip-hash",
+      ),
+    ).resolves.toEqual({ bytes: Buffer.from("%PDF-signed") });
+    expect(recordContractAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: "contract-1",
+        actorId: "sales-1",
+        succeeded: true,
       }),
     );
   });

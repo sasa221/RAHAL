@@ -306,6 +306,18 @@ export function Footer({ locale }: PublicHomeProps) {
             <a href={localizedPath(locale, "/reviews")}>
               {locale === "ar" ? "تجارب العملاء" : "Customer reviews"}
             </a>
+            <a href={localizedPath(locale, "/faq")}>
+              {locale === "ar" ? "الأسئلة الشائعة" : "FAQ"}
+            </a>
+            <a href={localizedPath(locale, "/terms")}>
+              {locale === "ar" ? "شروط الإيجار" : "Rental terms"}
+            </a>
+            <a href={localizedPath(locale, "/privacy")}>
+              {locale === "ar" ? "الخصوصية" : "Privacy"}
+            </a>
+            <a href={localizedPath(locale, "/cancellation")}>
+              {locale === "ar" ? "سياسة الإلغاء" : "Cancellation policy"}
+            </a>
           </div>
         </div>
         <div>

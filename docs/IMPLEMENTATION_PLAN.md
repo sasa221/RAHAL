@@ -156,7 +156,7 @@ Status: completed locally on 2026-07-18. The baseline migration and relative dem
 
 Goal: establish secure customer identity and browser sessions before reservation drafts can be persisted.
 
-Status: account verification, account security, mandatory staff/admin MFA, and first-login temporary-password replacement are completed locally. Approved production delivery credentials and shared rate-limit infrastructure remain pending.
+Status: account verification, account security, mandatory staff/admin MFA, first-login temporary-password replacement, and shared Redis throttling are completed locally. Approved production delivery and Redis credentials remain deployment inputs.
 
 ### Completed foundation scope
 
@@ -269,7 +269,7 @@ Status: the customer wizard through final review and the guarded `DRAFT` to `PEN
 
 Goal: give authorized sales staff a protected queue and an auditable way to begin reviewing submitted requests without confirming a booking.
 
-Status: the queue, protected review detail, atomic claim, staff decisions, customer follow-up, alternative offers, and automated review-window expiry were completed locally on 2026-07-19. Deposit/contract recording and confirmation remain pending.
+Status: the queue, protected review detail, atomic claim, staff decisions, customer follow-up, alternative offers, automated expiry, branch attendance, EGP deposit, protected signed contract, confirmation, and booking operations are completed locally.
 
 ### Completed scope
 
@@ -447,7 +447,7 @@ Status: completed locally on 2026-07-26 for the configured private-storage adapt
 
 Goal: surface the notifications already written by reservation, document, booking, and rental transactions in one secure bilingual workspace experience.
 
-Status: completed locally on 2026-07-26. External Email, WhatsApp, and Push delivery still requires the approved production providers and outbox worker.
+Status: completed locally on 2026-07-26; the external Email, WhatsApp, and Web Push outbox worker was completed in Milestone 21. Production provider accounts remain deployment inputs.
 
 ### Completed scope
 
@@ -582,7 +582,7 @@ Status: implemented locally on 2026-07-26. The included database migration must 
 
 Goal: complete the customer account workspace with safe self-service profile data and explicit, channel-specific communication choices.
 
-Status: implemented and verified locally on 2026-07-26. Preference enforcement by external delivery workers remains part of the provider integration milestone.
+Status: implemented and verified locally on 2026-07-26. External delivery preference and quiet-hour enforcement were completed in Milestone 21.
 
 ### Completed scope
 
@@ -820,3 +820,75 @@ Status: implemented locally on 2026-07-28.
 - Final legal copy and retention periods.
 - Confirmed branch address, phone, WhatsApp, map, and social links.
 - Final logo and storefront assets.
+
+## Milestone 20: Public information surface and release-control baseline
+
+Goal: close the missing public information routes, make document locale metadata truthful from the first render, and establish one explicit release gate before production work continues.
+
+Status: implemented locally on 2026-07-28.
+
+### Completed scope
+
+- Added shared Arabic/English About, How it works, Contact, FAQ, Rental terms, Privacy, and Cancellation pages.
+- Reused the production public header, footer, motion layer, typography, logo, route localization, and responsive tokens rather than duplicating per-language page trees.
+- Added route-specific canonical and language-alternate metadata for every new page.
+- Added a request-locale proxy and root-layout header boundary so English pages render `lang="en-EG" dir="ltr"` and Arabic pages render `lang="ar-EG" dir="rtl"` at the document level.
+- Replaced home-only navigation anchors with stable public routes and added policy/FAQ links to the footer.
+- Kept legal, retention, deposit-settlement, branch, and contact facts visibly pre-launch where owner or qualified legal approval is still required.
+- Added `docs/RELEASE_READINESS.md` as the launch-blocker and route-audit control document.
+- Verified all 14 routes at mobile and desktop sizes with no horizontal page overflow.
+
+### Acceptance criteria
+
+- Every required public information page exists in Arabic and English and shares one component.
+- The root HTML language and direction match the requested locale.
+- Policy pages never present unapproved copy as binding production terms.
+- No online payment, non-branch pickup/return, forbidden geography/currency, or sensitive-document delivery claim is introduced.
+- Mobile and desktop layouts have no horizontal overflow and support reduced motion.
+- Every page includes useful metadata, a language counterpart, navigation, and a next action.
+
+### Tests
+
+- Static coverage for all route files, document locale selection, shared responsive composition, pre-launch legal labels, branch/payment boundaries, reduced motion, and sensitive-data exclusions.
+- Full repository tests, type checking, Prisma validation, production build, and browser verification.
+
+## Milestone 21: Pre-deployment business and production hardening
+
+Goal: close the code-owned launch gaps without inventing legal copy, production credentials, real fleet data, or branch facts.
+
+Status: implemented locally on 2026-07-28. Real services, staging evidence, approved content, and owner/legal sign-off remain release gates.
+
+### Completed scope
+
+- Added private S3-compatible document storage with production fail-closed validation, server-side encryption settings, bounded reads, and local development isolation.
+- Added signed malware-scanning for customer documents and contracts.
+- Replaced the branch signed-contract checkbox with a real protected PDF upload, protected staff access reason, access audit, and contract preview. Confirmation now requires a stored signed contract.
+- Added Redis-backed atomic authentication throttling with TLS-only production configuration, safe local fallback, readiness, and shutdown.
+- Added a transactional notification outbox worker for In-App, Resend Email, approved-template Meta WhatsApp, and encrypted VAPID Web Push.
+- Added channel-level idempotency, bounded retries, dead-subscription cleanup, correct customer/staff recipient routing, booking-to-reservation resolution, preference checks, and quiet-hour deferral.
+- Added explicit browser notification opt-in and a service worker without automatic permission prompts.
+- Added audited administrator branch management.
+- Added an audited legal-policy center that publishes exactly four synchronized Arabic/English policies, rejects development versions, and atomically retires the previous bundle.
+- Added dependency overrides and framework updates until `pnpm audit` reported no known vulnerabilities.
+- Added runtime web-to-API proxying so `API_URL` is selected at server runtime, with bounded headers, cookie preservation, safe upstream failure, and no browser-visible internal URL.
+- Added API request IDs, defensive headers, browser CSP/security headers, dependency readiness, Docker definitions, CI quality gates, deployment/rollback instructions, and backup/restore instructions.
+- Audited the complete public/customer/sales/admin route matrix at mobile and desktop sizes; all audited routes had one H1, correct route locale/direction, no horizontal overflow, and no basic unlabeled interactive controls.
+
+### Acceptance criteria
+
+- Production startup fails when private storage, malware scanning, Redis, MFA encryption, delivery providers, WhatsApp notification template, or Web Push encryption/VAPID settings are incomplete.
+- No document or contract object key is returned to a customer or administrator projection.
+- A booking cannot be confirmed from a boolean contract claim; a clean protected PDF must exist.
+- Successful external notification channels are not resent when another channel retries.
+- Staff-directed events are never delivered to the customer merely because the payload also references that customer.
+- Quiet hours delay optional external channels without hiding the in-app notification.
+- Only an administrator can publish a complete, immediate, non-development bilingual policy bundle.
+- One application image can use a runtime `API_URL` and the browser never receives the internal service address.
+- High/moderate dependency audit findings are zero at the recorded verification point.
+- Real deployment remains blocked until every external item in `RELEASE_READINESS.md` is closed.
+
+### Tests
+
+- Unit coverage for local/S3 storage, malware scanning, Redis failure behavior, push-subscription encryption, outbox recipient/idempotency/retry/quiet-hours behavior, branches, policy publication, and dependency readiness.
+- Static security coverage for contract non-exposure, protected access audit, runtime proxy boundaries, production configuration, CSP/headers, CI, runbooks, bilingual routes, and responsive interfaces.
+- Full repository formatting, lint, tests, Prisma validation/generation, type checking, production builds, dependency audit, migrations, and container builds.

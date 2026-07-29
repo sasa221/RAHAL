@@ -10,6 +10,7 @@ export type ApiError = {
     code: string;
     message: string;
     statusCode: number;
+    requestId?: string;
     details?: unknown;
   };
 };
@@ -323,6 +324,13 @@ export type SalesBranchChecklistResult = {
   contractSignedAt: string;
 };
 
+export type SalesSignedContractResult = {
+  id: string;
+  reference: string;
+  status: "SIGNED";
+  signedAt: string;
+};
+
 export type SalesBookingConfirmationResult = {
   id: string;
   reference: string;
@@ -459,6 +467,29 @@ export type ReservationConsentBundle = {
   }>;
 };
 
+export type PolicyKey = "RENTAL_TERMS" | "PRIVACY" | "DOCUMENT_PROCESSING" | "RESERVATION_PROCESS";
+
+export type ManagedPolicyCopy = {
+  key: PolicyKey;
+  locale: "ar" | "en";
+  title: string;
+  body: string;
+};
+
+export type ManagedPolicyBundle = {
+  version: string;
+  effectiveAt: string;
+  developmentOnly: boolean;
+  complete: boolean;
+  copies: ManagedPolicyCopy[];
+};
+
+export type PolicyManagementOverview = {
+  activeVersion: string | null;
+  activeIsDevelopmentOnly: boolean;
+  bundles: ManagedPolicyBundle[];
+};
+
 export type ReservationConsents = {
   draftId: string;
   reference: string;
@@ -474,6 +505,15 @@ export type BranchSummary = {
   addressAr: string;
   addressEn: string | null;
   active: boolean;
+};
+
+export type ManagedBranch = BranchSummary & {
+  latitude: number | null;
+  longitude: number | null;
+  phones: string[];
+  whatsappNumbers: string[];
+  workingHours: Record<string, unknown>;
+  updatedAt: string;
 };
 
 export type AuthUser = {
@@ -654,6 +694,10 @@ export type NotificationInbox = {
 export type NotificationReadResult = {
   id: string;
   readAt: string;
+};
+
+export type PushSubscriptionResult = {
+  enabled: boolean;
 };
 
 export type StaffPermissionKey =

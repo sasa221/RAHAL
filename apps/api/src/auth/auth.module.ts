@@ -9,6 +9,6 @@ import { StaffMfaService } from "./staff-mfa.service";
 @Module({
   controllers: [AuthController],
   providers: [AuthRepository, AuthService, PasswordService, AuthRateLimitService, StaffMfaService],
-  exports: [AuthService, PasswordService],
+  exports: [AuthService, PasswordService, AuthRateLimitService],
 })
 export class AuthModule {}

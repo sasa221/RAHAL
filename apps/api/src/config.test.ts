@@ -88,4 +88,126 @@ describe("loadApiConfig verification delivery", () => {
       graphApiVersion: "v23.0",
     });
   });
+
+  it("fails closed when production transport or account-delivery providers are incomplete", () => {
+    const production = {
+      ...baseEnv,
+      NODE_ENV: "production",
+      MFA_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64url"),
+    };
+
+    expect(() => loadApiConfig(production)).toThrow("WEB_URL must use HTTPS in production.");
+    expect(() => loadApiConfig({ ...production, WEB_URL: "https://rahal.example" })).toThrow(
+      "RESEND_API_KEY and VERIFICATION_EMAIL_FROM are required in production.",
+    );
+    expect(() =>
+      loadApiConfig({
+        ...production,
+        WEB_URL: "https://rahal.example",
+        RESEND_API_KEY: "re_production",
+        VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+      }),
+    ).toThrow(
+      "Approved WhatsApp Business authentication-template credentials are required in production.",
+    );
+
+    expect(() =>
+      loadApiConfig({
+        ...production,
+        WEB_URL: "https://rahal.example",
+        RESEND_API_KEY: "re_production",
+        VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
+        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
+        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
+        WHATSAPP_GRAPH_API_VERSION: "v23.0",
+      }),
+    ).toThrow("Private S3 document storage is required in production.");
+
+    expect(() =>
+      loadApiConfig({
+        ...production,
+        WEB_URL: "https://rahal.example",
+        RESEND_API_KEY: "re_production",
+        VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
+        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
+        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
+        WHATSAPP_GRAPH_API_VERSION: "v23.0",
+        PRIVATE_S3_REGION: "eu-central-1",
+        PRIVATE_S3_BUCKET: "rahal-private",
+        PRIVATE_S3_ACCESS_KEY_ID: "test-access",
+        PRIVATE_S3_SECRET_ACCESS_KEY: "test-secret",
+      }),
+    ).toThrow("REDIS_URL is required in production.");
+
+    expect(() =>
+      loadApiConfig({
+        ...production,
+        WEB_URL: "https://rahal.example",
+        RESEND_API_KEY: "re_production",
+        VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
+        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
+        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
+        WHATSAPP_GRAPH_API_VERSION: "v23.0",
+        PRIVATE_S3_REGION: "eu-central-1",
+        PRIVATE_S3_BUCKET: "rahal-private",
+        PRIVATE_S3_ACCESS_KEY_ID: "test-access",
+        PRIVATE_S3_SECRET_ACCESS_KEY: "test-secret",
+        REDIS_URL: "rediss://default:secret@redis.example.test:6379",
+      }),
+    ).toThrow("Document malware scanning is required in production.");
+  });
+
+  it("maps private S3 storage and rejects unsafe production storage", () => {
+    const storageEnv = {
+      ...baseEnv,
+      PRIVATE_S3_REGION: "eu-central-1",
+      PRIVATE_S3_BUCKET: "rahal-private",
+      PRIVATE_S3_ACCESS_KEY_ID: "test-access",
+      PRIVATE_S3_SECRET_ACCESS_KEY: "test-secret",
+      PRIVATE_S3_FORCE_PATH_STYLE: "true",
+    };
+    expect(loadApiConfig(storageEnv).privateDocumentStorageS3).toEqual({
+      endpoint: undefined,
+      region: "eu-central-1",
+      bucket: "rahal-private",
+      accessKeyId: "test-access",
+      secretAccessKey: "test-secret",
+      forcePathStyle: true,
+    });
+    expect(() =>
+      loadApiConfig({
+        ...storageEnv,
+        PRIVATE_DOCUMENT_STORAGE_PATH: ".private-storage",
+      }),
+    ).toThrow("Configure either PRIVATE_DOCUMENT_STORAGE_PATH or private S3 storage, not both.");
+  });
+
+  it("requires a complete encrypted Web Push configuration", () => {
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        WEB_PUSH_PUBLIC_KEY: "public-key",
+      }),
+    ).toThrow(
+      "WEB_PUSH_PUBLIC_KEY, WEB_PUSH_PRIVATE_KEY, WEB_PUSH_SUBJECT, PUSH_SUBSCRIPTION_ENCRYPTION_KEY must be configured together.",
+    );
+    const encryptionKey = Buffer.alloc(32, 5).toString("base64url");
+    expect(
+      loadApiConfig({
+        ...baseEnv,
+        WEB_PUSH_PUBLIC_KEY: "public-key",
+        WEB_PUSH_PRIVATE_KEY: "private-key",
+        WEB_PUSH_SUBJECT: "mailto:operations@example.test",
+        PUSH_SUBSCRIPTION_ENCRYPTION_KEY: encryptionKey,
+      }).webPush,
+    ).toEqual({
+      publicKey: "public-key",
+      privateKey: "private-key",
+      subject: "mailto:operations@example.test",
+      encryptionKey,
+    });
+  });
 });

@@ -652,6 +652,9 @@ describe("RAHAL API", () => {
     const response = await request(app.getHttpServer()).get("/api/health").expect(200);
     expect(response.body).toMatchObject({ status: "ok", service: "rahal-api" });
     expect(typeof response.body.timestamp).toBe("string");
+    expect(response.headers["x-request-id"]).toMatch(/^[A-Za-z0-9_-]{8,80}$/);
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("DENY");
   });
 
   it("lists typed vehicles from the repository boundary", async () => {
@@ -668,13 +671,14 @@ describe("RAHAL API", () => {
 
   it("returns a structured 404 for a missing vehicle", async () => {
     const response = await request(app.getHttpServer()).get("/api/vehicles/missing").expect(404);
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       error: {
         code: "NOT_FOUND",
         message: "Vehicle 'missing' was not found.",
         statusCode: 404,
       },
     });
+    expect(response.body.error.requestId).toBe(response.headers["x-request-id"]);
   });
 
   it("lists active pickup and return branches", async () => {

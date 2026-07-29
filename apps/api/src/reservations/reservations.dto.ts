@@ -139,9 +139,6 @@ export class SalesBranchChecklistDto {
   @Matches(/^[\p{L}\p{N}][\p{L}\p{N}\-_/ ]+$/u)
   receiptNumber!: string;
 
-  @Equals(true)
-  contractSigned!: true;
-
   @IsOptional()
   @IsString()
   @MaxLength(300)

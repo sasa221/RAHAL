@@ -244,6 +244,19 @@ const copy = {
     receiptPlaceholder: "مثال: RCP-2026-00124",
     contract: "العقد",
     contractConfirmed: "تم توقيع عقد الإيجار داخل الفرع",
+    contractUpload: "نسخة العقد الموقّع",
+    contractUploadHint: "PDF فقط، بحد أقصى 10 MB. يُحفظ في مساحة خاصة ولا يظهر كرابط عام.",
+    contractChoose: "اختيار ملف PDF",
+    contractUploadAction: "رفع العقد وحمايته",
+    contractUploading: "جارٍ حماية العقد...",
+    contractStored: "تم حفظ العقد الموقّع",
+    contractProtected: "النسخة محمية ومربوطة بهذا الطلب فقط.",
+    contractUploadFailed: "تعذر حفظ العقد. تأكد أنه ملف PDF صالح وأن الطلب ما زال نشطًا.",
+    contractAccessReason: "اكتب سبب فتح العقد (10 أحرف على الأقل)",
+    contractOpen: "فتح النسخة المحمية",
+    contractOpening: "جارٍ فتح العقد...",
+    contractPreview: "معاينة العقد الموقّع المحمي",
+    contractAccessFailed: "تعذر فتح العقد أو لم يتم تسجيل سبب واضح للوصول.",
     recordBranch: "حفظ إجراءات الفرع",
     recordingBranch: "جارٍ حفظ الإجراءات...",
     branchRecorded: "تم تسجيل الحضور والعربون والعقد بنجاح.",
@@ -390,6 +403,22 @@ const copy = {
     receiptPlaceholder: "Example: RCP-2026-00124",
     contract: "Contract",
     contractConfirmed: "The rental contract was signed at the branch",
+    contractUpload: "Signed contract copy",
+    contractUploadHint:
+      "PDF only, up to 10 MB. It stays in private storage and is never exposed as a public link.",
+    contractChoose: "Choose PDF file",
+    contractUploadAction: "Upload and protect contract",
+    contractUploading: "Protecting contract...",
+    contractStored: "Signed contract protected",
+    contractProtected: "The private copy is linked only to this request.",
+    contractUploadFailed:
+      "The contract could not be stored. Use a valid PDF and check that the request is still active.",
+    contractAccessReason: "Reason for opening the contract (at least 10 characters)",
+    contractOpen: "Open protected copy",
+    contractOpening: "Opening contract...",
+    contractPreview: "Protected signed contract preview",
+    contractAccessFailed:
+      "The contract could not be opened or a clear access reason was not recorded.",
     recordBranch: "Save branch requirements",
     recordingBranch: "Saving branch requirements...",
     branchRecorded: "Attendance, deposit, and signed contract were recorded.",
@@ -467,7 +496,11 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   const [offering, setOffering] = useState(false);
   const [offerCreatedExpires, setOfferCreatedExpires] = useState<string | null>(null);
   const [customerAttended, setCustomerAttended] = useState(false);
-  const [contractSigned, setContractSigned] = useState(false);
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [uploadingContract, setUploadingContract] = useState(false);
+  const [contractAccessReason, setContractAccessReason] = useState("");
+  const [contractUrl, setContractUrl] = useState<string | null>(null);
+  const [viewingContract, setViewingContract] = useState(false);
   const [receiptNumber, setReceiptNumber] = useState("");
   const [branchNote, setBranchNote] = useState("");
   const [recordingBranch, setRecordingBranch] = useState(false);
@@ -516,6 +549,13 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       .catch(() => setFleet([]));
   }, []);
 
+  useEffect(
+    () => () => {
+      if (contractUrl) URL.revokeObjectURL(contractUrl);
+    },
+    [contractUrl],
+  );
+
   const filteredQueue = useMemo(
     () => queue.filter((item) => filter === "ALL" || item.status === filter),
     [filter, queue],
@@ -542,7 +582,12 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     setOfferCreatedExpires(null);
     setBranchFeedback(null);
     setCustomerAttended(false);
-    setContractSigned(false);
+    setContractFile(null);
+    setContractAccessReason("");
+    setContractUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
     setReceiptNumber("");
     setBranchNote("");
     setOperationNote("");
@@ -563,7 +608,6 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
       setOfferPickup(payload.data.pickupAt.slice(0, 10));
       setOfferReturn(payload.data.returnAt.slice(0, 10));
       setCustomerAttended(Boolean(payload.data.branchProgress.attendedAt));
-      setContractSigned(payload.data.branchProgress.contract?.status === "SIGNED");
       setReceiptNumber(payload.data.branchProgress.deposit?.receiptNumber ?? "");
     } catch {
       setActionError(text.unavailable);
@@ -695,11 +739,80 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     }
   }
 
+  async function uploadSignedContract() {
+    if (!review || !contractFile) {
+      setActionError(text.contractUploadFailed);
+      return;
+    }
+    setUploadingContract(true);
+    setActionError(null);
+    const form = new FormData();
+    form.append("file", contractFile);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/signed-contract`,
+        {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        },
+      );
+      const payload = (await response.json()) as { data?: { signedAt: string } };
+      if (!response.ok || !payload.data) throw new Error("contract unavailable");
+      setReview((current) =>
+        current
+          ? {
+              ...current,
+              branchProgress: {
+                ...current.branchProgress,
+                contract: { status: "SIGNED", signedAt: payload.data!.signedAt },
+              },
+            }
+          : current,
+      );
+      setContractFile(null);
+    } catch {
+      setActionError(text.contractUploadFailed);
+    } finally {
+      setUploadingContract(false);
+    }
+  }
+
+  async function viewSignedContract() {
+    if (!review || contractAccessReason.trim().length < 10) {
+      setActionError(text.contractAccessFailed);
+      return;
+    }
+    setViewingContract(true);
+    setActionError(null);
+    try {
+      const response = await fetch(
+        `/api/reservations/sales/${encodeURIComponent(review.id)}/signed-contract/access`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason: contractAccessReason.trim() }),
+        },
+      );
+      if (!response.ok) throw new Error("contract unavailable");
+      const nextUrl = URL.createObjectURL(await response.blob());
+      setContractUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return nextUrl;
+      });
+    } catch {
+      setActionError(text.contractAccessFailed);
+    } finally {
+      setViewingContract(false);
+    }
+  }
+
   async function recordBranchRequirements() {
     if (
       !review ||
       !customerAttended ||
-      !contractSigned ||
+      review.branchProgress.contract?.status !== "SIGNED" ||
       !review.branchProgress.expectedDepositEgp ||
       receiptNumber.trim().length < 3
     ) {
@@ -719,7 +832,6 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
             customerAttended: true,
             depositAmountEgp: review.branchProgress.expectedDepositEgp,
             receiptNumber: receiptNumber.trim(),
-            contractSigned: true,
             note: branchNote.trim() || undefined,
           }),
         },
@@ -1396,14 +1508,69 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                                   value={receiptNumber}
                                 />
                               </label>
-                              <label className="sales-confirmation-check">
-                                <input
-                                  checked={contractSigned}
-                                  onChange={(event) => setContractSigned(event.target.checked)}
-                                  type="checkbox"
-                                />
-                                <span>{text.contractConfirmed}</span>
-                              </label>
+                              {review.branchProgress.contract?.status !== "SIGNED" ? (
+                                <div className="sales-contract-upload">
+                                  <div>
+                                    <strong>{text.contractUpload}</strong>
+                                    <small>{text.contractUploadHint}</small>
+                                  </div>
+                                  <label>
+                                    <input
+                                      accept="application/pdf"
+                                      onChange={(event) =>
+                                        setContractFile(event.target.files?.[0] ?? null)
+                                      }
+                                      type="file"
+                                    />
+                                    <span>{contractFile?.name ?? text.contractChoose}</span>
+                                  </label>
+                                  <button
+                                    disabled={!contractFile || uploadingContract}
+                                    onClick={() => void uploadSignedContract()}
+                                    type="button"
+                                  >
+                                    {uploadingContract
+                                      ? text.contractUploading
+                                      : text.contractUploadAction}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="sales-contract-upload is-complete">
+                                  <div>
+                                    <strong>{text.contractStored}</strong>
+                                    <small>{text.contractProtected}</small>
+                                  </div>
+                                  <label>
+                                    <input
+                                      aria-label={text.contractAccessReason}
+                                      maxLength={300}
+                                      minLength={10}
+                                      onChange={(event) =>
+                                        setContractAccessReason(event.target.value)
+                                      }
+                                      placeholder={text.contractAccessReason}
+                                      type="text"
+                                      value={contractAccessReason}
+                                    />
+                                  </label>
+                                  <button
+                                    disabled={
+                                      viewingContract || contractAccessReason.trim().length < 10
+                                    }
+                                    onClick={() => void viewSignedContract()}
+                                    type="button"
+                                  >
+                                    {viewingContract ? text.contractOpening : text.contractOpen}
+                                  </button>
+                                  {contractUrl ? (
+                                    <iframe
+                                      className="sales-contract-preview"
+                                      src={contractUrl}
+                                      title={text.contractPreview}
+                                    />
+                                  ) : null}
+                                </div>
+                              )}
                               <label>
                                 <span>{text.decisionNote}</span>
                                 <textarea
@@ -1418,7 +1585,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                                 disabled={
                                   recordingBranch ||
                                   !customerAttended ||
-                                  !contractSigned ||
+                                  review.branchProgress.contract?.status !== "SIGNED" ||
                                   receiptNumber.trim().length < 3 ||
                                   !review.branchProgress.expectedDepositEgp
                                 }

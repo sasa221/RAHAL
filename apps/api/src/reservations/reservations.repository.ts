@@ -700,6 +700,7 @@ export class ReservationsRepository {
           },
         },
         contracts: {
+          where: { status: "SIGNED", storageKey: { not: null } },
           orderBy: { version: "desc" },
           take: 1,
           select: { status: true, signedAt: true },
@@ -1090,10 +1091,10 @@ export class ReservationsRepository {
               select: { amount: true, receiptNumber: true, recordedAt: true },
             },
             contracts: {
-              where: { status: "SIGNED" },
+              where: { status: "SIGNED", storageKey: { not: null } },
               orderBy: { version: "desc" },
               take: 1,
-              select: { signedAt: true },
+              select: { signedAt: true, storageKey: true },
             },
           },
         });
@@ -1114,6 +1115,9 @@ export class ReservationsRepository {
         }
 
         const existingContract = reservation.contracts[0];
+        if (!existingContract?.signedAt || !existingContract.storageKey) {
+          return { kind: "SIGNED_CONTRACT_REQUIRED" as const };
+        }
         if (reservation.deposit && existingContract?.signedAt && reservation.branchAttendedAt) {
           if (
             reservation.deposit.amount.toNumber() !== input.depositAmountEgp ||
@@ -1154,27 +1158,6 @@ export class ReservationsRepository {
           },
           select: { recordedAt: true },
         });
-        const contract = await transaction.contract.upsert({
-          where: {
-            reservationId_version: {
-              reservationId: reservation.id,
-              version: 1,
-            },
-          },
-          create: {
-            reservationId: reservation.id,
-            version: 1,
-            status: "SIGNED",
-            signedAt: recordedAt,
-            recordedById: input.actorId,
-          },
-          update: {
-            status: "SIGNED",
-            signedAt: recordedAt,
-            recordedById: input.actorId,
-          },
-          select: { signedAt: true },
-        });
         await transaction.reservation.update({
           where: { id: reservation.id },
           data: { branchAttendedAt: recordedAt },
@@ -1185,11 +1168,11 @@ export class ReservationsRepository {
             fromStatus: "PRE_APPROVED",
             toStatus: "PRE_APPROVED",
             actorId: input.actorId,
-            note: "Branch attendance, deposit receipt, and signed contract were recorded.",
+            note: "Branch attendance and deposit receipt were recorded after contract validation.",
             metadata: {
               depositAmountEgp: input.depositAmountEgp,
               receiptNumber: input.receiptNumber,
-              contractVersion: 1,
+              signedContractVerified: true,
             },
           },
         });
@@ -1227,7 +1210,7 @@ export class ReservationsRepository {
             status: "PRE_APPROVED" as const,
             attendedAt: recordedAt.toISOString(),
             depositRecordedAt: deposit.recordedAt.toISOString(),
-            contractSignedAt: contract.signedAt!.toISOString(),
+            contractSignedAt: existingContract.signedAt.toISOString(),
           },
         };
       });
@@ -1235,6 +1218,84 @@ export class ReservationsRepository {
       if (isUniqueConstraintError(error)) return { kind: "RECEIPT_IN_USE" as const };
       throw error;
     }
+  }
+
+  async recordSignedContract(input: {
+    reservationId: string;
+    actorId: string;
+    canOverrideAssignment: boolean;
+    storageKey: string;
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const reservation = await transaction.reservation.findFirst({
+        where: { id: input.reservationId, status: "PRE_APPROVED" },
+        select: {
+          id: true,
+          reference: true,
+          assignedSalesId: true,
+          preApprovalExpiresAt: true,
+          contracts: {
+            where: { status: "SIGNED", storageKey: { not: null } },
+            take: 1,
+            select: { id: true },
+          },
+        },
+      });
+      if (!reservation) return { kind: "NOT_FOUND" as const };
+      if (!input.canOverrideAssignment && reservation.assignedSalesId !== input.actorId) {
+        return { kind: "NOT_ASSIGNED" as const };
+      }
+      if (
+        !reservation.preApprovalExpiresAt ||
+        reservation.preApprovalExpiresAt.getTime() <= Date.now()
+      ) {
+        return { kind: "PRE_APPROVAL_EXPIRED" as const };
+      }
+      if (reservation.contracts.length) return { kind: "ALREADY_RECORDED" as const };
+
+      const signedAt = new Date();
+      await transaction.contract.upsert({
+        where: {
+          reservationId_version: {
+            reservationId: reservation.id,
+            version: 1,
+          },
+        },
+        create: {
+          reservationId: reservation.id,
+          version: 1,
+          status: "SIGNED",
+          storageKey: input.storageKey,
+          signedAt,
+          recordedById: input.actorId,
+        },
+        update: {
+          status: "SIGNED",
+          storageKey: input.storageKey,
+          signedAt,
+          recordedById: input.actorId,
+        },
+      });
+      await transaction.reservationEvent.create({
+        data: {
+          reservationId: reservation.id,
+          fromStatus: "PRE_APPROVED",
+          toStatus: "PRE_APPROVED",
+          actorId: input.actorId,
+          note: "A signed branch contract was stored in protected document storage.",
+          metadata: { contractVersion: 1 },
+        },
+      });
+      return {
+        kind: "RECORDED" as const,
+        data: {
+          id: reservation.id,
+          reference: reservation.reference,
+          status: "SIGNED" as const,
+          signedAt: signedAt.toISOString(),
+        },
+      };
+    });
   }
 
   async confirmBooking(input: {
@@ -1265,7 +1326,7 @@ export class ReservationsRepository {
             status: true,
             deposit: { select: { id: true } },
             contracts: {
-              where: { status: "SIGNED", signedAt: { not: null } },
+              where: { status: "SIGNED", signedAt: { not: null }, storageKey: { not: null } },
               orderBy: { version: "desc" },
               take: 1,
               select: { id: true },
@@ -1740,7 +1801,7 @@ export class ReservationsRepository {
         branchAttendedAt: true,
         deposit: { select: { id: true } },
         contracts: {
-          where: { status: "SIGNED", signedAt: { not: null } },
+          where: { status: "SIGNED", signedAt: { not: null }, storageKey: { not: null } },
           take: 1,
           select: { id: true },
         },
@@ -1836,7 +1897,7 @@ export class ReservationsRepository {
           payload: {
             reservationId: reservation.id,
             reference: reservation.reference,
-            customerId: input.customerId,
+            userId: reservation.assignedSalesId,
             assignedSalesId: reservation.assignedSalesId,
             locale: input.locale,
             status: "UNDER_REVIEW",
@@ -1989,6 +2050,7 @@ export class ReservationsRepository {
             payload: {
               reservationId: reservation.id,
               offerId: offer.id,
+              userId: reservation.assignedSalesId,
               assignedSalesId: reservation.assignedSalesId,
               locale: input.locale,
               response: offerStatus,
@@ -2138,6 +2200,23 @@ export class ReservationsRepository {
             },
           },
         });
+        if (offer.reservation.assignedSalesId) {
+          await transaction.notificationEvent.create({
+            data: {
+              eventKey: "RESERVATION_ALTERNATIVE_EXPIRED_STAFF",
+              aggregateType: "RESERVATION",
+              aggregateId: offer.reservation.id,
+              payload: {
+                reservationId: offer.reservation.id,
+                offerId: offer.id,
+                userId: offer.reservation.assignedSalesId,
+                assignedSalesId: offer.reservation.assignedSalesId,
+                locale: offer.reservation.customer.preferredLocale,
+                status: "UNDER_REVIEW",
+              },
+            },
+          });
+        }
       }
 
       const duePreApprovals = await transaction.reservation.findMany({
@@ -2379,6 +2458,36 @@ export class ReservationsRepository {
         });
       }
     });
+  }
+
+  findSignedContract(reservationId: string) {
+    return this.prisma.client.contract.findFirst({
+      where: {
+        reservationId,
+        status: "SIGNED",
+        storageKey: { not: null },
+        reservation: {
+          status: { in: ["PRE_APPROVED", "CONFIRMED", "ACTIVE", "COMPLETED"] },
+        },
+      },
+      orderBy: { version: "desc" },
+      select: {
+        id: true,
+        storageKey: true,
+        reservation: { select: { assignedSalesId: true } },
+      },
+    });
+  }
+
+  recordContractAccess(input: {
+    contractId: string;
+    actorId: string;
+    action: string;
+    reason: string;
+    ipHash?: string;
+    succeeded: boolean;
+  }) {
+    return this.prisma.client.contractAccessLog.create({ data: input });
   }
 
   async reviewSalesDocument(input: {

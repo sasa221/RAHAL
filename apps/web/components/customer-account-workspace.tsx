@@ -261,6 +261,7 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
         {state !== "READY" || !overview || !preferences ? (
           <section className={`account-profile-state is-${state.toLowerCase()}`}>
             <span>R</span>
+            <h1>{text.title}</h1>
             <p>
               {state === "LOADING"
                 ? text.loading

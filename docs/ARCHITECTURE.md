@@ -42,14 +42,14 @@ Use the existing choices unless an ADR changes them:
 - ORM and migrations: Prisma.
 - API validation: DTO validation with `class-validator`/`class-transformer` or shared schema validation with Zod in `packages/contracts`. Prefer one validation style consistently.
 - API docs: OpenAPI/Swagger through NestJS.
-- Queue/cache: Redis-compatible service with BullMQ or equivalent robust queue.
+- Queue/cache: Redis-compatible service for shared throttling and future distributed worker coordination; the current durable notification queue is the PostgreSQL outbox.
 - Public vehicle media: Cloudinary or approved CDN-backed public media service.
 - Private customer documents: private S3-compatible object storage.
-- Push: Firebase Cloud Messaging or approved equivalent.
-- Email: transactional provider from the Rahal domain.
+- Push: standards-based VAPID Web Push.
+- Email: Resend from a verified Rahal domain.
 - WhatsApp: official Meta WhatsApp Business Platform Cloud API.
-- Tests: Jest for unit/integration, Playwright for end-to-end.
-- Password hashing: Argon2id.
+- Tests: Vitest for unit/integration and browser-controlled acceptance checks.
+- Password hashing: Node.js memory-hard scrypt.
 - Session storage: secure HTTP-only cookies with server-side session records and refresh rotation.
 
 ## Deployment shape
@@ -155,6 +155,8 @@ Use an outbox pattern:
 - Webhook callbacks update delivery state idempotently.
 - Read status is recorded only when the product or provider can verify it.
 
+The implemented worker claims outbox rows conditionally, resolves an explicit customer or assigned-staff recipient, and reads the corresponding privacy-bounded `Notification` presentation row. It records unique per-notification/channel deliveries for In-App, Resend Email, approved-template Meta WhatsApp, and VAPID Web Push. Successful channels are not resent when another channel retries. Failed events use bounded exponential backoff, invalid browser subscriptions are disabled, and configured quiet hours defer only optional external channels while the in-app record remains available. Push endpoint/key material is encrypted with AES-256-GCM and the browser is prompted only after an explicit user action.
+
 The in-app channel reads directly from owner-scoped `Notification` rows rather than exposing `NotificationEvent` payloads or delivery attempts. The inbox is bounded to 50 presentation records, while unread count is calculated separately. Read mutations use conditional owner-scoped updates and preserve the first read timestamp. The shared shell uses 30-second no-store polling plus visibility refresh; external channel delivery remains the responsibility of the outbox worker.
 
 Customer, draft, sales, and notification presentation endpoints accept only the finite `ar`/`en` page locale as an optional read hint and otherwise fall back to the authenticated account preference. Locale never changes ownership or permission decisions. The shared notification surface renders through a body portal so sticky headers and backdrop-filter containing blocks cannot clip it. It provides visible unread/priority/total metrics, filters, loading/empty/error states, Escape and backdrop closing, body scroll locking, direct reservation navigation, mobile full-screen composition, and reduced-motion handling.
@@ -199,16 +201,17 @@ Sensitive profile audit events contain the names of changed fields, not their pr
 - Downloads remain disabled by default unless the actor has explicit permission.
 - The development adapter writes opaque object keys under the ignored `PRIVATE_DOCUMENT_STORAGE_PATH`; it is disabled by default in production.
 - Uploads validate configured MIME allowlists, file size, and file signatures before metadata is committed. API responses never return storage keys.
-- Production document upload remains gated on an approved private S3-compatible adapter, malware scanning, and an approved retention schedule.
+- Production document upload uses the S3-compatible adapter only; local filesystem storage is rejected in production. Every customer document and signed contract is signature/size checked and must pass the signed malware-scanning boundary before its opaque object key is committed. Retention timing remains gated on approved legal policy.
 - Staff document review uses an authenticated `POST` stream rather than returning a storage key or durable signed URL. The assigned reviewer supplies an operational reason, every existing-document attempt is written to `DocumentAccessLog`, and the response is inline and non-cacheable. A review decision requires a successful preview by the same actor within the previous 15 minutes, and its decision note is recorded separately from the access reason. Administrators with `audit.view` have a dedicated, read-only oversight projection of these records containing actor, reservation reference, document type/status, action, bounded reason, result, and timestamp. Identity-like digit sequences in free-form reasons are masked during mapping. The projection never returns document bytes, object keys, full identity values, IP hashes, or user agents. Missing private objects return a bounded service error without leaking filesystem paths. Rejection returns the request to customer action; replacement is limited to the rejected type and retains the original signature/size validation.
 - Document requirements are an administrator-owned policy boundary separate from customer uploads. The API exposes only `DocumentRequirementRule` configuration, validates a finite document/MIME set and bounded file sizes, and never joins customer reservations or stored objects. Rule identity is stable after creation; labels, format allowlists, size caps, order, and active state remain editable. Disabling the final active base rule for either Egyptian or foreign customers fails closed so the customer upload journey cannot silently lose its identity requirement. Every create/update transaction appends a bounded `AuditLog` snapshot and mandatory operational reason.
 
-## Architecture decisions needed later
+Policy publication is a separate administrator boundary. One immutable version contains the four required consent policies in Arabic and English with one immediate effective timestamp. The former active rows are retired in the same transaction, duplicate or `DEV-` production versions are rejected, and audit stores approval metadata plus a SHA-256 content hash rather than duplicating the legal text.
 
-- Final provider choices for Cloudinary, S3-compatible storage, email, WhatsApp, push, and Redis hosting.
+The web `/api/*` boundary is a runtime server-side proxy. It forwards only bounded request headers, preserves response cookies, strips hop-by-hop headers, returns a safe 503 on upstream failure, and resolves `API_URL` at request time rather than baking an environment hostname into a browser build.
+
+## Architecture decisions and external inputs needed later
+
+- Production vendors/accounts for public media, S3-compatible storage, malware scanning, Resend, Meta WhatsApp, Web Push, Redis, and monitoring.
 - Whether shared validation contracts use Zod or Nest DTO classes as the primary source.
-- Final production session/MFA provider details.
 - Final legal/privacy copy and document retention policy.
 - Branch address/contact data from the owner and storefront image.
-
-None of these block the first documentation/tooling milestone.

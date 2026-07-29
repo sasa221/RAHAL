@@ -10,7 +10,7 @@
 - Reservations, documents, events, deposits, notifications, push subscriptions, audit logs, and reviews.
 - Core enums for roles, statuses, driver policy, documents, notifications, and delivery state.
 
-There are no migrations yet. The schema should be treated as a draft, not a production contract.
+The repository now contains reviewed, ordered migrations for the implemented foundation through protected contract access and encrypted push delivery. The schema is forward-migrated rather than edited in production, and every release must run `prisma migrate deploy` as a one-off job.
 
 ## Required schema direction
 
@@ -82,6 +82,8 @@ The branch-confirmation slice adds nullable `Reservation.branchAttendedAt`. A `P
 
 The booking-operation slice stores delivery and return readings in `BookingOperation`, unique per booking and operation type. Database constraints keep odometer readings non-negative and fuel between zero and 100 percent. The service permits only `CONFIRMED → ACTIVE`, an `ACTIVE` return record, and returned `ACTIVE → COMPLETED`; cancellation and no-show close only a not-yet-delivered confirmed booking. Customer responses expose lifecycle timestamps, never staff condition notes or vehicle readings.
 
+Signed contracts use `Contract.storageKey` only after a protected PDF passes signature, size, and malware checks. `ContractAccessLog` separately records the staff actor, operational reason, result, timestamp, and bounded request context for every protected contract view. Neither customer contracts nor administrator audit projections include the object key.
+
 ## Notifications
 
 - `notifications`: in-app notification records.
@@ -91,6 +93,10 @@ The booking-operation slice stores delivery and return readings in `BookingOpera
 - `notification_deliveries`: per-channel delivery state.
 - `notification_attempts`: retry attempts, provider response, error, timestamp.
 - `push_subscriptions`: hashed push token, platform, active state.
+
+The Web Push endpoint and keys are stored only inside `PushSubscription.subscriptionCiphertext`; `tokenHash` is the lookup/revocation identifier. `NotificationDelivery` has a unique `(notificationId, channel)` key so a successful provider channel is not duplicated when another channel causes an outbox retry.
+
+`PolicyVersion` rows are immutable legal copies. A complete production bundle is exactly four required policy keys across `ar` and `en` with the same version/effective timestamp. Publishing retires the previous active rows and creates all eight new rows in one transaction; reservation submission independently rereads the complete active version.
 
 ## Audit
 
