@@ -89,9 +89,7 @@ describe("loadApiConfig verification delivery", () => {
         ...baseEnv,
         TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
       }),
-    ).toThrow(
-      "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID must be configured together.",
-    );
+    ).toThrow("TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN must be configured together.");
     expect(() =>
       loadApiConfig({
         ...baseEnv,
@@ -128,8 +126,6 @@ describe("loadApiConfig verification delivery", () => {
       WHATSAPP_GRAPH_API_VERSION: "v23.0",
       TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
       TWILIO_AUTH_TOKEN: "twilio-test-token",
-      TWILIO_WHATSAPP_FROM: "+14155238886",
-      TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID: `HX${"2".repeat(32)}`,
     });
 
     expect(config.verificationBrevo).toEqual({
@@ -155,7 +151,7 @@ describe("loadApiConfig verification delivery", () => {
       accountSid: `AC${"1".repeat(32)}`,
       authToken: "twilio-test-token",
       from: "+14155238886",
-      verificationContentSid: `HX${"2".repeat(32)}`,
+      verificationContentSid: "HXb5b62575e6e4ff6129ad7c8efe1f983e",
     });
   });
 

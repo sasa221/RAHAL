@@ -96,7 +96,9 @@ RAHAL has an idempotent transactional outbox for:
 
 For staging phone verification, the API also supports the Twilio WhatsApp Sandbox with its
 pre-approved verification template. Sandbox recipients must join the test sender first; production
-continues to require the official Meta WhatsApp Business integration.
+continues to require the official Meta WhatsApp Business integration. The shared Sandbox sender and
+verification-template identifiers are built in, so staging configuration needs only the Twilio
+account SID and auth token.
 
 Customer preferences, verification state, retry limits, and Cairo quiet hours are respected.
 Essential in-app messages remain available even when optional channels are disabled.

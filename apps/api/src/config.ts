@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
 
+const twilioWhatsAppSandboxFrom = "+14155238886";
+const twilioWhatsAppSandboxVerificationContentSid = "HXb5b62575e6e4ff6129ad7c8efe1f983e";
+
 export type ApiConfig = {
   port: number;
   webUrl: string;
@@ -221,12 +224,20 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const twilioWhatsAppDelivery = readCompleteGroup(env, [
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
-    "TWILIO_WHATSAPP_FROM",
-    "TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID",
   ]);
+  const twilioFrom = env.TWILIO_WHATSAPP_FROM?.trim();
+  const twilioVerificationContentSid = env.TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID?.trim();
+  if ((twilioFrom || twilioVerificationContentSid) && !twilioWhatsAppDelivery) {
+    throw new Error(
+      "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are required when Twilio WhatsApp overrides are configured.",
+    );
+  }
   let verificationTwilioWhatsApp: ApiConfig["verificationTwilioWhatsApp"];
   if (twilioWhatsAppDelivery) {
-    const [accountSid, authToken, from, verificationContentSid] = twilioWhatsAppDelivery;
+    const [accountSid, authToken] = twilioWhatsAppDelivery;
+    const from = twilioFrom || twilioWhatsAppSandboxFrom;
+    const verificationContentSid =
+      twilioVerificationContentSid || twilioWhatsAppSandboxVerificationContentSid;
     if (!/^AC[0-9a-f]{32}$/i.test(accountSid!)) {
       throw new Error("TWILIO_ACCOUNT_SID must be a valid account SID.");
     }

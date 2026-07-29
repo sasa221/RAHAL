@@ -174,7 +174,7 @@ Status: account verification, account security, mandatory staff/admin MFA, first
 - Shared Arabic and English sign-in and registration screens with responsive cinematic layouts.
 - Same-origin web-to-API authentication proxying so secure session cookies are not exposed to client code.
 - Six-digit email and phone verification with HMAC-only code storage, 10-minute expiry, five-attempt limits, resend invalidation, and account activation after both channels are verified.
-- Provider-gated verification delivery with Gmail SMTP for local testing, Brevo-first transactional email with Resend fallback, Meta WhatsApp authentication-template adapters, a signed webhook fallback, no plaintext code in API responses or browser UI, and fail-closed issuance when the required channel provider is absent.
+- Provider-gated verification delivery with Gmail SMTP for local testing, Brevo-first transactional email with Resend fallback, Meta WhatsApp authentication-template adapters, a staging-only Twilio WhatsApp Sandbox adapter using the shared pre-approved verification template, a signed webhook fallback, no plaintext code in API responses or browser UI, and fail-closed issuance when the required channel provider is absent.
 - Staff password success creates a five-minute HTTP-only MFA challenge instead of an operational session.
 - Authenticator enrollment uses encrypted TOTP secrets, one-time hashed recovery codes, replay-resistant counters, and an MFA-bound session timestamp.
 - Staff and administrator API access fails closed until MFA is complete and an administrator-issued temporary password has been replaced.
