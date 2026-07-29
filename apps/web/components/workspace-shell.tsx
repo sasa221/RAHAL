@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { Icon } from "./public-home";
 import { NotificationCenter } from "./notification-center";
+import { WorkspaceInstallAction } from "./workspace-install-action";
 
 type WorkspaceKind = "customer" | "sales" | "admin";
 
@@ -298,6 +299,9 @@ export function WorkspaceShell({
             </strong>
           </a>
           <nav>
+            {isStaff ? (
+              <WorkspaceInstallAction kind={kind === "admin" ? "admin" : "sales"} locale={locale} />
+            ) : null}
             <NotificationCenter kind={isStaff ? "sales" : "customer"} locale={locale} />
             <a href={localizedPath(locale)}>{text.publicSite}</a>
             <a href={languageHref}>{text.language}</a>

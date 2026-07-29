@@ -44,6 +44,13 @@ RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management 
 - Admins manage fleet, branch data, pricing/rules, roles, permissions, content, policies, notifications, and audit.
 - Staff use role and permission constrained workflows to review requests and operate rentals.
 - Customers track requests, upload protected documents, receive notifications, manage preferences, and leave feedback after completed rentals.
+- Customer, sales, and administrator experiences must remain installable as role-appropriate web
+  apps. Sales and administrator installations use distinct manifest identities and open their
+  protected workspaces directly; installation never bypasses authentication, MFA, permissions, or
+  session expiry.
+- On iOS and iPadOS, device-notification guidance must explain the Home Screen installation
+  requirement before reporting Web Push as unsupported. Notification permission remains an explicit
+  user action inside the installed app.
 
 ## Languages and localization
 

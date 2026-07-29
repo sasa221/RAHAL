@@ -1,0 +1,52 @@
+{
+  "name": "RAHAL Admin | إدارة رحال",
+  "short_name": "RAHAL Admin",
+  "description": "مركز إدارة رحال للعمليات والفريق والسياسات والسجلات.",
+  "id": "/admin",
+  "start_url": "/admin?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#1c1d1a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/rahal-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/rahal-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "مركز الإدارة",
+      "short_name": "الإدارة",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/images/rahal-logo.png",
+          "sizes": "1254x1254",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "سجل العمليات",
+      "short_name": "السجل",
+      "url": "/admin/audit",
+      "icons": [
+        {
+          "src": "/images/rahal-logo.png",
+          "sizes": "1254x1254",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

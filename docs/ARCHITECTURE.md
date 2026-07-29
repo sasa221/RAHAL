@@ -161,6 +161,16 @@ Use an outbox pattern:
 
 The implemented worker claims outbox rows conditionally, resolves an explicit customer or assigned-staff recipient, and reads the corresponding privacy-bounded `Notification` presentation row. It records unique per-notification/channel deliveries for In-App, Brevo-or-Resend Email, approved-template Meta WhatsApp, and VAPID Web Push. Brevo takes precedence when both email providers are configured so verification, recovery, and notification email use the same transport. Successful channels are not resent when another channel retries. Failed events use bounded exponential backoff, invalid browser subscriptions are disabled, and configured quiet hours defer only optional external channels while the in-app record remains available. Push endpoint/key material is encrypted with AES-256-GCM. After authentication, customers receive a first-party explanation and explicit opt-in action; deferral leaves a persistent reminder, and unread inbox events receive a mobile-visible in-page preview outside the drawer. The browser permission request still runs only from the customer's action because browser policy does not permit a site to grant itself notification access.
 
+The public/customer app, sales workspace, and administrator workspace are separate install identities
+on the same origin. Sales and administrator routes override the root manifest with role-specific
+manifest IDs and start URLs while retaining root scope so authentication, security onboarding, and
+authorized deep links stay inside the installed experience. Installation changes presentation only:
+every API boundary continues to enforce the same session, MFA, role, and permission checks. On iOS
+and iPadOS, capability detection checks for the Home Screen requirement before checking Push API
+globals, including desktop-mode iPad user agents. Browser-tab users receive concrete Share -> Add to
+Home Screen instructions; the permission request is attempted only after the installed standalone
+app is opened.
+
 The Twilio WhatsApp Sandbox adapter is deliberately scoped to verification codes and uses a
 pre-approved content template. It does not send general notification-outbox events. The verified
 Meta adapter remains the production path for both authentication and approved notification

@@ -1,0 +1,40 @@
+{
+  "name": "RAHAL Sales | مبيعات رحال",
+  "short_name": "RAHAL Sales",
+  "description": "مساحة فريق مبيعات رحال لمراجعة طلبات الحجز ومتابعة العملاء.",
+  "id": "/sales",
+  "start_url": "/sales?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#1c1d1a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/rahal-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/rahal-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "طلبات المبيعات",
+      "short_name": "الطلبات",
+      "url": "/sales#requests",
+      "icons": [
+        {
+          "src": "/images/rahal-logo.png",
+          "sizes": "1254x1254",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

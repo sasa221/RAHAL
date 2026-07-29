@@ -7,6 +7,8 @@ import { localizedPath, type PublicLocale } from "../lib/public-content";
 import {
   currentPushSubscription,
   enablePushNotifications,
+  PushSetupError,
+  requiresIosInstallation,
   supportsWebPush,
 } from "../lib/push-notifications";
 
@@ -222,6 +224,11 @@ export function NotificationCenter({
   }
 
   async function enablePush() {
+    if (requiresIosInstallation()) {
+      setOpen(false);
+      window.dispatchEvent(new Event("rahal:push-guide-requested"));
+      return;
+    }
     if (!supportsWebPush()) {
       setPushState("FAILED");
       return;
@@ -230,8 +237,13 @@ export function NotificationCenter({
     try {
       await enablePushNotifications(locale);
       setPushState("ENABLED");
-    } catch {
-      setPushState("FAILED");
+    } catch (error) {
+      if (error instanceof PushSetupError && error.code === "INSTALL_REQUIRED") {
+        setOpen(false);
+        window.dispatchEvent(new Event("rahal:push-guide-requested"));
+      } else {
+        setPushState("FAILED");
+      }
     }
   }
 

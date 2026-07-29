@@ -867,6 +867,8 @@ Status: implemented locally on 2026-07-28. Real services, staging evidence, appr
 - Added a transactional notification outbox worker for In-App, Brevo-or-Resend Email, approved-template Meta WhatsApp, and encrypted VAPID Web Push.
 - Added channel-level idempotency, bounded retries, dead-subscription cleanup, correct customer/staff recipient routing, booking-to-reservation resolution, preference checks, and quiet-hour deferral.
 - Added explicit browser notification opt-in and a service worker without automatic permission prompts.
+- Added iOS/iPadOS Home Screen-aware Web Push guidance and distinct install identities, start URLs,
+  and in-workspace install controls for the sales and administrator applications.
 - Added audited administrator branch management.
 - Added an audited legal-policy center that publishes exactly four synchronized Arabic/English policies, rejects development versions, and atomically retires the previous bundle.
 - Added dependency overrides and framework updates until `pnpm audit` reported no known vulnerabilities.
@@ -882,6 +884,11 @@ Status: implemented locally on 2026-07-28. Real services, staging evidence, appr
 - Successful external notification channels are not resent when another channel retries.
 - Staff-directed events are never delivered to the customer merely because the payload also references that customer.
 - Quiet hours delay optional external channels without hiding the in-app notification.
+- iPhone and iPad browser tabs show installation steps instead of a false unsupported-browser
+  result; notification permission is requested only from an installed Home Screen app on supported
+  iOS/iPadOS versions.
+- Sales and administrator apps install with separate manifest identities and open the correct
+  protected workspace without weakening authentication, MFA, or authorization.
 - Only an administrator can publish a complete, immediate, non-development bilingual policy bundle.
 - One application image can use a runtime `API_URL` and the browser never receives the internal service address.
 - High/moderate dependency audit findings are zero at the recorded verification point.
@@ -891,4 +898,6 @@ Status: implemented locally on 2026-07-28. Real services, staging evidence, appr
 
 - Unit coverage for local/S3 storage, malware scanning, Redis failure behavior, push-subscription encryption, outbox recipient/idempotency/retry/quiet-hours behavior, branches, policy publication, and dependency readiness.
 - Static security coverage for contract non-exposure, protected access audit, runtime proxy boundaries, production configuration, CSP/headers, CI, runbooks, bilingual routes, and responsive interfaces.
+- Static PWA coverage for iOS installation detection order, iPad desktop-mode detection,
+  role-specific manifests/layout metadata, service-worker registration, and manual install guidance.
 - Full repository formatting, lint, tests, Prisma validation/generation, type checking, production builds, dependency audit, migrations, and container builds.

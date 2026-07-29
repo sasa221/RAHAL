@@ -19,15 +19,25 @@ export function supportsWebPush() {
   );
 }
 
-export function requiresIosInstallation() {
+export function isStandaloneWebApp() {
   if (typeof window === "undefined") return false;
-  const userAgent = window.navigator.userAgent;
-  const isIos = /iPad|iPhone|iPod/.test(userAgent);
-  const standalone =
+  return (
     window.matchMedia("(display-mode: standalone)").matches ||
     ("standalone" in window.navigator &&
-      Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone));
-  return isIos && !standalone;
+      Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone))
+  );
+}
+
+export function isIosDevice() {
+  if (typeof window === "undefined") return false;
+  return (
+    /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
+    (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1)
+  );
+}
+
+export function requiresIosInstallation() {
+  return isIosDevice() && !isStandaloneWebApp();
 }
 
 export async function currentPushSubscription() {
@@ -37,8 +47,8 @@ export async function currentPushSubscription() {
 }
 
 export async function enablePushNotifications(locale: PublicLocale) {
-  if (!supportsWebPush()) throw new PushSetupError("UNSUPPORTED");
   if (requiresIosInstallation()) throw new PushSetupError("INSTALL_REQUIRED");
+  if (!supportsWebPush()) throw new PushSetupError("UNSUPPORTED");
 
   const permission =
     Notification.permission === "default"

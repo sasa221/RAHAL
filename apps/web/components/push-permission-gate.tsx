@@ -101,6 +101,10 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
       setState("HIDDEN");
       return;
     }
+    if (requiresIosInstallation()) {
+      setState("INSTALL_REQUIRED");
+      return;
+    }
     if (!supportsWebPush()) {
       setState("UNSUPPORTED");
       return;
@@ -122,11 +126,15 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
     void checkSession();
     const sessionChanged = () => void checkSession(true);
     const pushChanged = () => setState("HIDDEN");
+    const guideRequested = () =>
+      setState(requiresIosInstallation() ? "INSTALL_REQUIRED" : "PROMPT");
     window.addEventListener("rahal:session-changed", sessionChanged);
     window.addEventListener("rahal:push-state-changed", pushChanged);
+    window.addEventListener("rahal:push-guide-requested", guideRequested);
     return () => {
       window.removeEventListener("rahal:session-changed", sessionChanged);
       window.removeEventListener("rahal:push-state-changed", pushChanged);
+      window.removeEventListener("rahal:push-guide-requested", guideRequested);
     };
   }, [checkSession]);
 
@@ -156,7 +164,17 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
       setState("SUCCESS");
       window.setTimeout(() => setState("HIDDEN"), 4_500);
     } catch (error) {
-      setState(error instanceof PushSetupError && error.code === "BLOCKED" ? "BLOCKED" : "FAILED");
+      setState(
+        error instanceof PushSetupError
+          ? error.code === "BLOCKED"
+            ? "BLOCKED"
+            : error.code === "INSTALL_REQUIRED"
+              ? "INSTALL_REQUIRED"
+              : error.code === "UNSUPPORTED"
+                ? "UNSUPPORTED"
+                : "FAILED"
+          : "FAILED",
+      );
     }
   }
 
@@ -181,10 +199,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
           <strong>{text.reminderTitle}</strong>
           <p>{text.reminderBody}</p>
         </div>
-        <button
-          onClick={() => (supportsWebPush() ? void enable() : setState("UNSUPPORTED"))}
-          type="button"
-        >
+        <button onClick={() => void enable()} type="button">
           {text.reminderAction}
         </button>
       </aside>
@@ -261,6 +276,26 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
                 {text.featureThree}
               </li>
             </ul>
+          ) : null}
+          {installRequired ? (
+            <ol className="push-install-steps">
+              <li>
+                <i aria-hidden="true">01</i>
+                {locale === "ar" ? "اضغط زر المشاركة في المتصفح." : "Open the browser Share menu."}
+              </li>
+              <li>
+                <i aria-hidden="true">02</i>
+                {locale === "ar"
+                  ? "اختر «إضافة إلى الشاشة الرئيسية»."
+                  : "Choose “Add to Home Screen”."}
+              </li>
+              <li>
+                <i aria-hidden="true">03</i>
+                {locale === "ar"
+                  ? "افتح رحال من الأيقونة، ثم فعّل الإشعارات داخله."
+                  : "Open Rahal from its icon, then enable notifications inside the app."}
+              </li>
+            </ol>
           ) : null}
           <div className="push-consent-actions">
             {!installRequired && !unsupported ? (
