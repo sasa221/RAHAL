@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
+    "vercel-build": "pnpm --filter @rahal/contracts build && pnpm --filter @rahal/database build && nest build",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit"
