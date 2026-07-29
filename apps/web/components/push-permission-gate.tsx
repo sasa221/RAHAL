@@ -19,7 +19,8 @@ type GateState =
   | "INSTALL_REQUIRED"
   | "PROMPT"
   | "REMINDER"
-  | "SUCCESS";
+  | "SUCCESS"
+  | "UNSUPPORTED";
 
 const copy = {
   ar: {
@@ -41,6 +42,9 @@ const copy = {
     understood: "فهمت، ذكّرني داخل الموقع",
     failedTitle: "تعذر ربط الإشعارات الآن",
     failedBody: "سنُبقي التذكير ظاهرًا ويمكنك المحاولة مرة أخرى.",
+    unsupportedTitle: "المتصفح الحالي لا يدعم إشعارات الجهاز",
+    unsupportedBody:
+      "ستظل تحديثات رحال الجديدة ظاهرة بوضوح أعلى الموقع وخارج درج الإشعارات. استخدم Chrome أو Safari المثبّت على الشاشة الرئيسية لتفعيل إشعارات الجهاز.",
     success: "تم تفعيل إشعارات رحال على هذا الجهاز.",
     featureOne: "تحديثات الطلب فورًا",
     featureTwo: "تنبيه واضح خارج درج الموقع",
@@ -66,6 +70,9 @@ const copy = {
     understood: "Got it, remind me in Rahal",
     failedTitle: "Notifications could not be linked",
     failedBody: "The reminder will stay visible so you can try again.",
+    unsupportedTitle: "This browser does not support device notifications",
+    unsupportedBody:
+      "New Rahal updates will still appear clearly above the site and outside the inbox. Use Chrome, or an installed Safari web app, for device notifications.",
     success: "Rahal notifications are now enabled on this device.",
     featureOne: "Immediate request updates",
     featureTwo: "Visible alerts outside the inbox",
@@ -80,19 +87,25 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
   const [state, setState] = useState<GateState>("CHECKING");
 
   const checkSession = useCallback(async (freshLogin = false) => {
+    let response: Response;
     try {
-      const response = await fetch("/api/auth/session", {
+      response = await fetch("/api/auth/session", {
         credentials: "include",
         cache: "no-store",
       });
-      if (!response.ok) {
-        setState("HIDDEN");
-        return;
-      }
-      if (!supportsWebPush()) {
-        setState("HIDDEN");
-        return;
-      }
+    } catch {
+      setState("HIDDEN");
+      return;
+    }
+    if (!response.ok) {
+      setState("HIDDEN");
+      return;
+    }
+    if (!supportsWebPush()) {
+      setState("UNSUPPORTED");
+      return;
+    }
+    try {
       if (await currentPushSubscription()) {
         sessionStorage.setItem(decisionKey, "enabled");
         setState("HIDDEN");
@@ -101,7 +114,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
       if (freshLogin) sessionStorage.removeItem(decisionKey);
       setState(sessionStorage.getItem(decisionKey) === "deferred" ? "REMINDER" : "PROMPT");
     } catch {
-      setState("HIDDEN");
+      setState("FAILED");
     }
   }, []);
 
@@ -118,7 +131,12 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
   }, [checkSession]);
 
   useEffect(() => {
-    if (!["BLOCKED", "ENABLING", "FAILED", "INSTALL_REQUIRED", "PROMPT"].includes(state)) return;
+    if (
+      !["BLOCKED", "ENABLING", "FAILED", "INSTALL_REQUIRED", "PROMPT", "UNSUPPORTED"].includes(
+        state,
+      )
+    )
+      return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -163,7 +181,10 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
           <strong>{text.reminderTitle}</strong>
           <p>{text.reminderBody}</p>
         </div>
-        <button onClick={() => void enable()} type="button">
+        <button
+          onClick={() => (supportsWebPush() ? void enable() : setState("UNSUPPORTED"))}
+          type="button"
+        >
           {text.reminderAction}
         </button>
       </aside>
@@ -187,6 +208,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
   const blocked = state === "BLOCKED";
   const installRequired = state === "INSTALL_REQUIRED";
   const failed = state === "FAILED";
+  const unsupported = state === "UNSUPPORTED";
 
   return (
     <div className="push-consent-layer" dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -207,20 +229,24 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
               ? text.blockedTitle
               : installRequired
                 ? text.installTitle
-                : failed
-                  ? text.failedTitle
-                  : text.title}
+                : unsupported
+                  ? text.unsupportedTitle
+                  : failed
+                    ? text.failedTitle
+                    : text.title}
           </h2>
           <p>
             {blocked
               ? text.blockedBody
               : installRequired
                 ? text.installBody
-                : failed
-                  ? text.failedBody
-                  : text.body}
+                : unsupported
+                  ? text.unsupportedBody
+                  : failed
+                    ? text.failedBody
+                    : text.body}
           </p>
-          {!blocked && !installRequired && !failed ? (
+          {!blocked && !installRequired && !failed && !unsupported ? (
             <ul>
               <li>
                 <i aria-hidden="true">01</i>
@@ -237,7 +263,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
             </ul>
           ) : null}
           <div className="push-consent-actions">
-            {!installRequired ? (
+            {!installRequired && !unsupported ? (
               <button disabled={state === "ENABLING"} onClick={() => void enable()} type="button">
                 <BellIcon />
                 {state === "ENABLING"
@@ -248,7 +274,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
               </button>
             ) : null}
             <button onClick={defer} type="button">
-              {installRequired ? text.understood : text.later}
+              {installRequired || unsupported ? text.understood : text.later}
             </button>
           </div>
         </div>
