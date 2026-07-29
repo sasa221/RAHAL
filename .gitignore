@@ -1,4 +1,7 @@
 node_modules
+.agents
+**/.agents
+skills-lock.json
 .vercel
 **/.vercel
 .next

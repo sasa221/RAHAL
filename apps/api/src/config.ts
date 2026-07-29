@@ -7,6 +7,7 @@ export type ApiConfig = {
   authSecret: string;
   mfaEncryptionKey: string;
   production: boolean;
+  releaseTier: "staging" | "production";
   redisUrl?: string;
   privateDocumentStoragePath?: string;
   privateDocumentStorageS3?: {
@@ -81,6 +82,12 @@ function readUrl(name: string, value: string | undefined, fallback: string) {
 
 export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const production = env.NODE_ENV === "production";
+  const configuredReleaseTier = env.RAHAL_RELEASE_TIER?.trim().toLowerCase() || "production";
+  if (!["staging", "production"].includes(configuredReleaseTier)) {
+    throw new Error("RAHAL_RELEASE_TIER must be staging or production.");
+  }
+  const releaseTier = configuredReleaseTier as ApiConfig["releaseTier"];
+  const launchValidated = production && releaseTier === "production";
   const webUrl = readUrl("WEB_URL", env.WEB_URL, "http://localhost:3000");
   if (production && new URL(webUrl).protocol !== "https:") {
     throw new Error("WEB_URL must use HTTPS in production.");
@@ -181,10 +188,10 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         : {}),
     };
   }
-  if (production && !verificationEmail) {
+  if (launchValidated && !verificationEmail) {
     throw new Error("RESEND_API_KEY and VERIFICATION_EMAIL_FROM are required in production.");
   }
-  if (production && !verificationWhatsApp) {
+  if (launchValidated && !verificationWhatsApp) {
     throw new Error(
       "Approved WhatsApp Business authentication-template credentials are required in production.",
     );
@@ -235,7 +242,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (production && privateDocumentStoragePath) {
     throw new Error("PRIVATE_DOCUMENT_STORAGE_PATH is development-only.");
   }
-  if (production && !privateDocumentStorageS3) {
+  if (launchValidated && !privateDocumentStorageS3) {
     throw new Error("Private S3 document storage is required in production.");
   }
 
@@ -254,7 +261,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       throw new Error("REDIS_URL must use TLS (rediss://) in production.");
     }
   }
-  if (production && !redisUrl) {
+  if (launchValidated && !redisUrl) {
     throw new Error("REDIS_URL is required in production.");
   }
 
@@ -273,7 +280,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     }
     documentScan = { url, secret: documentScanGroup[1]! };
   }
-  if (production && !documentScan) {
+  if (launchValidated && !documentScan) {
     throw new Error("Document malware scanning is required in production.");
   }
 
@@ -299,12 +306,12 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       encryptionKey: encryptionKey!,
     };
   }
-  if (production && !webPush) {
+  if (launchValidated && !webPush) {
     throw new Error(
       "Web Push VAPID and subscription-encryption settings are required in production.",
     );
   }
-  if (production && !verificationWhatsApp?.notificationTemplateName) {
+  if (launchValidated && !verificationWhatsApp?.notificationTemplateName) {
     throw new Error("WHATSAPP_NOTIFICATION_TEMPLATE_NAME is required in production.");
   }
 
@@ -315,6 +322,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     authSecret,
     mfaEncryptionKey: mfaKeyBytes.toString("base64url"),
     production,
+    releaseTier,
     redisUrl,
     privateDocumentStoragePath:
       privateDocumentStoragePath || (production ? undefined : ".private-storage"),

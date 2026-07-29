@@ -9,6 +9,13 @@ This runbook is the production release procedure. It does not authorize a releas
 - TLS terminates before both services. `WEB_URL`, the public API route, storage endpoint, scanner endpoint, Redis, and provider callbacks use encrypted transport.
 - All values from `.env.example` are supplied by the hosting secret manager. `API_URL` is read by the web server at runtime. Production secrets are never stored in Git, image layers, CI logs, or browser variables.
 
+## Public staging boundary
+
+- `RAHAL_RELEASE_TIER=staging` is allowed only for a public acceptance environment running with `NODE_ENV=production`, HTTPS, secure cookies, managed PostgreSQL, managed TLS Redis, and unique secrets.
+- Missing WhatsApp, private S3, or malware-scanning providers remain unavailable at their feature boundaries. Document upload must return unavailable, phone delivery must not expose a local OTP, and dependency readiness must not claim the environment is production-ready.
+- `RAHAL_RELEASE_TIER=production` is the default and retains the full fail-closed startup gate for every required external provider.
+- Never promote or describe a staging-tier deployment as the approved production launch.
+
 ## Preflight
 
 1. Confirm the exact Git commit and a clean worktree.

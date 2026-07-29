@@ -160,6 +160,30 @@ describe("loadApiConfig verification delivery", () => {
     ).toThrow("Document malware scanning is required in production.");
   });
 
+  it("keeps staging HTTPS and secrets production-safe while unavailable launch providers fail at their feature boundaries", () => {
+    const config = loadApiConfig({
+      ...baseEnv,
+      NODE_ENV: "production",
+      RAHAL_RELEASE_TIER: "staging",
+      WEB_URL: "https://rahal-eg.vercel.app",
+      MFA_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64url"),
+      REDIS_URL: "rediss://default:secret@redis.example.test:6379",
+    });
+
+    expect(config.production).toBe(true);
+    expect(config.releaseTier).toBe("staging");
+    expect(config.privateDocumentStoragePath).toBeUndefined();
+    expect(config.privateDocumentStorageS3).toBeUndefined();
+    expect(config.documentScan).toBeUndefined();
+    expect(config.verificationWhatsApp).toBeUndefined();
+  });
+
+  it("rejects unknown release tiers", () => {
+    expect(() => loadApiConfig({ ...baseEnv, RAHAL_RELEASE_TIER: "demo" })).toThrow(
+      "RAHAL_RELEASE_TIER must be staging or production.",
+    );
+  });
+
   it("maps private S3 storage and rejects unsafe production storage", () => {
     const storageEnv = {
       ...baseEnv,

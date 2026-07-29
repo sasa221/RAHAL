@@ -11,6 +11,7 @@ This file is the working release gate for the first real RAHAL launch. A product
 - Protected document metadata, staff permissions, audit, staff MFA, booking operations, and in-app notifications have server-side boundaries.
 - The public information surface now includes About, How it works, Contact, FAQ, Rental terms, Privacy, and Cancellation in Arabic and English.
 - The root HTML language and direction are selected from the requested route before render.
+- A public Vercel staging tier may run with managed PostgreSQL and Redis while missing document, scanner, or WhatsApp providers fail closed at their feature boundaries. This does not close or defer any production launch blocker.
 
 ## Release gates
 
