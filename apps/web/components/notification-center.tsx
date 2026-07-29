@@ -241,7 +241,7 @@ export function NotificationCenter({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={text.label}
-        className="notification-trigger"
+        className={`notification-trigger${inbox?.unreadCount ? " has-unread" : ""}`}
         onClick={() => setOpen((current) => !current)}
         type="button"
       >

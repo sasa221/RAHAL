@@ -9,6 +9,8 @@ describe("in-app notification center", () => {
   const repository = read("apps/api/src/notifications/notifications.repository.ts");
   const service = read("apps/api/src/notifications/notifications.service.ts");
   const center = read("apps/web/components/notification-center.tsx");
+  const publicEntry = read("apps/web/components/public-notification-entry.tsx");
+  const publicHeader = read("apps/web/components/public-home.tsx");
   const shell = read("apps/web/components/workspace-shell.tsx");
   const contracts = read("packages/contracts/src/index.ts");
 
@@ -74,5 +76,19 @@ describe("in-app notification center", () => {
     expect(center).toContain("className={`notification-preview");
     expect(center).toContain("document.body");
     expect(read("apps/web/app/globals.css")).toContain("@media (max-width: 560px)");
+  });
+
+  it("keeps the authenticated notification signal visible in every public header", () => {
+    const styles = read("apps/web/app/globals.css");
+
+    expect(publicHeader).toContain("<PublicNotificationEntry");
+    expect(publicEntry).toContain('fetch("/api/auth/session"');
+    expect(publicEntry).toContain('"rahal:session-changed"');
+    expect(publicEntry).toContain('session.user.role === "CUSTOMER" ? "customer" : "sales"');
+    expect(publicEntry).toContain("<NotificationCenter");
+    expect(center).toContain('" has-unread"');
+    expect(styles).toContain(".public-header-notifications .notification-trigger");
+    expect(styles).toContain(".notification-trigger.has-unread");
+    expect(styles).toContain("@keyframes notification-bell-signal");
   });
 });

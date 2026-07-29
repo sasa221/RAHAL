@@ -10,6 +10,7 @@ import {
 import { AvailabilitySearch } from "./availability-search";
 import { AccountEntryLink } from "./account-entry-link";
 import { ExperienceMotion } from "./experience-motion";
+import { PublicNotificationEntry } from "./public-notification-entry";
 
 type PublicHomeProps = {
   locale: PublicLocale;
@@ -159,6 +160,7 @@ export function Header({ locale, languageHref }: PublicHomeProps & { languageHre
             locale={locale}
             signInLabel={content.signIn}
           />
+          <PublicNotificationEntry locale={locale} />
           <details className="mobile-menu">
             <summary aria-label={content.menuLabel}>
               <Icon name="menu" />

@@ -5149,6 +5149,56 @@ body {
   animation: notification-badge-pulse 2.8s ease-in-out infinite;
 }
 
+.notification-trigger.has-unread {
+  border-color: #bf8f36;
+  box-shadow:
+    0 0 0 4px rgb(201 157 79 / 11%),
+    0 10px 24px rgb(50 39 18 / 13%);
+}
+
+.notification-trigger.has-unread .notification-trigger__icon {
+  color: #1d1e1b;
+  background: linear-gradient(145deg, #efd79f, #bc8732);
+  animation: notification-bell-signal 2.2s ease-in-out infinite;
+}
+
+.public-header-notifications {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.public-header-notifications .notification-trigger {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0;
+  justify-content: center;
+  background: #fff;
+  border-radius: var(--radius-sm);
+}
+
+.public-header-notifications .notification-trigger__icon {
+  width: 34px;
+  height: 34px;
+}
+
+.public-header-notifications .notification-trigger__label {
+  display: none;
+}
+
+.public-header-notifications .notification-trigger > b {
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline-end: -7px;
+  min-width: 22px;
+  height: 22px;
+  padding-inline: 4px;
+  border: 2px solid #fff;
+  font-size: 0.52rem;
+}
+
 .notification-backdrop {
   position: fixed;
   z-index: 89;
@@ -5680,6 +5730,24 @@ body {
   }
   45% {
     box-shadow: 0 0 0 6px rgb(161 77 59 / 10%);
+  }
+}
+
+@keyframes notification-bell-signal {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(201 157 79 / 0%);
+    transform: rotate(0);
+  }
+  10% {
+    transform: rotate(-7deg);
+  }
+  20% {
+    transform: rotate(7deg);
+  }
+  30% {
+    box-shadow: 0 0 0 8px rgb(201 157 79 / 0%);
+    transform: rotate(0);
   }
 }
 
@@ -10257,6 +10325,22 @@ select {
   .rahal-logo__image {
     width: 64px;
     height: 64px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .public-header-notifications .notification-trigger,
+  .mobile-menu summary {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+  }
+
+  .public-header-notifications .notification-trigger > b {
+    inset-block-start: -5px;
+    inset-inline-end: -5px;
   }
 
   .hero {
@@ -19016,6 +19100,7 @@ select {
   .notification-backdrop,
   .notification-list li,
   .notification-trigger > b,
+  .notification-trigger.has-unread .notification-trigger__icon,
   .notification-drawer__signal i,
   .notification-skeleton span,
   .notification-preview,
