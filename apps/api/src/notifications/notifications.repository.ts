@@ -260,10 +260,25 @@ export class NotificationsRepository {
         : input.audience === "SALES"
           ? (["SALES"] as const)
           : (["CUSTOMER", "SALES"] as const);
+    const accountScope = input.marketing
+      ? { status: "ACTIVE" as const }
+      : input.audience === "CUSTOMERS"
+        ? { status: { in: ["ACTIVE" as const, "PENDING_VERIFICATION" as const] } }
+        : input.audience === "SALES"
+          ? { status: "ACTIVE" as const }
+          : {
+              OR: [
+                {
+                  systemRole: "CUSTOMER" as const,
+                  status: { in: ["ACTIVE" as const, "PENDING_VERIFICATION" as const] },
+                },
+                { systemRole: "SALES" as const, status: "ACTIVE" as const },
+              ],
+            };
     return this.prisma.client.user.findMany({
       where: {
         systemRole: { in: [...roles] },
-        status: "ACTIVE",
+        ...accountScope,
         ...(input.marketing ? { notificationPreference: { is: { marketingEnabled: true } } } : {}),
       },
       select: { id: true },
