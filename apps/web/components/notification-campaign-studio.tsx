@@ -389,7 +389,7 @@ export function NotificationCampaignStudio({
           ) : null}
           <button
             className="campaign-send"
-            disabled={sending || loading}
+            disabled={sending || loading || !page}
             onClick={() => void sendCampaign()}
             type="button"
           >
