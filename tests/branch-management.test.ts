@@ -42,6 +42,8 @@ describe("branch management", () => {
     const information = read("apps/web/components/public-information-page.tsx");
 
     expect(repository).toContain("where: { active: true }");
+    expect(repository).toContain("isApprovedPublicBranch");
+    expect(repository).toContain('"تجريبي"');
     expect(repository).toContain("whatsappNumbers: true");
     expect(contracts).toContain("workingHours: Record<string, unknown>");
     expect(surface).toContain('fetch("/api/branches"');

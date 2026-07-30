@@ -956,6 +956,8 @@ Status: implemented and verified locally on 2026-07-30.
   fields without exposing administration-only metadata.
 - Replaced hard-coded homepage, footer, and contact-page phone, WhatsApp, address, coordinates, and
   hours with the public branch API.
+- Suppressed records explicitly marked demo, fictional, temporary, or تجريبي from public contact
+  responses while leaving the internal staging branch available for reservation acceptance.
 - Added safe loading, empty, and provider-failure states that never publish invented contact data.
 - Added direct phone, WhatsApp, and Google Maps actions only when the administrator supplied the
   corresponding value.
@@ -969,6 +971,7 @@ Status: implemented and verified locally on 2026-07-30.
 ### Acceptance criteria
 
 - Inactive branches never appear publicly.
+- Demo or temporary branch records never appear publicly.
 - Public contact surfaces contain no hard-coded operational number or coordinate.
 - Missing branch data produces honest unavailable copy rather than a broken or invented action.
 - An administrator vehicle update feeds listing, homepage, detail, and reservation selection from

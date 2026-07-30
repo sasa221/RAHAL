@@ -25,7 +25,7 @@ export class BranchesRepository {
         active: true,
       },
     });
-    return branches.map(toPublicBranch);
+    return branches.filter(isApprovedPublicBranch).map(toPublicBranch);
   }
 
   async adminList(): Promise<ManagedBranch[]> {
@@ -144,6 +144,16 @@ function toPublicBranch(branch: PublicBranchRecord): BranchSummary {
     workingHours: asObject(branch.workingHours),
     active: branch.active,
   };
+}
+
+function isApprovedPublicBranch(branch: PublicBranchRecord) {
+  const searchable = [branch.nameAr, branch.nameEn, branch.addressAr, branch.addressEn]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLocaleLowerCase();
+  return !["demo", "fictional", "temporary", "تجريبي", "مؤقت"].some((marker) =>
+    searchable.includes(marker),
+  );
 }
 
 function auditBranch(branch: BranchRecord): Prisma.InputJsonObject {
