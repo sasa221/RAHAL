@@ -849,6 +849,35 @@ export type AdminDocumentAccessPage = {
   availableActions: string[];
 };
 
+export type AdminCommunicationProvider = {
+  key: "IN_APP" | "EMAIL" | "WHATSAPP_VERIFICATION" | "WHATSAPP_NOTIFICATIONS" | "WEB_PUSH";
+  status: "READY" | "CONFIGURATION_REQUIRED";
+  provider: "LOCAL" | "BREVO" | "RESEND" | "META" | "TWILIO_VERIFY" | "VAPID" | null;
+};
+
+export type AdminCommunicationsOverview = {
+  providers: AdminCommunicationProvider[];
+  deliveries: Array<{
+    channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP";
+    queued: number;
+    sent: number;
+    failed: number;
+  }>;
+  outbox: {
+    pending: number;
+    processing: number;
+    failed: number;
+  };
+  workerMode: "INTERVAL" | "REQUEST";
+  scheduledCleanup: boolean;
+  generatedAt: string;
+};
+
+export type AdminCommunicationRunResult = {
+  processed: number;
+  generatedAt: string;
+};
+
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type CustomerReview = {

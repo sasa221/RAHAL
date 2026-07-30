@@ -2,6 +2,8 @@ import { ForbiddenException, Injectable } from "@nestjs/common";
 import type {
   AdminAuditEntry,
   AdminAuditPage,
+  AdminCommunicationRunResult,
+  AdminCommunicationsOverview,
   AdminDocumentAccessEntry,
   AdminDocumentAccessPage,
   AdminOperationsOverview,
@@ -12,6 +14,8 @@ import type {
 import { AuthService } from "../auth/auth.service";
 import { StaffAccessService } from "../staff/staff-access.service";
 import { AdminOperationsRepository } from "./admin-operations.repository";
+import { BackgroundJobsService } from "../background-jobs/background-jobs.service";
+import { loadApiConfig } from "../config";
 
 type Locale = "ar" | "en";
 
@@ -102,10 +106,13 @@ function toDocumentAccessEntry(
 
 @Injectable()
 export class AdminOperationsService {
+  private readonly config = loadApiConfig();
+
   constructor(
     private readonly auth: AuthService,
     private readonly access: StaffAccessService,
     private readonly repository: AdminOperationsRepository,
+    private readonly jobs: BackgroundJobsService,
   ) {}
 
   private async adminSession(token: string | undefined): Promise<AuthSession> {
@@ -186,6 +193,76 @@ export class AdminOperationsService {
       recentActivity: recentActivity.map((item) => toAuditEntry(item, locale)),
       generatedAt: now.toISOString(),
     };
+  }
+
+  async communications(token: string | undefined): Promise<AdminCommunicationsOverview> {
+    await this.adminSession(token);
+    const stats = await this.repository.communicationStats();
+    const deliveryCount = (channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP", statuses: string[]) =>
+      stats.deliveries
+        .filter((row) => row.channel === channel && statuses.includes(row.status))
+        .reduce((total, row) => total + row._count._all, 0);
+    const outboxCount = (status: "PENDING" | "PROCESSING" | "FAILED") =>
+      stats.outbox.find((row) => row.status === status)?._count._all ?? 0;
+    const emailProvider = this.config.verificationBrevo
+      ? "BREVO"
+      : this.config.verificationEmail
+        ? "RESEND"
+        : null;
+    const phoneProvider = this.config.verificationWhatsApp
+      ? "META"
+      : this.config.verificationTwilioVerifyWhatsApp
+        ? "TWILIO_VERIFY"
+        : null;
+
+    return {
+      providers: [
+        { key: "IN_APP", status: "READY", provider: "LOCAL" },
+        {
+          key: "EMAIL",
+          status: emailProvider ? "READY" : "CONFIGURATION_REQUIRED",
+          provider: emailProvider,
+        },
+        {
+          key: "WHATSAPP_VERIFICATION",
+          status: phoneProvider ? "READY" : "CONFIGURATION_REQUIRED",
+          provider: phoneProvider,
+        },
+        {
+          key: "WHATSAPP_NOTIFICATIONS",
+          status: this.config.verificationWhatsApp?.notificationTemplateName
+            ? "READY"
+            : "CONFIGURATION_REQUIRED",
+          provider: this.config.verificationWhatsApp?.notificationTemplateName ? "META" : null,
+        },
+        {
+          key: "WEB_PUSH",
+          status: this.config.webPush ? "READY" : "CONFIGURATION_REQUIRED",
+          provider: this.config.webPush ? "VAPID" : null,
+        },
+      ],
+      deliveries: (["IN_APP", "PUSH", "EMAIL", "WHATSAPP"] as const).map((channel) => ({
+        channel,
+        queued: deliveryCount(channel, ["QUEUED"]),
+        sent: deliveryCount(channel, ["SENT", "DELIVERED", "READ"]),
+        failed: deliveryCount(channel, ["FAILED"]),
+      })),
+      outbox: {
+        pending: outboxCount("PENDING"),
+        processing: outboxCount("PROCESSING"),
+        failed: outboxCount("FAILED"),
+      },
+      workerMode: this.config.backgroundJobs.mode === "request" ? "REQUEST" : "INTERVAL",
+      scheduledCleanup: Boolean(this.config.backgroundJobs.cronSecret),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async runCommunicationQueue(token: string | undefined): Promise<AdminCommunicationRunResult> {
+    const session = await this.adminSession(token);
+    const result = await this.jobs.runDeliveryBatch();
+    await this.repository.writeCommunicationAudit(session.user.id, result.processed);
+    return { processed: result.processed, generatedAt: new Date().toISOString() };
   }
 
   async audit(

@@ -94,11 +94,15 @@ RAHAL has an idempotent transactional outbox for:
 - WhatsApp through approved Meta templates
 - Browser Web Push
 
-For staging phone verification, the API also supports the Twilio WhatsApp Sandbox with its
-pre-approved verification template. Sandbox recipients must join the test sender first; production
-continues to require the official Meta WhatsApp Business integration. The shared Sandbox sender and
-verification-template identifiers are built in, so staging configuration needs only the Twilio
-account SID and auth token.
+For staging phone verification, the API can use Twilio Verify over WhatsApp. Twilio creates and
+checks the one-time code; Rahal stores only an expiring provider marker. Trial Twilio accounts can
+reach only numbers verified in Twilio. Production request notifications continue to require the
+official Meta WhatsApp Business integration and approved authentication/notification templates.
+
+Vercel deployments use request-driven outbox draining after mutations plus a protected daily
+recovery sweep. Persistent Node deployments keep the interval worker. Administrators can see safe
+provider readiness, aggregate delivery counters, queue health, and run a bounded audited delivery
+batch from the Communications center.
 
 Customer preferences, verification state, retry limits, and Cairo quiet hours are respected.
 Essential in-app messages remain available even when optional channels are disabled.

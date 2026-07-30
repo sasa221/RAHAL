@@ -4,9 +4,10 @@ import { StaffModule } from "../staff/staff.module";
 import { AdminOperationsController } from "./admin-operations.controller";
 import { AdminOperationsRepository } from "./admin-operations.repository";
 import { AdminOperationsService } from "./admin-operations.service";
+import { BackgroundJobsModule } from "../background-jobs/background-jobs.module";
 
 @Module({
-  imports: [AuthModule, StaffModule],
+  imports: [AuthModule, StaffModule, BackgroundJobsModule],
   controllers: [AdminOperationsController],
   providers: [AdminOperationsRepository, AdminOperationsService],
 })

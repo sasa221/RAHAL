@@ -1,8 +1,5 @@
 import { createHash } from "node:crypto";
 
-const twilioWhatsAppSandboxFrom = "+14155238886";
-const twilioWhatsAppSandboxVerificationContentSid = "HXb5b62575e6e4ff6129ad7c8efe1f983e";
-
 export type ApiConfig = {
   port: number;
   webUrl: string;
@@ -11,6 +8,10 @@ export type ApiConfig = {
   mfaEncryptionKey: string;
   production: boolean;
   releaseTier: "staging" | "production";
+  backgroundJobs: {
+    mode: "interval" | "request";
+    cronSecret?: string;
+  };
   redisUrl?: string;
   privateDocumentStoragePath?: string;
   privateDocumentStorageS3?: {
@@ -55,11 +56,10 @@ export type ApiConfig = {
     notificationTemplateName?: string;
     graphApiVersion: string;
   };
-  verificationTwilioWhatsApp?: {
+  verificationTwilioVerifyWhatsApp?: {
     accountSid: string;
     authToken: string;
-    from: string;
-    verificationContentSid: string;
+    serviceSid: string;
   };
 };
 
@@ -102,6 +102,22 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }
   const releaseTier = configuredReleaseTier as ApiConfig["releaseTier"];
   const launchValidated = production && releaseTier === "production";
+  const configuredBackgroundJobMode = env.RAHAL_BACKGROUND_JOB_MODE?.trim().toLowerCase();
+  if (
+    configuredBackgroundJobMode &&
+    !["interval", "request"].includes(configuredBackgroundJobMode)
+  ) {
+    throw new Error("RAHAL_BACKGROUND_JOB_MODE must be interval or request.");
+  }
+  const backgroundJobMode = (configuredBackgroundJobMode ||
+    (env.VERCEL ? "request" : "interval")) as ApiConfig["backgroundJobs"]["mode"];
+  const cronSecret = env.CRON_SECRET?.trim();
+  if (cronSecret && cronSecret.length < 32) {
+    throw new Error("CRON_SECRET must contain at least 32 characters.");
+  }
+  if (launchValidated && backgroundJobMode === "request" && !cronSecret) {
+    throw new Error("CRON_SECRET is required for request-mode production background jobs.");
+  }
   const webUrl = readUrl("WEB_URL", env.WEB_URL, "http://localhost:3000");
   if (production && new URL(webUrl).protocol !== "https:") {
     throw new Error("WEB_URL must use HTTPS in production.");
@@ -221,37 +237,24 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     };
   }
 
-  const twilioWhatsAppDelivery = readCompleteGroup(env, [
+  const twilioVerifyDelivery = readCompleteGroup(env, [
     "TWILIO_ACCOUNT_SID",
     "TWILIO_AUTH_TOKEN",
+    "TWILIO_VERIFY_SERVICE_SID",
   ]);
-  const twilioFrom = env.TWILIO_WHATSAPP_FROM?.trim();
-  const twilioVerificationContentSid = env.TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID?.trim();
-  if ((twilioFrom || twilioVerificationContentSid) && !twilioWhatsAppDelivery) {
-    throw new Error(
-      "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are required when Twilio WhatsApp overrides are configured.",
-    );
-  }
-  let verificationTwilioWhatsApp: ApiConfig["verificationTwilioWhatsApp"];
-  if (twilioWhatsAppDelivery) {
-    const [accountSid, authToken] = twilioWhatsAppDelivery;
-    const from = twilioFrom || twilioWhatsAppSandboxFrom;
-    const verificationContentSid =
-      twilioVerificationContentSid || twilioWhatsAppSandboxVerificationContentSid;
+  let verificationTwilioVerifyWhatsApp: ApiConfig["verificationTwilioVerifyWhatsApp"];
+  if (twilioVerifyDelivery) {
+    const [accountSid, authToken, serviceSid] = twilioVerifyDelivery;
     if (!/^AC[0-9a-f]{32}$/i.test(accountSid!)) {
       throw new Error("TWILIO_ACCOUNT_SID must be a valid account SID.");
     }
-    if (!/^\+[1-9]\d{7,14}$/.test(from!)) {
-      throw new Error("TWILIO_WHATSAPP_FROM must use E.164 format.");
+    if (!/^VA[0-9a-f]{32}$/i.test(serviceSid!)) {
+      throw new Error("TWILIO_VERIFY_SERVICE_SID must be a valid Verify service SID.");
     }
-    if (!/^HX[0-9a-f]{32}$/i.test(verificationContentSid!)) {
-      throw new Error("TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID must be a valid content SID.");
-    }
-    verificationTwilioWhatsApp = {
+    verificationTwilioVerifyWhatsApp = {
       accountSid: accountSid!,
       authToken: authToken!,
-      from: from!,
-      verificationContentSid: verificationContentSid!,
+      serviceSid: serviceSid!,
     };
   }
   if (launchValidated && !verificationBrevo && !verificationEmail) {
@@ -389,6 +392,10 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     mfaEncryptionKey: mfaKeyBytes.toString("base64url"),
     production,
     releaseTier,
+    backgroundJobs: {
+      mode: backgroundJobMode,
+      ...(cronSecret ? { cronSecret } : {}),
+    },
     redisUrl,
     privateDocumentStoragePath:
       privateDocumentStoragePath || (production ? undefined : ".private-storage"),
@@ -400,6 +407,6 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     verificationEmail,
     verificationGmail,
     verificationWhatsApp,
-    verificationTwilioWhatsApp,
+    verificationTwilioVerifyWhatsApp,
   };
 }

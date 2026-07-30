@@ -46,6 +46,518 @@
   --pointer-ry: 0;
 }
 
+/* Communications command center */
+.communications-workspace {
+  min-height: 100vh;
+  padding: clamp(24px, 4vw, 64px);
+  background:
+    radial-gradient(circle at 82% 4%, rgba(184, 136, 49, 0.16), transparent 28rem), #f3efe6;
+  color: #181713;
+}
+
+.communications-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 36px;
+  align-items: center;
+  padding-bottom: 42px;
+  border-bottom: 1px solid rgba(24, 23, 19, 0.18);
+}
+
+.communications-hero > div:first-child > span,
+.communications-queue header span,
+.communications-engine > span,
+.communications-deliveries > header span {
+  color: #9b6b18;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.communications-hero h1 {
+  max-width: 980px;
+  margin: 13px 0 16px;
+  font-family: var(--font-display), var(--font-arabic), serif;
+  font-size: clamp(2.7rem, 5.7vw, 6.4rem);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+
+[dir="rtl"] .communications-hero h1 {
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.communications-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: #69645b;
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  line-height: 1.8;
+}
+
+.communications-radar {
+  position: relative;
+  display: grid;
+  width: 190px;
+  aspect-ratio: 1;
+  place-items: center;
+  justify-self: end;
+  border: 1px solid rgba(155, 107, 24, 0.42);
+  border-radius: 50%;
+}
+
+.communications-radar::before,
+.communications-radar i {
+  position: absolute;
+  content: "";
+  border: 1px solid rgba(155, 107, 24, 0.25);
+  border-radius: inherit;
+  animation: communications-pulse 3s ease-out infinite;
+}
+
+.communications-radar::before {
+  inset: 20px;
+}
+
+.communications-radar i:first-child {
+  inset: 44px;
+  animation-delay: 0.7s;
+}
+
+.communications-radar i:nth-child(2) {
+  inset: 67px;
+  animation-delay: 1.4s;
+}
+
+.communications-radar b {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 54px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: #181713;
+  color: #d5ab57;
+  font-family: var(--font-display), serif;
+  font-size: 1.8rem;
+}
+
+@keyframes communications-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+.communications-state {
+  margin-top: 30px;
+  padding: 32px;
+  border: 1px solid rgba(24, 23, 19, 0.16);
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.communications-state.is-error {
+  color: #8d3529;
+}
+
+.communications-providers {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(24, 23, 19, 0.18);
+}
+
+.communications-providers article {
+  min-height: 220px;
+  padding: 26px 22px;
+  border-inline-end: 1px solid rgba(24, 23, 19, 0.18);
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.communications-providers article:hover {
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.66);
+  transform: translateY(-5px);
+}
+
+.communications-providers article:last-child {
+  border-inline-end: 0;
+}
+
+.communications-providers article header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #8c867a;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.communications-providers article header i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px rgba(24, 23, 19, 0.05);
+}
+
+.communications-providers .is-ready header i {
+  background: #3d825d;
+  box-shadow: 0 0 0 7px rgba(61, 130, 93, 0.12);
+}
+
+.communications-providers .is-missing header i {
+  background: #b77929;
+  box-shadow: 0 0 0 7px rgba(183, 121, 41, 0.13);
+}
+
+.communications-providers h2 {
+  min-height: 58px;
+  margin: 42px 0 13px;
+  font-size: clamp(1rem, 1.35vw, 1.3rem);
+  line-height: 1.25;
+}
+
+.communications-providers p,
+.communications-providers small {
+  display: block;
+  margin: 0;
+  color: #6b665c;
+}
+
+.communications-providers p {
+  font-weight: 750;
+}
+
+.communications-providers small {
+  margin-top: 8px;
+  font-size: 0.73rem;
+}
+
+.communications-command {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.65fr);
+  gap: 22px;
+  margin-top: 22px;
+}
+
+.communications-queue,
+.communications-engine,
+.communications-deliveries {
+  border: 1px solid rgba(24, 23, 19, 0.18);
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.communications-queue {
+  padding: clamp(24px, 3vw, 40px);
+}
+
+.communications-queue > header {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.communications-queue h2,
+.communications-engine h2,
+.communications-deliveries h2 {
+  margin: 7px 0 0;
+  font-family: var(--font-display), var(--font-arabic), serif;
+  font-size: clamp(1.8rem, 3vw, 3.4rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.communications-queue button {
+  min-height: 54px;
+  padding: 0 24px;
+  border: 0;
+  background: #181713;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.communications-queue button:hover:not(:disabled) {
+  background: #9b6b18;
+  transform: translateY(-2px);
+}
+
+.communications-queue button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.communications-queue > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 34px;
+  border-top: 1px solid rgba(24, 23, 19, 0.16);
+}
+
+.communications-queue article {
+  padding: 27px 18px 4px;
+  border-inline-end: 1px solid rgba(24, 23, 19, 0.16);
+}
+
+.communications-queue article:last-child {
+  border-inline-end: 0;
+}
+
+.communications-queue article strong,
+.communications-queue article span {
+  display: block;
+}
+
+.communications-queue article strong {
+  font-family: var(--font-display), serif;
+  font-size: clamp(2.2rem, 5vw, 4.8rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.communications-queue article span {
+  margin-top: 10px;
+  color: #777166;
+}
+
+.communications-result {
+  margin: 24px 0 0;
+  color: #3d825d;
+  font-weight: 800;
+}
+
+.communications-engine {
+  position: relative;
+  overflow: hidden;
+  padding: 31px;
+  background: #191815;
+  color: #fff;
+}
+
+.communications-engine > span {
+  color: #d5ab57;
+}
+
+.communications-engine h2 {
+  color: #fff;
+}
+
+.communications-orbit {
+  position: relative;
+  display: grid;
+  width: 160px;
+  margin: 30px auto;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px dashed rgba(213, 171, 87, 0.4);
+  border-radius: 50%;
+  animation: communications-rotate 12s linear infinite;
+}
+
+.communications-orbit b,
+.communications-orbit i {
+  position: absolute;
+  border-radius: 50%;
+  background: #d5ab57;
+}
+
+.communications-orbit b {
+  top: 17px;
+  width: 13px;
+  height: 13px;
+}
+
+.communications-orbit i {
+  right: 23px;
+  bottom: 29px;
+  width: 7px;
+  height: 7px;
+}
+
+.communications-orbit span {
+  display: grid;
+  width: 72px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  font-family: var(--font-display), serif;
+  font-size: 2rem;
+}
+
+@keyframes communications-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.communications-engine p {
+  color: #a8a298;
+  font-size: 0.83rem;
+}
+
+.communications-engine p strong {
+  color: #fff;
+}
+
+.communications-deliveries {
+  margin-top: 22px;
+  padding: clamp(24px, 3vw, 40px);
+}
+
+.communications-deliveries > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.communications-deliveries article {
+  padding: 22px;
+  background: #ebe5d9;
+}
+
+.communications-deliveries h3 {
+  min-height: 42px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.communications-bar {
+  height: 4px;
+  margin: 20px 0;
+  background: rgba(24, 23, 19, 0.1);
+}
+
+.communications-bar i {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  background: linear-gradient(90deg, #9b6b18, #dfb968);
+  transition: width 500ms ease;
+}
+
+.communications-deliveries dl,
+.communications-deliveries dl div {
+  margin: 0;
+}
+
+.communications-deliveries dl {
+  display: grid;
+  gap: 8px;
+}
+
+.communications-deliveries dl div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.communications-deliveries dt {
+  color: #746e63;
+  font-size: 0.78rem;
+}
+
+.communications-deliveries dd {
+  margin: 0;
+  font-weight: 850;
+}
+
+@media (max-width: 1100px) {
+  .communications-providers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .communications-providers article {
+    border-bottom: 1px solid rgba(24, 23, 19, 0.18);
+  }
+
+  .communications-command {
+    grid-template-columns: 1fr;
+  }
+
+  .communications-deliveries > div {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .communications-workspace {
+    padding: 22px 16px 100px;
+  }
+
+  .communications-hero {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .communications-radar {
+    width: 120px;
+    justify-self: start;
+  }
+
+  .communications-hero h1 {
+    font-size: clamp(2.5rem, 12vw, 4.2rem);
+  }
+
+  .communications-providers,
+  .communications-deliveries > div {
+    grid-template-columns: 1fr;
+  }
+
+  .communications-providers article {
+    min-height: 170px;
+    border-inline-end: 0;
+  }
+
+  .communications-providers h2 {
+    min-height: 0;
+    margin-top: 28px;
+  }
+
+  .communications-queue > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .communications-queue > div {
+    grid-template-columns: 1fr;
+  }
+
+  .communications-queue article {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    border-inline-end: 0;
+    border-bottom: 1px solid rgba(24, 23, 19, 0.16);
+  }
+
+  .communications-queue article strong {
+    font-size: 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .communications-radar::before,
+  .communications-radar i,
+  .communications-orbit {
+    animation: none;
+  }
+}
+
 /* Administration operations center */
 .ops-workspace {
   --ops-ink: #171713;

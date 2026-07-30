@@ -13,6 +13,7 @@ import { AccountModule } from "./account/account.module";
 import { AdminOperationsModule } from "./admin-operations/admin-operations.module";
 import { DocumentRequirementsModule } from "./document-requirements/document-requirements.module";
 import { PoliciesModule } from "./policies/policies.module";
+import { BackgroundJobsModule } from "./background-jobs/background-jobs.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PoliciesModule } from "./policies/policies.module";
     AdminOperationsModule,
     DocumentRequirementsModule,
     PoliciesModule,
+    BackgroundJobsModule,
   ],
   controllers: [HealthController],
 })

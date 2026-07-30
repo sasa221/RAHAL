@@ -26,7 +26,7 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
   }
 
   onModuleInit() {
-    if (process.env.NODE_ENV === "test") return;
+    if (process.env.NODE_ENV === "test" || this.config.backgroundJobs.mode !== "interval") return;
     this.timer = setInterval(() => void this.drainOne(), 2_500);
     this.timer.unref();
     void this.drainOne();
@@ -143,6 +143,15 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
     }
   }
 
+  async drainBatch(limit = 10) {
+    let processed = 0;
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+    while (processed < safeLimit && (await this.drainOne())) {
+      processed += 1;
+    }
+    return { processed };
+  }
+
   private async recordChannel(
     notificationId: string,
     channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP",
@@ -234,7 +243,7 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
           type: "template",
           template: {
             name: provider.notificationTemplateName,
-            language: { code: locale === "ar" ? "ar" : "en" },
+            language: { code: locale === "ar" ? "ar" : "en_US" },
             components: [
               {
                 type: "body",

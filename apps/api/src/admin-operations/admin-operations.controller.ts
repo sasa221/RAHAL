@@ -1,6 +1,8 @@
-import { Controller, Get, Query, Req } from "@nestjs/common";
+import { Controller, Get, Post, Query, Req } from "@nestjs/common";
 import type {
   AdminAuditPage,
+  AdminCommunicationRunResult,
+  AdminCommunicationsOverview,
   AdminDocumentAccessPage,
   AdminOperationsOverview,
   ApiSuccess,
@@ -49,5 +51,17 @@ export class AdminOperationsController {
         query,
       ),
     };
+  }
+
+  @Get("communications")
+  async communications(@Req() request: Request): Promise<ApiSuccess<AdminCommunicationsOverview>> {
+    return { data: await this.operations.communications(readAuthCookie(request)) };
+  }
+
+  @Post("communications/run")
+  async runCommunications(
+    @Req() request: Request,
+  ): Promise<ApiSuccess<AdminCommunicationRunResult>> {
+    return { data: await this.operations.runCommunicationQueue(readAuthCookie(request)) };
   }
 }

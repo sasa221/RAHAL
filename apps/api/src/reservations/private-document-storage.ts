@@ -22,6 +22,10 @@ export class PrivateDocumentStorage {
   private readonly config: ApiConfig = loadApiConfig();
   private s3Client?: S3Client;
 
+  configured() {
+    return Boolean(this.config.privateDocumentStoragePath || this.config.privateDocumentStorageS3);
+  }
+
   async put(reservationId: string, mimeType: string, bytes: Buffer, namespace = "reservations") {
     const storageKey = this.createStorageKey(reservationId, mimeType, namespace);
     if (this.config.privateDocumentStorageS3) {

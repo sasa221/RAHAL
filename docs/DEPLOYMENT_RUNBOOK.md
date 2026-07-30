@@ -13,6 +13,13 @@ This runbook is the production release procedure. It does not authorize a releas
 
 - `RAHAL_RELEASE_TIER=staging` is allowed only for a public acceptance environment running with `NODE_ENV=production`, HTTPS, secure cookies, managed PostgreSQL, managed TLS Redis, and unique secrets.
 - Missing WhatsApp, private S3, or malware-scanning providers remain unavailable at their feature boundaries. Document upload must return unavailable, phone delivery must not expose a local OTP, and dependency readiness must not claim the environment is production-ready.
+- Vercel deployments set `RAHAL_BACKGROUND_JOB_MODE=request` and a random `CRON_SECRET` of at
+  least 32 characters. The daily cron calls `/api/internal/jobs/run`; mutation requests await a
+  bounded outbox drain so customer-facing delivery does not depend on a frozen timer.
+- Optional staging WhatsApp verification uses `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and
+  `TWILIO_VERIFY_SERVICE_SID`. Never configure an appointment-reminder Content SID as an OTP
+  template. Meta Cloud API credentials and approved templates remain required for production
+  WhatsApp notifications.
 - `RAHAL_RELEASE_TIER=production` is the default and retains the full fail-closed startup gate for every required external provider.
 - Never promote or describe a staging-tier deployment as the approved production launch.
 

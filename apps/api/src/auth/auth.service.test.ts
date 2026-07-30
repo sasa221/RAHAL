@@ -74,8 +74,7 @@ describe("AuthService", () => {
       "WHATSAPP_GRAPH_API_VERSION",
       "TWILIO_ACCOUNT_SID",
       "TWILIO_AUTH_TOKEN",
-      "TWILIO_WHATSAPP_FROM",
-      "TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID",
+      "TWILIO_VERIFY_SERVICE_SID",
     ]) {
       delete process.env[name];
     }
@@ -314,14 +313,19 @@ describe("AuthService", () => {
     expect(result).not.toHaveProperty("developmentCode");
   });
 
-  it("sends phone verification through the Twilio WhatsApp sandbox template", async () => {
+  it("starts phone verification through Twilio Verify for WhatsApp", async () => {
     delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
     delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
     const accountSid = `AC${"1".repeat(32)}`;
+    const serviceSid = `VA${"2".repeat(32)}`;
     process.env.TWILIO_ACCOUNT_SID = accountSid;
     process.env.TWILIO_AUTH_TOKEN = "twilio-test-token";
-    process.env.TWILIO_WHATSAPP_FROM = "+14155238886";
-    process.env.TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID = `HX${"2".repeat(32)}`;
+    process.env.TWILIO_VERIFY_SERVICE_SID = serviceSid;
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: vi.fn().mockResolvedValue({ status: "pending" }),
+    } as unknown as Response);
     const repository = buildRepository();
     repository.findSession.mockResolvedValue({
       id: "session-1",
@@ -333,10 +337,9 @@ describe("AuthService", () => {
     const result = await service.requestVerification("session-token", { channel: "phone" }, {});
     const deliveryRequest = vi.mocked(fetch).mock.calls[0];
     const body = new URLSearchParams(String(deliveryRequest?.[1]?.body));
-    const variables = JSON.parse(String(body.get("ContentVariables"))) as Record<string, string>;
 
     expect(deliveryRequest?.[0]).toBe(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      `https://verify.twilio.com/v2/Services/${serviceSid}/Verifications`,
     );
     expect(deliveryRequest?.[1]?.headers).toEqual(
       expect.objectContaining({
@@ -344,12 +347,76 @@ describe("AuthService", () => {
         "content-type": "application/x-www-form-urlencoded",
       }),
     );
-    expect(body.get("To")).toBe("whatsapp:+201001112222");
-    expect(body.get("From")).toBe("whatsapp:+14155238886");
-    expect(body.get("ContentSid")).toBe(`HX${"2".repeat(32)}`);
-    expect(variables["2"]).toMatch(/^\d{6}$/);
+    expect(body.get("To")).toBe("+201001112222");
+    expect(body.get("Channel")).toBe("whatsapp");
+    expect(body.get("Locale")).toBe("en");
+    expect(repository.createVerificationCode.mock.calls[0]?.[0].codeHash).toMatch(/^[a-f0-9]{64}$/);
     expect(result).not.toHaveProperty("code");
     expect(result).not.toHaveProperty("developmentCode");
+  });
+
+  it("confirms a Twilio Verify WhatsApp code with the provider", async () => {
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
+    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
+    const accountSid = `AC${"1".repeat(32)}`;
+    const serviceSid = `VA${"2".repeat(32)}`;
+    process.env.TWILIO_ACCOUNT_SID = accountSid;
+    process.env.TWILIO_AUTH_TOKEN = "twilio-test-token";
+    process.env.TWILIO_VERIFY_SERVICE_SID = serviceSid;
+    const repository = buildRepository();
+    repository.findSession.mockResolvedValue({
+      id: "session-1",
+      expiresAt: new Date(Date.now() + 60_000),
+      user: activeUser,
+    });
+    repository.completeVerification.mockResolvedValue({
+      ...activeUser,
+      phoneVerifiedAt: new Date(),
+    });
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: vi.fn().mockResolvedValue({ status: "pending" }),
+    } as unknown as Response);
+    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
+
+    await service.requestVerification("session-token", { channel: "phone" }, {});
+    repository.findActiveVerificationCode.mockResolvedValue({
+      id: "code-1",
+      codeHash: repository.createVerificationCode.mock.calls[0]?.[0].codeHash as string,
+      attempts: 0,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ status: "pending" }),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ status: "approved" }),
+      } as unknown as Response);
+
+    await expect(
+      service.confirmVerification("session-token", { channel: "phone", code: "000000" }, {}),
+    ).rejects.toThrow("Invalid or expired verification code.");
+    expect(repository.incrementVerificationAttempts).toHaveBeenCalledWith("code-1");
+
+    const confirmed = await service.confirmVerification(
+      "session-token",
+      { channel: "phone", code: "123456" },
+      {},
+    );
+    expect(confirmed.verified).toBe(true);
+    const checkRequest = vi.mocked(fetch).mock.calls.at(-1);
+    expect(checkRequest?.[0]).toBe(
+      `https://verify.twilio.com/v2/Services/${serviceSid}/VerificationCheck`,
+    );
+    const checkBody = new URLSearchParams(String(checkRequest?.[1]?.body));
+    expect(checkBody.get("To")).toBe(activeUser.phone);
+    expect(checkBody.get("Code")).toBe("123456");
   });
 
   it("fails closed without a delivery provider and does not create a code", async () => {

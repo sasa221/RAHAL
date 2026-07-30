@@ -44,6 +44,7 @@ import { buildVerificationEmail } from "./verification-email.template";
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 const verificationLifetimeMs = 10 * 60 * 1000;
 const verificationAttemptLimit = 5;
+const twilioVerifyCodeMarker = "TWILIO_VERIFY_WHATSAPP";
 const staffMfaChallengeLifetimeMs = 5 * 60 * 1000;
 const staffMfaAttemptLimit = 5;
 
@@ -533,13 +534,18 @@ export class AuthService {
       throw new ServiceUnavailableException("Verification delivery provider is not configured.");
     }
 
-    const code = String(randomInt(100_000, 1_000_000));
+    const usesTwilioVerify = this.usesTwilioVerifyWhatsApp(input.channel);
+    const code = usesTwilioVerify ? "" : String(randomInt(100_000, 1_000_000));
     const expiresAt = new Date(Date.now() + verificationLifetimeMs);
     await this.repository.invalidateVerificationCodes(session.user.id, purpose);
     await this.repository.createVerificationCode({
       userId: session.user.id,
       purpose,
-      codeHash: this.hashVerificationCode(session.user.id, purpose, code),
+      codeHash: this.hashVerificationCode(
+        session.user.id,
+        purpose,
+        usesTwilioVerify ? twilioVerifyCodeMarker : code,
+      ),
       expiresAt,
     });
 
@@ -597,12 +603,27 @@ export class AuthService {
       throw new BadRequestException("Invalid or expired verification code.");
     }
 
+    const twilioVerifyHash = this.hashVerificationCode(
+      session.user.id,
+      purpose,
+      twilioVerifyCodeMarker,
+    );
+    const providerVerified =
+      input.channel === "phone" &&
+      record.codeHash === twilioVerifyHash &&
+      this.config.verificationTwilioVerifyWhatsApp
+        ? await this.checkTwilioWhatsAppVerification({
+            destination: session.user.phone,
+            code: input.code,
+          })
+        : undefined;
     const expected = Buffer.from(record.codeHash, "hex");
     const actual = Buffer.from(
       this.hashVerificationCode(session.user.id, purpose, input.code),
       "hex",
     );
-    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+    const locallyVerified = expected.length === actual.length && timingSafeEqual(expected, actual);
+    if (providerVerified === false || (providerVerified === undefined && !locallyVerified)) {
       const attempt = await this.repository.incrementVerificationAttempts(record.id);
       if (attempt.attempts >= verificationAttemptLimit) {
         throw new HttpException(
@@ -726,8 +747,8 @@ export class AuthService {
       await this.deliverWhatsAppVerification(input);
       return;
     }
-    if (input.channel === "phone" && this.config.verificationTwilioWhatsApp) {
-      await this.deliverTwilioWhatsAppVerification(input);
+    if (input.channel === "phone" && this.config.verificationTwilioVerifyWhatsApp) {
+      await this.startTwilioWhatsAppVerification(input);
       return;
     }
 
@@ -809,9 +830,17 @@ export class AuthService {
         )
       : Boolean(
           this.config.verificationWhatsApp ||
-          this.config.verificationTwilioWhatsApp ||
+          this.config.verificationTwilioVerifyWhatsApp ||
           this.config.verificationDelivery,
         );
+  }
+
+  private usesTwilioVerifyWhatsApp(channel: "email" | "phone") {
+    return (
+      channel === "phone" &&
+      !this.config.verificationWhatsApp &&
+      Boolean(this.config.verificationTwilioVerifyWhatsApp)
+    );
   }
 
   private async deliverGmailVerification(input: {
@@ -914,26 +943,18 @@ export class AuthService {
     }
   }
 
-  private async deliverTwilioWhatsAppVerification(input: {
-    destination: string;
-    locale: string;
-    code: string;
-  }) {
-    const delivery = this.config.verificationTwilioWhatsApp;
+  private async startTwilioWhatsAppVerification(input: { destination: string; locale: string }) {
+    const delivery = this.config.verificationTwilioVerifyWhatsApp;
     if (!delivery) return;
     const body = new URLSearchParams({
-      To: `whatsapp:${input.destination}`,
-      From: `whatsapp:${delivery.from}`,
-      ContentSid: delivery.verificationContentSid,
-      ContentVariables: JSON.stringify({
-        "1": input.locale === "en" ? "RAHAL" : "رحال",
-        "2": input.code,
-      }),
+      To: input.destination,
+      Channel: "whatsapp",
+      Locale: input.locale === "ar" ? "ar" : "en",
     });
 
     try {
       const response = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${delivery.accountSid}/Messages.json`,
+        `https://verify.twilio.com/v2/Services/${delivery.serviceSid}/Verifications`,
         {
           method: "POST",
           headers: {
@@ -943,8 +964,44 @@ export class AuthService {
           body,
         },
       );
-      if (!response.ok) throw new Error("WhatsApp sandbox rejected the request.");
+      const result = response.ok ? ((await response.json()) as { status?: string }) : undefined;
+      if (!response.ok || result?.status !== "pending") {
+        throw new Error("Twilio Verify rejected the request.");
+      }
     } catch {
+      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
+    }
+  }
+
+  private async checkTwilioWhatsAppVerification(input: { destination: string; code: string }) {
+    const delivery = this.config.verificationTwilioVerifyWhatsApp;
+    if (!delivery) return false;
+    const body = new URLSearchParams({ To: input.destination, Code: input.code });
+
+    try {
+      const response = await fetch(
+        `https://verify.twilio.com/v2/Services/${delivery.serviceSid}/VerificationCheck`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Basic ${Buffer.from(`${delivery.accountSid}:${delivery.authToken}`).toString("base64")}`,
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          body,
+        },
+      );
+      if (!response.ok) {
+        if (response.status === 429 || response.status >= 500) {
+          throw new ServiceUnavailableException(
+            "Verification delivery is temporarily unavailable.",
+          );
+        }
+        return false;
+      }
+      const result = (await response.json()) as { status?: string };
+      return result.status === "approved";
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
     }
   }

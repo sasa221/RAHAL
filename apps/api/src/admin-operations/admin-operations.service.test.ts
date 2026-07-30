@@ -37,6 +37,7 @@ describe("AdminOperationsService", () => {
       { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
       { require: vi.fn() } as never,
       repository as never,
+      { runDeliveryBatch: vi.fn() } as never,
     );
 
     const result = await service.overview("session", "en");
@@ -61,6 +62,7 @@ describe("AdminOperationsService", () => {
       } as never,
       { require: vi.fn() } as never,
       { overview: vi.fn() } as never,
+      { runDeliveryBatch: vi.fn() } as never,
     );
 
     await expect(service.overview("session", "en")).rejects.toBeInstanceOf(ForbiddenException);
@@ -87,6 +89,7 @@ describe("AdminOperationsService", () => {
           entityTypes: [{ entityType: "USER" }],
         }),
       } as never,
+      { runDeliveryBatch: vi.fn() } as never,
     );
 
     const result = await service.audit("session", "en", {});
@@ -124,6 +127,7 @@ describe("AdminOperationsService", () => {
       { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
       { require: requireAccess } as never,
       { documentAccess } as never,
+      { runDeliveryBatch: vi.fn() } as never,
     );
 
     const result = await service.documentAccess("session", "en", {});
@@ -149,10 +153,60 @@ describe("AdminOperationsService", () => {
       } as never,
       { require: vi.fn() } as never,
       { documentAccess: vi.fn() } as never,
+      { runDeliveryBatch: vi.fn() } as never,
     );
 
     await expect(service.documentAccess("session", "en", {})).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  it("exposes safe communication readiness and delivery counters", async () => {
+    const repository = {
+      communicationStats: vi.fn().mockResolvedValue({
+        deliveries: [
+          { channel: "IN_APP", status: "SENT", _count: { _all: 7 } },
+          { channel: "EMAIL", status: "FAILED", _count: { _all: 2 } },
+        ],
+        outbox: [
+          { status: "PENDING", _count: { _all: 3 } },
+          { status: "FAILED", _count: { _all: 1 } },
+        ],
+      }),
+    };
+    const service = new AdminOperationsService(
+      { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
+      { require: vi.fn() } as never,
+      repository as never,
+      { runDeliveryBatch: vi.fn() } as never,
+    );
+
+    const result = await service.communications("session");
+
+    expect(result.providers.find((item) => item.key === "IN_APP")).toMatchObject({
+      status: "READY",
+      provider: "LOCAL",
+    });
+    expect(result.deliveries.find((item) => item.channel === "EMAIL")?.failed).toBe(2);
+    expect(result.outbox).toEqual({ pending: 3, processing: 0, failed: 1 });
+    expect(JSON.stringify(result)).not.toContain("apiKey");
+    expect(JSON.stringify(result)).not.toContain("secret");
+  });
+
+  it("runs the delivery queue on an explicit administrator action and audits it", async () => {
+    const writeCommunicationAudit = vi.fn();
+    const runDeliveryBatch = vi.fn().mockResolvedValue({ processed: 4 });
+    const service = new AdminOperationsService(
+      { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
+      { require: vi.fn() } as never,
+      { writeCommunicationAudit } as never,
+      { runDeliveryBatch } as never,
+    );
+
+    const result = await service.runCommunicationQueue("session");
+
+    expect(result.processed).toBe(4);
+    expect(runDeliveryBatch).toHaveBeenCalledOnce();
+    expect(writeCommunicationAudit).toHaveBeenCalledWith("admin-1", 4);
   });
 });

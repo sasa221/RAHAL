@@ -15,5 +15,6 @@ import { NotificationOutboxService } from "./notification-outbox.service";
     PushSubscriptionCryptoService,
     NotificationOutboxService,
   ],
+  exports: [NotificationOutboxService, NotificationsRepository],
 })
 export class NotificationsModule {}

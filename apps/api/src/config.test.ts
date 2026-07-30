@@ -13,8 +13,31 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.verificationEmail).toBeUndefined();
     expect(config.verificationGmail).toBeUndefined();
     expect(config.verificationWhatsApp).toBeUndefined();
-    expect(config.verificationTwilioWhatsApp).toBeUndefined();
+    expect(config.verificationTwilioVerifyWhatsApp).toBeUndefined();
+    expect(config.backgroundJobs).toEqual({ mode: "interval" });
     expect(Buffer.from(config.mfaEncryptionKey, "base64url")).toHaveLength(32);
+  });
+
+  it("uses request-driven background jobs on Vercel and validates cron secrets", () => {
+    expect(loadApiConfig({ ...baseEnv, VERCEL: "1" }).backgroundJobs).toEqual({
+      mode: "request",
+    });
+    expect(() => loadApiConfig({ ...baseEnv, RAHAL_BACKGROUND_JOB_MODE: "sometimes" })).toThrow(
+      "RAHAL_BACKGROUND_JOB_MODE must be interval or request.",
+    );
+    expect(() => loadApiConfig({ ...baseEnv, CRON_SECRET: "too-short" })).toThrow(
+      "CRON_SECRET must contain at least 32 characters.",
+    );
+    expect(
+      loadApiConfig({
+        ...baseEnv,
+        VERCEL: "1",
+        CRON_SECRET: "test-cron-secret-with-at-least-32-characters",
+      }).backgroundJobs,
+    ).toEqual({
+      mode: "request",
+      cronSecret: "test-cron-secret-with-at-least-32-characters",
+    });
   });
 
   it("requires a 32-byte MFA encryption key when configured", () => {
@@ -83,20 +106,21 @@ describe("loadApiConfig verification delivery", () => {
     ).toThrow("WHATSAPP_GRAPH_API_VERSION must use the v00.0 format.");
   });
 
-  it("requires complete and valid Twilio WhatsApp sandbox credentials", () => {
+  it("requires complete and valid Twilio Verify WhatsApp credentials", () => {
     expect(() =>
       loadApiConfig({
         ...baseEnv,
         TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
       }),
-    ).toThrow("TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN must be configured together.");
+    ).toThrow(
+      "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID must be configured together.",
+    );
     expect(() =>
       loadApiConfig({
         ...baseEnv,
         TWILIO_ACCOUNT_SID: "invalid",
         TWILIO_AUTH_TOKEN: "test-token",
-        TWILIO_WHATSAPP_FROM: "+14155238886",
-        TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID: `HX${"2".repeat(32)}`,
+        TWILIO_VERIFY_SERVICE_SID: `VA${"2".repeat(32)}`,
       }),
     ).toThrow("TWILIO_ACCOUNT_SID must be a valid account SID.");
     expect(() =>
@@ -104,10 +128,9 @@ describe("loadApiConfig verification delivery", () => {
         ...baseEnv,
         TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
         TWILIO_AUTH_TOKEN: "test-token",
-        TWILIO_WHATSAPP_FROM: "14155238886",
-        TWILIO_WHATSAPP_VERIFICATION_CONTENT_SID: `HX${"2".repeat(32)}`,
+        TWILIO_VERIFY_SERVICE_SID: "invalid",
       }),
-    ).toThrow("TWILIO_WHATSAPP_FROM must use E.164 format.");
+    ).toThrow("TWILIO_VERIFY_SERVICE_SID must be a valid Verify service SID.");
   });
 
   it("maps complete direct-provider credentials", () => {
@@ -126,6 +149,7 @@ describe("loadApiConfig verification delivery", () => {
       WHATSAPP_GRAPH_API_VERSION: "v23.0",
       TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
       TWILIO_AUTH_TOKEN: "twilio-test-token",
+      TWILIO_VERIFY_SERVICE_SID: `VA${"2".repeat(32)}`,
     });
 
     expect(config.verificationBrevo).toEqual({
@@ -147,11 +171,10 @@ describe("loadApiConfig verification delivery", () => {
       templateName: "rahal_account_verification",
       graphApiVersion: "v23.0",
     });
-    expect(config.verificationTwilioWhatsApp).toEqual({
+    expect(config.verificationTwilioVerifyWhatsApp).toEqual({
       accountSid: `AC${"1".repeat(32)}`,
       authToken: "twilio-test-token",
-      from: "+14155238886",
-      verificationContentSid: "HXb5b62575e6e4ff6129ad7c8efe1f983e",
+      serviceSid: `VA${"2".repeat(32)}`,
     });
   });
 

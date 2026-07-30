@@ -87,6 +87,33 @@ export class AdminOperationsRepository {
     ]);
   }
 
+  async communicationStats() {
+    const [deliveries, outbox] = await Promise.all([
+      this.prisma.client.notificationDelivery.groupBy({
+        by: ["channel", "status"],
+        _count: { _all: true },
+      }),
+      this.prisma.client.notificationEvent.groupBy({
+        by: ["status"],
+        where: { status: { in: ["PENDING", "PROCESSING", "FAILED"] } },
+        _count: { _all: true },
+      }),
+    ]);
+    return { deliveries, outbox };
+  }
+
+  writeCommunicationAudit(actorId: string, processed: number) {
+    return this.prisma.client.auditLog.create({
+      data: {
+        actorId,
+        action: "ADMIN_NOTIFICATION_QUEUE_RUN",
+        entityType: "NOTIFICATION_EVENT",
+        reason: `PROCESSED_${processed}`,
+        succeeded: true,
+      },
+    });
+  }
+
   async audit(input: {
     cursor?: string;
     action?: string;

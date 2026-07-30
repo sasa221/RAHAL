@@ -4,6 +4,7 @@ import {
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from "@nestjs/common";
+import { loadApiConfig } from "../config";
 import { PrivateDocumentStorage } from "./private-document-storage";
 import { ReservationsRepository } from "./reservations.repository";
 
@@ -12,6 +13,7 @@ const sweepIntervalMs = 60_000;
 @Injectable()
 export class ReservationExpiryService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(ReservationExpiryService.name);
+  private readonly config = loadApiConfig();
   private timer: ReturnType<typeof setInterval> | undefined;
   private running = false;
 
@@ -21,6 +23,7 @@ export class ReservationExpiryService implements OnApplicationBootstrap, OnAppli
   ) {}
 
   onApplicationBootstrap() {
+    if (this.config.backgroundJobs.mode !== "interval") return;
     void this.sweepExpiredReviewWindows();
     this.timer = setInterval(() => void this.sweepExpiredReviewWindows(), sweepIntervalMs);
     this.timer.unref();

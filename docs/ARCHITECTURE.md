@@ -49,9 +49,9 @@ Use the existing choices unless an ADR changes them:
 - Email: Brevo is the primary transactional adapter, with Resend fallback. A verified Rahal
   domain remains required before the final production launch; staging may use a verified
   single-sender address whose provider-managed rewrite is accepted explicitly.
-- WhatsApp: official Meta WhatsApp Business Platform Cloud API for production. Staging may use the
-  Twilio WhatsApp Sandbox solely for account phone verification while provider onboarding is in
-  progress; it is never accepted as production readiness.
+- WhatsApp: official Meta WhatsApp Business Platform Cloud API for production notifications and
+  authentication templates. Staging phone verification may use Twilio Verify's WhatsApp channel;
+  Twilio owns code generation and approval, while Rahal stores only an expiring provider marker.
 - Tests: Vitest for unit/integration and browser-controlled acceptance checks.
 - Password hashing: Node.js memory-hard scrypt.
 - Session storage: secure HTTP-only cookies with server-side session records and refresh rotation.
@@ -171,10 +171,18 @@ globals, including desktop-mode iPad user agents. Browser-tab users receive conc
 Home Screen instructions; the permission request is attempted only after the installed standalone
 app is opened.
 
-The Twilio WhatsApp Sandbox adapter is deliberately scoped to verification codes and uses a
-pre-approved content template. It does not send general notification-outbox events. The verified
-Meta adapter remains the production path for both authentication and approved notification
-templates.
+The Twilio Verify adapter is deliberately scoped to phone verification and does not send general
+notification-outbox events. It calls the Verify start/check endpoints instead of repurposing a
+Sandbox content template. Trial accounts can reach only recipient numbers verified with Twilio.
+The verified Meta adapter remains the production path for both authentication and approved
+notification templates.
+
+Background execution is hosting-aware. Persistent Node processes use bounded interval workers.
+Vercel uses a post-mutation interceptor to await a small outbox batch before the function returns,
+plus a `CRON_SECRET`-protected daily recovery endpoint for stale reservations and retry backlog.
+This prevents frozen serverless timers and long-resumed Prisma transactions. The administration
+Communications center exposes only provider names, readiness states, aggregate delivery counts, and
+queue status; it never serializes credentials or customer destinations.
 
 The in-app channel reads directly from owner-scoped `Notification` rows rather than exposing `NotificationEvent` payloads or delivery attempts. The inbox is bounded to 50 presentation records, while unread count is calculated separately. Read mutations use conditional owner-scoped updates and preserve the first read timestamp. The shared shell uses 30-second no-store polling plus visibility refresh; external channel delivery remains the responsibility of the outbox worker.
 

@@ -18,6 +18,6 @@ import { DocumentScanService } from "./document-scan.service";
     ReservationsService,
     ReservationExpiryService,
   ],
-  exports: [PrivateDocumentStorage],
+  exports: [PrivateDocumentStorage, ReservationExpiryService],
 })
 export class ReservationsModule {}

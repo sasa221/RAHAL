@@ -12,8 +12,10 @@ describe("StaffMfaService", () => {
     expect(first).not.toBe(secret);
     expect(first).not.toBe(second);
     expect(service.decryptSecret(first)).toBe(secret);
-    const replacement = first.endsWith("A") ? "B" : "A";
-    expect(() => service.decryptSecret(`${first.slice(0, -1)}${replacement}`)).toThrow();
+    const tamperIndex = Math.floor(first.length / 2);
+    const replacement = first[tamperIndex] === "A" ? "B" : "A";
+    const tampered = `${first.slice(0, tamperIndex)}${replacement}${first.slice(tamperIndex + 1)}`;
+    expect(() => service.decryptSecret(tampered)).toThrow();
   });
 
   it("verifies RFC-compatible six-digit TOTP values and rejects replay", () => {
