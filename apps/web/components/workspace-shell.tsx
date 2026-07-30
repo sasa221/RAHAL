@@ -255,6 +255,7 @@ export function WorkspaceShell({
     try {
       await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
     } finally {
+      window.dispatchEvent(new Event("rahal:session-changed"));
       window.location.assign(localizedPath(locale, "/auth"));
     }
   }
@@ -303,7 +304,7 @@ export function WorkspaceShell({
           </div>
 
           <button className="portal-sign-out" disabled={loggingOut} onClick={logout} type="button">
-            <Icon name="arrow" size={18} />
+            <LogoutIcon />
             {loggingOut ? text.signingOut : text.signOut}
           </button>
         </aside>
@@ -333,6 +334,16 @@ export function WorkspaceShell({
               <a href={localizedPath(locale, isStaff ? "/account/security" : "/account/profile")}>
                 {text.account}
               </a>
+              <button
+                aria-label={text.signOut}
+                className="portal-topbar-sign-out"
+                disabled={loggingOut}
+                onClick={logout}
+                type="button"
+              >
+                <LogoutIcon />
+                <span>{loggingOut ? text.signingOut : text.signOut}</span>
+              </button>
             </nav>
           </header>
           <main>{children}</main>
@@ -355,5 +366,19 @@ export function WorkspaceShell({
         </nav>
       </div>
     </WorkspaceAccessBoundary>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M10 5H6.8A2.8 2.8 0 0 0 4 7.8v8.4A2.8 2.8 0 0 0 6.8 19H10m4-11 4 4-4 4m4-4H9"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
   );
 }

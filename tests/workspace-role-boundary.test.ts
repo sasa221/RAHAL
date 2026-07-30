@@ -36,4 +36,17 @@ describe("workspace role boundary", () => {
     expect(installAction).toContain('"rahal:standalone-workspace"');
     expect(installAction).toContain('get("source") === "pwa"');
   });
+
+  it("keeps sign out visible in both desktop and mobile workspace headers", () => {
+    const shell = read("apps/web/components/workspace-shell.tsx");
+    const styles = read("apps/web/app/globals.css");
+    const accountEntry = read("apps/web/components/account-entry-link.tsx");
+
+    expect(shell).toContain('className="portal-topbar-sign-out"');
+    expect(shell).toContain('method: "DELETE"');
+    expect(shell).toContain('new Event("rahal:session-changed")');
+    expect(styles).toContain(".portal-topbar-sign-out");
+    expect(accountEntry).toContain('session.user.role === "SALES"');
+    expect(accountEntry).toContain('"/admin"');
+  });
 });

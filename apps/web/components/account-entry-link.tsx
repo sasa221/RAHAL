@@ -40,7 +40,14 @@ export function AccountEntryLink({
   }, []);
 
   const destination = session
-    ? localizedPath(locale, session.user.role === "CUSTOMER" ? "/account/requests" : "/sales")
+    ? localizedPath(
+        locale,
+        session.user.role === "CUSTOMER"
+          ? "/account/requests"
+          : session.user.role === "SALES"
+            ? "/sales"
+            : "/admin",
+      )
     : localizedPath(locale, "/auth");
   const label = session ? (locale === "ar" ? "حسابي" : "My account") : signInLabel;
 
