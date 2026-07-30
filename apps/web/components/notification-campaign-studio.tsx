@@ -8,6 +8,7 @@ import type {
   NotificationCampaignPage,
 } from "@rahal/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiErrorMessage } from "../lib/api-error";
 import type { PublicLocale } from "../lib/public-content";
 
 type CampaignChannel = "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP";
@@ -126,6 +127,10 @@ const categories: NotificationCampaignCategory[] = [
 ];
 const allChannels: CampaignChannel[] = ["IN_APP", "PUSH", "EMAIL", "WHATSAPP"];
 
+function isApiSuccess<T>(payload: unknown): payload is ApiSuccess<T> {
+  return Boolean(payload && typeof payload === "object" && "data" in payload);
+}
+
 export function NotificationCampaignStudio({
   locale,
 }: {
@@ -154,13 +159,15 @@ export function NotificationCampaignStudio({
       credentials: "include",
       cache: "no-store",
     });
-    if (!response.ok) throw new Error("UNAVAILABLE");
-    const payload = (await response.json()) as ApiSuccess<NotificationCampaignPage>;
+    const payload = (await response.json()) as ApiSuccess<NotificationCampaignPage> | unknown;
+    if (!response.ok || !isApiSuccess<NotificationCampaignPage>(payload)) {
+      throw new Error(apiErrorMessage(payload, text.unavailable));
+    }
     setPage(payload.data);
     if (!payload.data.capabilities.audiences.includes(audience)) {
       setAudience(payload.data.capabilities.audiences[0] ?? "CUSTOMERS");
     }
-  }, [audience, locale]);
+  }, [audience, locale, text.unavailable]);
 
   useEffect(() => {
     load()
@@ -218,10 +225,9 @@ export function NotificationCampaignStudio({
         }),
       });
       const payload = (await response.json()) as
-        ApiSuccess<NotificationCampaignCreateResult> | { message?: string | string[] };
-      if (!response.ok || !("data" in payload)) {
-        const message = "message" in payload ? payload.message : undefined;
-        throw new Error(Array.isArray(message) ? message[0] : message || text.unavailable);
+        ApiSuccess<NotificationCampaignCreateResult> | unknown;
+      if (!response.ok || !isApiSuccess<NotificationCampaignCreateResult>(payload)) {
+        throw new Error(apiErrorMessage(payload, text.unavailable));
       }
       setResult(payload.data);
       setTitleAr("");
