@@ -37,6 +37,7 @@ function setup(role: "CUSTOMER" | "SALES" = "CUSTOMER") {
         whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
+        marketingConsentDecidedAt: new Date("2026-07-30T12:00:00.000Z"),
         quietHoursStart: "22:00",
         quietHoursEnd: "07:00",
       },
@@ -64,6 +65,7 @@ describe("AccountService", () => {
         whatsappEnabled: true,
         pushEnabled: true,
         marketingEnabled: false,
+        marketingConsentDecided: false,
       },
     });
   });
@@ -166,6 +168,7 @@ describe("AccountService", () => {
         whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
+        marketingConsentDecided: true,
       },
     });
     expect(repository.updateNotifications).toHaveBeenCalledWith(

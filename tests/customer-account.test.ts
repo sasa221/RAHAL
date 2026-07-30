@@ -27,6 +27,7 @@ describe("customer profile and communication preferences", () => {
     expect(repository).toContain("inAppEnabled: true");
     expect(contracts).toContain("inAppEnabled: true");
     expect(contracts).toContain("marketingEnabled: boolean");
+    expect(contracts).toContain("marketingConsentDecided: boolean");
   });
 
   it("audits only changed profile field names rather than profile values", () => {
@@ -46,5 +47,18 @@ describe("customer profile and communication preferences", () => {
     expect(component).toContain('activePage="profile"');
     expect(read("apps/web/app/account/profile/page.tsx")).toContain('locale="ar"');
     expect(read("apps/web/app/en/account/profile/page.tsx")).toContain('locale="en"');
+  });
+
+  it("asks customers for an explicit marketing choice once and preserves account controls", () => {
+    const gate = read("apps/web/components/marketing-consent-gate.tsx");
+    const repository = read("apps/api/src/account/account.repository.ts");
+    const layout = read("apps/web/app/layout.tsx");
+    expect(gate).toContain('sessionPayload.data.user.role !== "CUSTOMER"');
+    expect(gate).toContain('marketingConsentDecided ? "HIDDEN" : "PROMPT"');
+    expect(gate).toContain("void decide(true)");
+    expect(gate).toContain("void decide(false)");
+    expect(gate).toContain("No thanks");
+    expect(repository).toContain("marketingConsentDecidedAt = new Date()");
+    expect(layout).toContain("<MarketingConsentGate");
   });
 });

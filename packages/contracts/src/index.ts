@@ -1005,6 +1005,7 @@ export type CustomerNotificationPreferences = {
   whatsappEnabled: boolean;
   pushEnabled: boolean;
   marketingEnabled: boolean;
+  marketingConsentDecided: boolean;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
 };

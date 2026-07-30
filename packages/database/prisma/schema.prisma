@@ -799,16 +799,17 @@ model Deposit {
 }
 
 model NotificationPreference {
-  id               String  @id @default(cuid())
-  userId           String  @unique
-  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  inAppEnabled     Boolean @default(true)
-  pushEnabled      Boolean @default(true)
-  emailEnabled     Boolean @default(true)
-  whatsappEnabled  Boolean @default(true)
-  marketingEnabled Boolean @default(false)
-  quietHoursStart  String?
-  quietHoursEnd    String?
+  id                        String    @id @default(cuid())
+  userId                    String    @unique
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inAppEnabled              Boolean   @default(true)
+  pushEnabled               Boolean   @default(true)
+  emailEnabled              Boolean   @default(true)
+  whatsappEnabled           Boolean   @default(true)
+  marketingEnabled          Boolean   @default(false)
+  marketingConsentDecidedAt DateTime?
+  quietHoursStart           String?
+  quietHoursEnd             String?
 }
 
 model Notification {

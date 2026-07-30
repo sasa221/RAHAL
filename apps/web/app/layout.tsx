@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { headers } from "next/headers";
+import { MarketingConsentGate } from "../components/marketing-consent-gate";
 import { PushPermissionGate } from "../components/push-permission-gate";
 import "./globals.css";
 
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         className={`${manrope.className} ${manrope.variable} ${cormorant.variable} ${alexandria.variable}`}
       >
         <PushPermissionGate locale={locale} />
+        <MarketingConsentGate locale={locale} />
         {children}
       </body>
     </html>

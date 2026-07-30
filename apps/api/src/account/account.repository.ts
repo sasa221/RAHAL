@@ -23,6 +23,7 @@ const accountSelect = {
       whatsappEnabled: true,
       pushEnabled: true,
       marketingEnabled: true,
+      marketingConsentDecidedAt: true,
       quietHoursStart: true,
       quietHoursEnd: true,
     },
@@ -87,10 +88,11 @@ export class AccountRepository {
     previous: Record<string, boolean | string | null>,
   ) {
     return this.prisma.client.$transaction(async (transaction) => {
+      const marketingConsentDecidedAt = new Date();
       await transaction.notificationPreference.upsert({
         where: { userId },
-        create: { userId, inAppEnabled: true, ...data },
-        update: { inAppEnabled: true, ...data },
+        create: { userId, inAppEnabled: true, ...data, marketingConsentDecidedAt },
+        update: { inAppEnabled: true, ...data, marketingConsentDecidedAt },
       });
       await transaction.auditLog.create({
         data: {
@@ -100,7 +102,7 @@ export class AccountRepository {
           entityId: userId,
           reason: "SELF_SERVICE",
           previousData: previous,
-          newData: { inAppEnabled: true, ...data },
+          newData: { inAppEnabled: true, ...data, marketingConsentDecided: true },
         },
       });
       return transaction.user.findUniqueOrThrow({

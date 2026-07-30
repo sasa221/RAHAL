@@ -19,6 +19,7 @@ const defaultPreferences: CustomerNotificationPreferences = {
   whatsappEnabled: true,
   pushEnabled: true,
   marketingEnabled: false,
+  marketingConsentDecided: false,
   quietHoursStart: null,
   quietHoursEnd: null,
 };
@@ -52,6 +53,7 @@ function toPreferences(record: AccountRecord): CustomerNotificationPreferences {
         whatsappEnabled: record.notificationPreference.whatsappEnabled,
         pushEnabled: record.notificationPreference.pushEnabled,
         marketingEnabled: record.notificationPreference.marketingEnabled,
+        marketingConsentDecided: Boolean(record.notificationPreference.marketingConsentDecidedAt),
         quietHoursStart: record.notificationPreference.quietHoursStart,
         quietHoursEnd: record.notificationPreference.quietHoursEnd,
       }
