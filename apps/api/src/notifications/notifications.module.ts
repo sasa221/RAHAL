@@ -5,9 +5,10 @@ import { NotificationsRepository } from "./notifications.repository";
 import { NotificationsService } from "./notifications.service";
 import { PushSubscriptionCryptoService } from "./push-subscription-crypto.service";
 import { NotificationOutboxService } from "./notification-outbox.service";
+import { StaffModule } from "../staff/staff.module";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, StaffModule],
   controllers: [NotificationsController],
   providers: [
     NotificationsRepository,

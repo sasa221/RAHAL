@@ -1,11 +1,11 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { NotificationsService } from "./notifications.service";
 
 function setup(locale: "ar" | "en" = "en") {
   const auth = {
     getSession: vi.fn().mockResolvedValue({
-      user: { id: "user-1", preferredLocale: locale },
+      user: { id: "user-1", preferredLocale: locale, role: "SALES" },
     }),
   };
   const repository = {
@@ -33,10 +33,20 @@ function setup(locale: "ar" | "en" = "en") {
     markAllRead: vi.fn().mockResolvedValue({
       readAt: new Date("2026-07-26T09:00:00.000Z"),
     }),
+    campaigns: vi.fn().mockResolvedValue([]),
+    campaignRecipients: vi.fn().mockResolvedValue([{ id: "customer-1" }]),
+    createCampaign: vi.fn().mockResolvedValue({
+      id: "campaign-1",
+      recipientCount: 1,
+      createdAt: new Date("2026-07-30T09:00:00.000Z"),
+    }),
   };
+  const access = { require: vi.fn().mockResolvedValue(undefined) };
   return {
+    access,
+    auth,
     repository,
-    service: new NotificationsService(auth as never, repository as never),
+    service: new NotificationsService(auth as never, repository as never, access as never),
   };
 }
 
@@ -83,6 +93,76 @@ describe("NotificationsService", () => {
     await expect(service.markRead("session", "other-notification")).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it("creates a bilingual customer campaign through the outbox", async () => {
+    const { service, repository } = setup();
+    await expect(
+      service.createCampaign("session", {
+        category: "NEW_VEHICLE",
+        audience: "CUSTOMERS",
+        titleAr: "سيارة جديدة",
+        titleEn: "A new car",
+        bodyAr: "اكتشف السيارة الجديدة المتاحة الآن.",
+        bodyEn: "Discover the newly available vehicle.",
+        channels: ["IN_APP", "EMAIL"],
+        important: false,
+        marketing: false,
+        targetPath: "/cars",
+      }),
+    ).resolves.toMatchObject({
+      id: "campaign-1",
+      recipientCount: 1,
+      queuedDeliveries: 2,
+    });
+    expect(repository.campaignRecipients).toHaveBeenCalledWith({
+      audience: "CUSTOMERS",
+      marketing: true,
+    });
+    expect(repository.createCampaign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        marketing: true,
+        recipientIds: ["customer-1"],
+        targetPath: "/cars",
+      }),
+    );
+  });
+
+  it("prevents sales employees from targeting staff", async () => {
+    const { service, repository } = setup();
+    await expect(
+      service.createCampaign("session", {
+        category: "GENERAL_UPDATE",
+        audience: "SALES",
+        titleAr: "تحديث للفريق",
+        titleEn: "Team update",
+        bodyAr: "هذا تحديث تشغيلي لفريق رحال.",
+        bodyEn: "This is an operational Rahal team update.",
+        channels: ["IN_APP"],
+        important: false,
+        marketing: false,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(repository.createCampaign).not.toHaveBeenCalled();
+  });
+
+  it("does not claim a marketing campaign was sent when nobody opted in", async () => {
+    const { service, repository } = setup();
+    repository.campaignRecipients.mockResolvedValueOnce([]);
+    await expect(
+      service.createCampaign("session", {
+        category: "OFFER",
+        audience: "CUSTOMERS",
+        titleAr: "عرض جديد",
+        titleEn: "New offer",
+        bodyAr: "اكتشف عرض رحال الجديد لفترة محدودة.",
+        bodyEn: "Discover the new limited Rahal offer.",
+        channels: ["IN_APP", "EMAIL"],
+        important: false,
+        marketing: false,
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(repository.createCampaign).not.toHaveBeenCalled();
   });
 
   it("marks all notifications only for the session owner", async () => {

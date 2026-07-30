@@ -1,9 +1,24 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import type { NotificationInbox, NotificationReadResult } from "@rahal/contracts";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import type {
+  NotificationCampaignCreateResult,
+  NotificationCampaignPage,
+  NotificationInbox,
+  NotificationReadResult,
+} from "@rahal/contracts";
 import { createHmac } from "node:crypto";
 import { AuthService } from "../auth/auth.service";
 import { loadApiConfig } from "../config";
-import type { RemovePushSubscriptionDto, SavePushSubscriptionDto } from "./notifications.dto";
+import { StaffAccessService } from "../staff/staff-access.service";
+import type {
+  CreateNotificationCampaignDto,
+  RemovePushSubscriptionDto,
+  SavePushSubscriptionDto,
+} from "./notifications.dto";
 import { NotificationsRepository } from "./notifications.repository";
 import { PushSubscriptionCryptoService } from "./push-subscription-crypto.service";
 
@@ -14,6 +29,7 @@ export class NotificationsService {
   constructor(
     private readonly auth: AuthService,
     private readonly notifications: NotificationsRepository,
+    private readonly access: StaffAccessService,
     private readonly pushCrypto: PushSubscriptionCryptoService = new PushSubscriptionCryptoService(),
   ) {}
 
@@ -38,7 +54,9 @@ export class NotificationsService {
         createdAt: item.createdAt.toISOString(),
         target: item.reservationId
           ? { kind: "RESERVATION" as const, id: item.reservationId }
-          : null,
+          : item.targetPath
+            ? { kind: "URL" as const, path: item.targetPath }
+            : null,
       })),
     };
   }
@@ -88,6 +106,91 @@ export class NotificationsService {
       this.pushTokenHash(input.endpoint),
     );
     return { enabled: false };
+  }
+
+  async campaigns(
+    token: string | undefined,
+    requestedLocale?: string,
+  ): Promise<NotificationCampaignPage> {
+    const session = await this.auth.getSession(token);
+    await this.access.require(session, "notifications.send");
+    const locale =
+      requestedLocale === "ar" || requestedLocale === "en"
+        ? requestedLocale
+        : session.user.preferredLocale === "ar"
+          ? "ar"
+          : "en";
+    const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
+    const campaigns = await this.notifications.campaigns(isAdmin ? undefined : session.user.id);
+    return {
+      items: campaigns.map((campaign) => ({
+        id: campaign.id,
+        category: campaign.category as NotificationCampaignPage["items"][number]["category"],
+        audience: campaign.audience as NotificationCampaignPage["items"][number]["audience"],
+        title: locale === "ar" ? campaign.titleAr : campaign.titleEn,
+        body: locale === "ar" ? campaign.bodyAr : campaign.bodyEn,
+        targetPath: campaign.targetPath,
+        channels: campaign.channels,
+        important: campaign.important,
+        marketing: campaign.marketing,
+        recipientCount: campaign.recipientCount,
+        createdBy:
+          locale === "ar" && campaign.createdBy.fullNameAr
+            ? campaign.createdBy.fullNameAr
+            : campaign.createdBy.fullNameEn,
+        createdAt: campaign.createdAt.toISOString(),
+        delivery: campaign.delivery,
+      })),
+      capabilities: {
+        audiences: isAdmin ? ["CUSTOMERS", "SALES", "CUSTOMERS_AND_SALES"] : ["CUSTOMERS"],
+        channels: ["IN_APP", "PUSH", "EMAIL", "WHATSAPP"],
+      },
+    };
+  }
+
+  async createCampaign(
+    token: string | undefined,
+    input: CreateNotificationCampaignDto,
+  ): Promise<NotificationCampaignCreateResult> {
+    const session = await this.auth.getSession(token);
+    await this.access.require(session, "notifications.send");
+    const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
+    if (!isAdmin && input.audience !== "CUSTOMERS") {
+      throw new ForbiddenException("Sales employees may send campaigns to customers only.");
+    }
+    const marketing =
+      input.marketing || input.category === "NEW_VEHICLE" || input.category === "OFFER";
+    const recipients = await this.notifications.campaignRecipients({
+      audience: input.audience,
+      marketing,
+    });
+    if (!recipients.length) {
+      throw new BadRequestException(
+        marketing
+          ? "No active recipients have opted in to marketing updates."
+          : "No active recipients match this audience.",
+      );
+    }
+    const channels = [...new Set(input.channels)];
+    const result = await this.notifications.createCampaign({
+      actorId: session.user.id,
+      category: input.category,
+      audience: input.audience,
+      titleAr: input.titleAr.trim(),
+      titleEn: input.titleEn.trim(),
+      bodyAr: input.bodyAr.trim(),
+      bodyEn: input.bodyEn.trim(),
+      targetPath: input.targetPath?.trim() || undefined,
+      channels,
+      important: input.important || input.category === "URGENT",
+      marketing,
+      recipientIds: recipients.map((recipient) => recipient.id),
+    });
+    return {
+      ...result,
+      queuedDeliveries: result.recipientCount * channels.length,
+      createdAt: result.createdAt.toISOString(),
+    };
   }
 
   private pushTokenHash(endpoint: string) {

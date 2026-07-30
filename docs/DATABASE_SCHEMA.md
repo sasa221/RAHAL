@@ -146,6 +146,14 @@ The administrator policy workspace edits `DocumentRequirementRule` records witho
 
 The in-app inbox uses `Notification(userId, readAt, createdAt)` and never reads provider fields from `NotificationDelivery` or payloads from `NotificationEvent`. Owner-scoped conditional updates set `readAt` once; repeated reads return the existing timestamp. Archived notifications are excluded, and list size is bounded independently from the unread count.
 
+`NotificationCampaign` is the attributable parent record for a staff-authored broadcast. It stores
+finite category/audience values, bilingual copy, selected `NotificationChannel[]`, a safe internal
+target path, consent classification, importance, creator, recipient count, and creation time.
+Recipient rows remain normal `Notification` records through the nullable `campaignId` relation, so
+read ownership and channel delivery guarantees are unchanged. Delivery history is calculated from
+the related `NotificationDelivery` rows; customer email addresses and phone numbers are not copied
+into the campaign.
+
 Draft recovery requires no new table. Live rows are existing `Reservation` records with `status = DRAFT` and `pickupAt` in the future. Owner abandonment or pickup-time expiry conditionally moves the row to `EXPIRED`, appends a `ReservationEvent`, and sets `deletedAt` on active `ReservationDocument` metadata in the same transaction. Private object keys are selected only for post-transaction storage deletion and never enter the browser response, event note, audit payload, or notification payload.
 
 The staff-access slice activates the existing `StaffRole`, `Permission`, `StaffRolePermission`, and `UserPermissionOverride` models with a fixed permission catalog. A data migration creates the safe default `Sales Agent` role and attaches only legacy sales users without an assigned role. Role grants are additive; a per-user override is authoritative. Access changes revoke active `Session` rows and append a redacted `AuditLog` in the same transaction. Password hashes and session hashes never enter audit JSON.

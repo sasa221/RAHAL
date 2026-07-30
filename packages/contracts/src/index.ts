@@ -683,7 +683,7 @@ export type InAppNotification = {
   important: boolean;
   readAt: string | null;
   createdAt: string;
-  target: { kind: "RESERVATION"; id: string } | null;
+  target: { kind: "RESERVATION"; id: string } | { kind: "URL"; path: string } | null;
 };
 
 export type NotificationInbox = {
@@ -711,6 +711,7 @@ export type StaffPermissionKey =
   | "fleet.view"
   | "fleet.manage"
   | "vehicles.manage"
+  | "notifications.send"
   | "staff.manage"
   | "audit.view";
 
@@ -876,6 +877,41 @@ export type AdminCommunicationsOverview = {
 export type AdminCommunicationRunResult = {
   processed: number;
   generatedAt: string;
+};
+
+export type NotificationCampaignAudience = "CUSTOMERS" | "SALES" | "CUSTOMERS_AND_SALES";
+export type NotificationCampaignCategory =
+  "GENERAL_UPDATE" | "NEW_VEHICLE" | "OFFER" | "SERVICE_UPDATE" | "URGENT";
+
+export type NotificationCampaignSummary = {
+  id: string;
+  category: NotificationCampaignCategory;
+  audience: NotificationCampaignAudience;
+  title: string;
+  body: string;
+  targetPath: string | null;
+  channels: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+  important: boolean;
+  marketing: boolean;
+  recipientCount: number;
+  createdBy: string;
+  createdAt: string;
+  delivery: { queued: number; sent: number; failed: number };
+};
+
+export type NotificationCampaignPage = {
+  items: NotificationCampaignSummary[];
+  capabilities: {
+    audiences: NotificationCampaignAudience[];
+    channels: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+  };
+};
+
+export type NotificationCampaignCreateResult = {
+  id: string;
+  recipientCount: number;
+  queuedDeliveries: number;
+  createdAt: string;
 };
 
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";

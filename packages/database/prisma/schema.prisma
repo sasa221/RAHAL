@@ -204,6 +204,7 @@ model User {
   notificationPreference    NotificationPreference?
   pushSubscriptions         PushSubscription[]
   notifications             Notification[]
+  notificationCampaigns     NotificationCampaign[]   @relation("NotificationCampaignCreator")
   auditEntries              AuditLog[]               @relation("AuditActor")
   internalNotes             InternalNote[]           @relation("InternalNoteAuthor")
   customerMessages          CustomerMessage[]        @relation("CustomerMessageSender")
@@ -822,12 +823,39 @@ model Notification {
   bodyAr        String
   bodyEn        String
   important     Boolean                @default(false)
+  inAppVisible  Boolean                @default(true)
   readAt        DateTime?
   archivedAt    DateTime?
+  targetPath    String?
+  campaignId    String?
+  campaign      NotificationCampaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   deliveries    NotificationDelivery[]
   createdAt     DateTime               @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([campaignId, createdAt])
+}
+
+model NotificationCampaign {
+  id             String                @id @default(cuid())
+  createdById    String
+  createdBy      User                  @relation("NotificationCampaignCreator", fields: [createdById], references: [id])
+  category       String
+  audience       String
+  titleAr        String
+  titleEn        String
+  bodyAr         String
+  bodyEn         String
+  targetPath     String?
+  channels       NotificationChannel[]
+  important      Boolean               @default(false)
+  marketing      Boolean               @default(false)
+  recipientCount Int
+  notifications  Notification[]
+  createdAt      DateTime              @default(now())
+
+  @@index([createdById, createdAt])
+  @@index([audience, createdAt])
 }
 
 model NotificationDelivery {

@@ -232,6 +232,12 @@ const staffPermissions = [
   ["perm-vehicles-manage", "vehicles.manage", "Fleet", "Manage vehicle registry"],
   ["perm-staff-manage", "staff.manage", "Administration", "Manage staff accounts"],
   ["perm-audit-view", "audit.view", "Administration", "View audit records"],
+  [
+    "perm-notifications-send",
+    "notifications.send",
+    "Notifications",
+    "Create customer notification campaigns",
+  ],
 ] as const;
 
 const defaultSalesPermissionKeys = [
@@ -243,6 +249,7 @@ const defaultSalesPermissionKeys = [
   "bookings.confirm",
   "bookings.operate",
   "fleet.view",
+  "notifications.send",
 ] as const;
 
 async function main() {

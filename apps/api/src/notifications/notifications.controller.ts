@@ -2,13 +2,19 @@ import { Body, Controller, Delete, Get, Param, Post, Query, Req } from "@nestjs/
 import type {
   ApiSuccess,
   NotificationInbox,
+  NotificationCampaignCreateResult,
+  NotificationCampaignPage,
   NotificationReadResult,
   PushSubscriptionResult,
 } from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
 import { NotificationsService } from "./notifications.service";
-import { RemovePushSubscriptionDto, SavePushSubscriptionDto } from "./notifications.dto";
+import {
+  CreateNotificationCampaignDto,
+  RemovePushSubscriptionDto,
+  SavePushSubscriptionDto,
+} from "./notifications.dto";
 
 @Controller("notifications")
 export class NotificationsController {
@@ -25,6 +31,24 @@ export class NotificationsController {
   @Post("read-all")
   async markAllRead(@Req() request: Request): Promise<ApiSuccess<{ readAt: string }>> {
     return { data: await this.notifications.markAllRead(readAuthCookie(request)) };
+  }
+
+  @Get("campaigns")
+  async campaigns(
+    @Query("locale") locale: string | undefined,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<NotificationCampaignPage>> {
+    return { data: await this.notifications.campaigns(readAuthCookie(request), locale) };
+  }
+
+  @Post("campaigns")
+  async createCampaign(
+    @Body() input: CreateNotificationCampaignDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<NotificationCampaignCreateResult>> {
+    return {
+      data: await this.notifications.createCampaign(readAuthCookie(request), input),
+    };
   }
 
   @Get("push-key")

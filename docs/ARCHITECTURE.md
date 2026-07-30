@@ -177,6 +177,17 @@ Sandbox content template. Trial accounts can reach only recipient numbers verifi
 The verified Meta adapter remains the production path for both authentication and approved
 notification templates.
 
+Manual broadcasts reuse the same privacy-bounded notification and outbox pipeline. A
+`NotificationCampaign` stores the bilingual message, finite audience, selected channels,
+importance/marketing classification, safe internal target path, creator, and aggregate recipient
+count. Each recipient receives an owner-scoped `Notification` plus an outbox event carrying only
+the notification identifier, recipient identifier, selected channels, and safe target path. Sales
+requires the independent `notifications.send` permission and can address customers only;
+administrators can address customers, sales, or both. New-vehicle and offer campaigns always apply
+the explicit marketing-consent filter. External delivery also continues to respect channel
+preferences, verification state, quiet hours, provider readiness, retries, and per-channel
+idempotency. Campaign history exposes aggregate delivery states and never recipient destinations.
+
 Background execution is hosting-aware. Persistent Node processes use bounded interval workers.
 Vercel uses a post-mutation interceptor to await a small outbox batch before the function returns,
 plus a `CRON_SECRET`-protected daily recovery endpoint for stale reservations and retry backlog.

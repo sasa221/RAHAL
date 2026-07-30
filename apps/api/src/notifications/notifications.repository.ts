@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
 
 @Injectable()
@@ -8,7 +9,7 @@ export class NotificationsRepository {
   async inbox(userId: string) {
     const [items, unreadCount] = await Promise.all([
       this.prisma.client.notification.findMany({
-        where: { userId, archivedAt: null },
+        where: { userId, archivedAt: null, inAppVisible: true },
         orderBy: [{ important: "desc" }, { createdAt: "desc" }],
         take: 50,
         select: {
@@ -22,10 +23,11 @@ export class NotificationsRepository {
           readAt: true,
           createdAt: true,
           reservationId: true,
+          targetPath: true,
         },
       }),
       this.prisma.client.notification.count({
-        where: { userId, archivedAt: null, readAt: null },
+        where: { userId, archivedAt: null, inAppVisible: true, readAt: null },
       }),
     ]);
     return { items, unreadCount };
@@ -124,9 +126,14 @@ export class NotificationsRepository {
     });
   }
 
-  deliveryContext(eventKey: string, reservationId: string, userId: string) {
+  deliveryContext(
+    eventKey: string,
+    reservationId: string,
+    userId: string,
+    notificationId?: string,
+  ) {
     return this.prisma.client.notification.findFirst({
-      where: { eventKey, reservationId, userId },
+      where: notificationId ? { id: notificationId, userId } : { eventKey, reservationId, userId },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -136,6 +143,7 @@ export class NotificationsRepository {
         bodyEn: true,
         important: true,
         reservationId: true,
+        targetPath: true,
         user: {
           select: {
             id: true,
@@ -240,5 +248,148 @@ export class NotificationsRepository {
       where: { id },
       data: { active: false, subscriptionCiphertext: null },
     });
+  }
+
+  async campaignRecipients(input: {
+    audience: "CUSTOMERS" | "SALES" | "CUSTOMERS_AND_SALES";
+    marketing: boolean;
+  }) {
+    const roles =
+      input.audience === "CUSTOMERS"
+        ? (["CUSTOMER"] as const)
+        : input.audience === "SALES"
+          ? (["SALES"] as const)
+          : (["CUSTOMER", "SALES"] as const);
+    return this.prisma.client.user.findMany({
+      where: {
+        systemRole: { in: [...roles] },
+        status: "ACTIVE",
+        ...(input.marketing ? { notificationPreference: { is: { marketingEnabled: true } } } : {}),
+      },
+      select: { id: true },
+      orderBy: { id: "asc" },
+    });
+  }
+
+  async createCampaign(input: {
+    actorId: string;
+    category: string;
+    audience: string;
+    titleAr: string;
+    titleEn: string;
+    bodyAr: string;
+    bodyEn: string;
+    targetPath?: string;
+    channels: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+    important: boolean;
+    marketing: boolean;
+    recipientIds: string[];
+  }) {
+    const campaignId = randomUUID();
+    const notifications = input.recipientIds.map((userId) => ({
+      id: randomUUID(),
+      userId,
+      campaignId,
+      eventKey: `CAMPAIGN_${input.category}`,
+      titleAr: input.titleAr,
+      titleEn: input.titleEn,
+      bodyAr: input.bodyAr,
+      bodyEn: input.bodyEn,
+      targetPath: input.targetPath,
+      important: input.important,
+      inAppVisible: input.channels.includes("IN_APP"),
+    }));
+    const createdAt = new Date();
+    await this.prisma.client.$transaction(async (transaction) => {
+      await transaction.notificationCampaign.create({
+        data: {
+          id: campaignId,
+          createdById: input.actorId,
+          category: input.category,
+          audience: input.audience,
+          titleAr: input.titleAr,
+          titleEn: input.titleEn,
+          bodyAr: input.bodyAr,
+          bodyEn: input.bodyEn,
+          targetPath: input.targetPath,
+          channels: input.channels,
+          important: input.important,
+          marketing: input.marketing,
+          recipientCount: input.recipientIds.length,
+          createdAt,
+        },
+      });
+      if (notifications.length) {
+        await transaction.notification.createMany({ data: notifications });
+        await transaction.notificationEvent.createMany({
+          data: notifications.map((notification) => ({
+            eventKey: notification.eventKey,
+            aggregateType: "NOTIFICATION_CAMPAIGN",
+            aggregateId: campaignId,
+            payload: {
+              userId: notification.userId,
+              notificationId: notification.id,
+              channels: input.channels,
+              targetPath: input.targetPath ?? null,
+            },
+          })),
+        });
+      }
+      await transaction.auditLog.create({
+        data: {
+          actorId: input.actorId,
+          action: "NOTIFICATION_CAMPAIGN_CREATED",
+          entityType: "NOTIFICATION_CAMPAIGN",
+          entityId: campaignId,
+          reason: `${input.category}:${input.audience}:RECIPIENTS_${input.recipientIds.length}`,
+          succeeded: true,
+        },
+      });
+    });
+    return { id: campaignId, recipientCount: input.recipientIds.length, createdAt };
+  }
+
+  async campaigns(createdById?: string) {
+    const campaigns = await this.prisma.client.notificationCampaign.findMany({
+      where: createdById ? { createdById } : undefined,
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        category: true,
+        audience: true,
+        titleAr: true,
+        titleEn: true,
+        bodyAr: true,
+        bodyEn: true,
+        targetPath: true,
+        channels: true,
+        important: true,
+        marketing: true,
+        recipientCount: true,
+        createdAt: true,
+        createdBy: { select: { fullNameAr: true, fullNameEn: true } },
+      },
+    });
+    const delivery = await Promise.all(
+      campaigns.map(async (campaign) => {
+        const [queued, sent, failed] = await Promise.all([
+          this.prisma.client.notificationDelivery.count({
+            where: { notification: { campaignId: campaign.id }, status: "QUEUED" },
+          }),
+          this.prisma.client.notificationDelivery.count({
+            where: {
+              notification: { campaignId: campaign.id },
+              status: { in: ["SENT", "DELIVERED", "READ"] },
+            },
+          }),
+          this.prisma.client.notificationDelivery.count({
+            where: { notification: { campaignId: campaign.id }, status: "FAILED" },
+          }),
+        ]);
+        return { queued, sent, failed };
+      }),
+    );
+    return campaigns.map((campaign, index) => ({ ...campaign, delivery: delivery[index]! }));
   }
 }

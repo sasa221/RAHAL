@@ -64,6 +64,7 @@ describe("NotificationOutboxService", () => {
       "BOOKING_DELIVERED",
       "reservation-1",
       "staff-1",
+      undefined,
     );
     expect(repository.upsertDelivery).toHaveBeenCalledWith("notification-1", "IN_APP");
     expect(repository.markDelivery).toHaveBeenCalledWith(

@@ -111,7 +111,9 @@ export function WorkspaceShell({
             : activePage === "documents"
               ? "/en/admin/documents"
               : activePage === "communications"
-                ? "/en/admin/communications"
+                ? kind === "admin"
+                  ? "/en/admin/communications"
+                  : "/en/sales/communications"
                 : activePage === "policies"
                   ? "/en/admin/policies"
                   : activePage === "staff"
@@ -138,7 +140,9 @@ export function WorkspaceShell({
             : activePage === "documents"
               ? "/admin/documents"
               : activePage === "communications"
-                ? "/admin/communications"
+                ? kind === "admin"
+                  ? "/admin/communications"
+                  : "/sales/communications"
                 : activePage === "policies"
                   ? "/admin/policies"
                   : activePage === "staff"
@@ -174,7 +178,10 @@ export function WorkspaceShell({
                 [text.reviews, localizedPath(locale, "/admin/reviews"), "users"],
                 [text.audit, localizedPath(locale, "/admin/audit"), "calendar"],
               ]
-            : [[text.publicSite, localizedPath(locale), "arrow"]]),
+            : [
+                [text.communications, localizedPath(locale, "/sales/communications"), "bell"],
+                [text.publicSite, localizedPath(locale), "arrow"],
+              ]),
       ]
     : [
         [text.overview, currentHref, "document"],
@@ -191,7 +198,10 @@ export function WorkspaceShell({
         : activePage === "documents"
           ? localizedPath(locale, "/admin/documents")
           : activePage === "communications"
-            ? localizedPath(locale, "/admin/communications")
+            ? localizedPath(
+                locale,
+                kind === "admin" ? "/admin/communications" : "/sales/communications",
+              )
             : activePage === "policies"
               ? localizedPath(locale, "/admin/policies")
               : activePage === "staff"

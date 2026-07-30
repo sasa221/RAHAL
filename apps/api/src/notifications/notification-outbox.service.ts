@@ -50,10 +50,13 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
           stringValue(payload.assignedSalesId);
         if (!userId) throw new Error("Notification event has no recipient.");
         const reservationId = stringValue(payload.reservationId) ?? event.aggregateId;
+        const notificationId = stringValue(payload.notificationId) ?? undefined;
+        const requestedChannels = channelSet(payload.channels);
         const notification = await this.notifications.deliveryContext(
           event.eventKey,
           reservationId,
           userId,
+          notificationId,
         );
         if (!notification) throw new Error("Notification record was not found.");
         const preference = notification.user.notificationPreference ?? {
@@ -69,15 +72,21 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
         const body = locale === "ar" ? notification.bodyAr : notification.bodyEn;
         const failures: string[] = [];
 
-        if (preference.inAppEnabled) {
+        if (requestedChannels.has("IN_APP") && preference.inAppEnabled) {
           await this.recordChannel(notification.id, "IN_APP", async () => ({
             providerId: "local",
           }));
         }
         const externalDeliveryExpected =
-          (preference.emailEnabled && Boolean(notification.user.emailVerifiedAt)) ||
-          (preference.whatsappEnabled && Boolean(notification.user.phoneVerifiedAt)) ||
-          (preference.pushEnabled && notification.user.pushSubscriptions.length > 0);
+          (requestedChannels.has("EMAIL") &&
+            preference.emailEnabled &&
+            Boolean(notification.user.emailVerifiedAt)) ||
+          (requestedChannels.has("WHATSAPP") &&
+            preference.whatsappEnabled &&
+            Boolean(notification.user.phoneVerifiedAt)) ||
+          (requestedChannels.has("PUSH") &&
+            preference.pushEnabled &&
+            notification.user.pushSubscriptions.length > 0);
         const quietUntil = externalDeliveryExpected
           ? quietHoursEnd(
               preference.quietHoursStart,
@@ -90,7 +99,11 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
           await this.notifications.deferEvent(event.id, quietUntil);
           return true;
         }
-        if (preference.emailEnabled && notification.user.emailVerifiedAt) {
+        if (
+          requestedChannels.has("EMAIL") &&
+          preference.emailEnabled &&
+          notification.user.emailVerifiedAt
+        ) {
           const result = await this.recordChannel(notification.id, "EMAIL", () =>
             this.sendEmail(
               notification.user.email,
@@ -98,17 +111,26 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
               body,
               locale,
               notification.reservationId,
+              notification.targetPath,
             ),
           );
           if (!result) failures.push("EMAIL");
         }
-        if (preference.whatsappEnabled && notification.user.phoneVerifiedAt) {
+        if (
+          requestedChannels.has("WHATSAPP") &&
+          preference.whatsappEnabled &&
+          notification.user.phoneVerifiedAt
+        ) {
           const result = await this.recordChannel(notification.id, "WHATSAPP", () =>
             this.sendWhatsApp(notification.user.phone, title, body, locale),
           );
           if (!result) failures.push("WHATSAPP");
         }
-        if (preference.pushEnabled && notification.user.pushSubscriptions.length) {
+        if (
+          requestedChannels.has("PUSH") &&
+          preference.pushEnabled &&
+          notification.user.pushSubscriptions.length
+        ) {
           const result = await this.recordChannel(notification.id, "PUSH", () =>
             this.sendPush(
               notification.user.id,
@@ -117,6 +139,7 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
               body,
               locale,
               notification.reservationId,
+              notification.targetPath,
             ),
           );
           if (!result) failures.push("PUSH");
@@ -182,14 +205,18 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
     body: string,
     locale: "ar" | "en",
     reservationId: string | null,
+    targetPath: string | null,
   ) {
     const provider = this.config.verificationEmail;
     if (!provider && !this.config.verificationBrevo) {
       throw new Error("Email provider is not configured.");
     }
-    const target = reservationId
-      ? `${this.config.webUrl}${locale === "en" ? "/en" : ""}/account/requests?request=${encodeURIComponent(reservationId)}`
-      : `${this.config.webUrl}${locale === "en" ? "/en" : ""}/account/requests`;
+    const localePrefix = locale === "en" ? "/en" : "";
+    const target = targetPath
+      ? `${this.config.webUrl}${localePrefix}${targetPath}`
+      : reservationId
+        ? `${this.config.webUrl}${localePrefix}/account/requests?request=${encodeURIComponent(reservationId)}`
+        : `${this.config.webUrl}${localePrefix}/account/requests`;
     if (this.config.verificationBrevo) {
       const linkLabel =
         locale === "ar"
@@ -269,11 +296,15 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
     body: string,
     locale: "ar" | "en",
     reservationId: string | null,
+    targetPath: string | null,
   ) {
     if (!this.config.webPush) throw new Error("Web Push is not configured.");
-    const url = `${locale === "en" ? "/en" : ""}/account/requests${
-      reservationId ? `?request=${encodeURIComponent(reservationId)}` : ""
-    }`;
+    const localePrefix = locale === "en" ? "/en" : "";
+    const url = targetPath
+      ? `${localePrefix}${targetPath}`
+      : `${localePrefix}/account/requests${
+          reservationId ? `?request=${encodeURIComponent(reservationId)}` : ""
+        }`;
     let delivered = 0;
     let providerId: string | undefined;
     for (const stored of subscriptions) {
@@ -308,6 +339,16 @@ function asObject(value: unknown) {
 
 function stringValue(value: unknown) {
   return typeof value === "string" && value ? value : null;
+}
+
+function channelSet(value: unknown) {
+  const allowed = new Set(["IN_APP", "PUSH", "EMAIL", "WHATSAPP"]);
+  const requested = Array.isArray(value)
+    ? value.filter(
+        (channel): channel is string => typeof channel === "string" && allowed.has(channel),
+      )
+    : [];
+  return new Set(requested.length ? requested : [...allowed]);
 }
 
 function escapeHtml(value: string) {

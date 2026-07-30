@@ -195,6 +195,8 @@ export function NotificationCenter({
     if (notification.target?.kind === "RESERVATION") {
       const base = localizedPath(locale, kind === "sales" ? "/sales" : "/account/requests");
       window.location.assign(`${base}?request=${encodeURIComponent(notification.target.id)}`);
+    } else if (notification.target?.kind === "URL") {
+      window.location.assign(localizedPath(locale, notification.target.path));
     }
   }
 

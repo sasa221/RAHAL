@@ -902,3 +902,43 @@ Status: implemented locally on 2026-07-28. Real services, staging evidence, appr
 - Static PWA coverage for iOS installation detection order, iPad desktop-mode detection,
   role-specific manifests/layout metadata, service-worker registration, and manual install guidance.
 - Full repository formatting, lint, tests, Prisma validation/generation, type checking, production builds, dependency audit, migrations, and container builds.
+
+## Milestone 22: Staff notification campaign studio
+
+Goal: let authorized Rahal staff announce vehicle, offer, service, and operational updates without
+bypassing customer consent, channel preferences, or the audited delivery pipeline.
+
+Status: implemented locally on 2026-07-30.
+
+### Completed scope
+
+- Added attributable bilingual notification campaigns with finite categories, audiences, selected
+  channels, safe internal target links, importance, marketing classification, and recipient counts.
+- Added an independent `notifications.send` permission to the default sales role.
+- Restricted sales campaigns to customers; administrators may address customers, sales, or both.
+- Forced new-vehicle and offer campaigns through the marketing opt-in audience filter.
+- Reused the existing owner-scoped in-app notification, Email, approved-template WhatsApp, Web Push,
+  quiet-hours, retry, and idempotent delivery pipeline.
+- Added Arabic/English administration and sales campaign studios with live preview, channel
+  selection, responsive mobile composition, delivery history, and aggregate status.
+- Added safe campaign deep links to the shared notification center.
+- Recorded each created campaign in the immutable audit log without recipient contact details.
+
+### Acceptance criteria
+
+- A customer or sales employee without `notifications.send` cannot create or list campaigns.
+- A sales employee cannot address sales staff or broaden the audience.
+- Offers and new-vehicle campaigns reach only active users who opted in to marketing.
+- Operational campaigns still respect each recipient's channel preferences and quiet hours.
+- Every campaign creates one owner-scoped notification and outbox event per recipient atomically.
+- Campaign history shows creator, audience, recipient count, and aggregate delivery state without
+  exposing customer email, phone, push endpoint, or WhatsApp destination.
+- Arabic RTL and English LTR expose equivalent composer, preview, history, and mobile behavior.
+
+### Tests
+
+- Service coverage for permission boundaries, forced marketing consent, audience restrictions,
+  bilingual payloads, selected channels, and safe target paths.
+- Worker coverage for campaign notification identifiers and channel selection.
+- Full repository format, lint, tests, typecheck, production build, migration, and browser
+  verification.

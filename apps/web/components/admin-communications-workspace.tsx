@@ -8,6 +8,7 @@ import type {
 import { useCallback, useEffect, useState } from "react";
 import type { PublicLocale } from "../lib/public-content";
 import { WorkspaceShell } from "./workspace-shell";
+import { NotificationCampaignStudio } from "./notification-campaign-studio";
 
 const copy = {
   en: {
@@ -136,6 +137,8 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
             <b>R</b>
           </div>
         </header>
+
+        <NotificationCampaignStudio kind="admin" locale={locale} />
 
         {loading ? (
           <div className="communications-state">{text.loading}</div>
