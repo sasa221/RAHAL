@@ -44,6 +44,7 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
   const [state, setState] = useState<GateState>("LOADING");
   const [overview, setOverview] = useState<CustomerAccountOverview | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<boolean | null>(null);
 
   const check = useCallback(async () => {
     setState("LOADING");
@@ -83,6 +84,7 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
 
   async function decide(marketingEnabled: boolean) {
     if (!overview) return;
+    setPendingDecision(marketingEnabled);
     setState("SAVING");
     try {
       const preferences = overview.notifications;
@@ -150,7 +152,13 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
           </ul>
         ) : null}
         <div>
-          <button disabled={state === "SAVING"} onClick={() => void decide(true)} type="button">
+          <button
+            disabled={state === "SAVING"}
+            onClick={() =>
+              state === "ERROR" ? void decide(pendingDecision ?? true) : void decide(true)
+            }
+            type="button"
+          >
             {state === "SAVING" ? text.saving : state === "ERROR" ? text.retry : text.accept}
           </button>
           {state !== "ERROR" ? (

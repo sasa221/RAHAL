@@ -57,6 +57,7 @@ describe("customer profile and communication preferences", () => {
     expect(gate).toContain('marketingConsentDecided ? "HIDDEN" : "PROMPT"');
     expect(gate).toContain("void decide(true)");
     expect(gate).toContain("void decide(false)");
+    expect(gate).toContain("pendingDecision ?? true");
     expect(gate).toContain("No thanks");
     expect(repository).toContain("marketingConsentDecidedAt = new Date()");
     expect(layout).toContain("<MarketingConsentGate");
