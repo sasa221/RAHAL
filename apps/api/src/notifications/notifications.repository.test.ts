@@ -28,7 +28,7 @@ describe("NotificationsRepository campaign recipients", () => {
     );
   });
 
-  it("keeps marketing campaigns limited to active opt-ins", async () => {
+  it("includes explicitly opted-in customers while verification is pending", async () => {
     const { findMany, repository } = setup();
 
     await repository.campaignRecipients({
@@ -39,7 +39,7 @@ describe("NotificationsRepository campaign recipients", () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          status: "ACTIVE",
+          status: { in: ["ACTIVE", "PENDING_VERIFICATION"] },
           notificationPreference: { is: { marketingEnabled: true } },
         }),
       }),

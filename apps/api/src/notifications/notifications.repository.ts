@@ -260,9 +260,8 @@ export class NotificationsRepository {
         : input.audience === "SALES"
           ? (["SALES"] as const)
           : (["CUSTOMER", "SALES"] as const);
-    const accountScope = input.marketing
-      ? { status: "ACTIVE" as const }
-      : input.audience === "CUSTOMERS"
+    const accountScope =
+      input.audience === "CUSTOMERS"
         ? { status: { in: ["ACTIVE" as const, "PENDING_VERIFICATION" as const] } }
         : input.audience === "SALES"
           ? { status: "ACTIVE" as const }
