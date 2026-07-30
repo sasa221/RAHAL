@@ -4,6 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "RAHAL | رحال",
     short_name: "RAHAL",
+    id: "/",
     description: "منصة رحال لتأجير السيارات وإدارة طلبات الحجز في مصر.",
     start_url: "/",
     display: "standalone",

@@ -342,7 +342,8 @@
 
 .communications-engine {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 31px;
   background: #191815;
   color: #fff;
@@ -11822,6 +11823,221 @@ select {
   .footer-bottom {
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+/* Role-gated workspaces */
+.workspace-access {
+  --access-ink: #171713;
+  --access-gold: #bd8a25;
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(20px, 5vw, 72px);
+  color: var(--access-ink);
+  background: linear-gradient(115deg, rgba(189, 138, 37, 0.12), transparent 38%), #f4f0e8;
+}
+
+.workspace-access::before,
+.workspace-access::after {
+  position: absolute;
+  width: min(44vw, 620px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(23, 23, 19, 0.1);
+  border-radius: 50%;
+  content: "";
+}
+
+.workspace-access::before {
+  inset: -18vw auto auto -12vw;
+}
+
+.workspace-access::after {
+  inset: auto -18vw -24vw auto;
+}
+
+.workspace-access__glow {
+  position: absolute;
+  width: min(70vw, 900px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(216, 175, 91, 0.2), transparent 68%);
+  animation: workspace-access-breathe 5s ease-in-out infinite;
+}
+
+.workspace-access__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 850px);
+  padding: clamp(26px, 4vw, 52px);
+  border: 1px solid rgba(23, 23, 19, 0.14);
+  background: rgba(250, 248, 242, 0.88);
+  box-shadow: 0 32px 90px rgba(34, 28, 15, 0.12);
+  backdrop-filter: blur(22px);
+}
+
+.workspace-access__card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(30px, 4vw, 44px);
+}
+
+.workspace-access__card header a {
+  display: inline-flex;
+}
+
+.workspace-access__card header span,
+.workspace-access__index {
+  color: #926916;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.workspace-access__signal {
+  position: absolute;
+  inset-block-start: clamp(86px, 9vw, 108px);
+  inset-inline-end: clamp(24px, 4vw, 52px);
+  display: grid;
+  width: clamp(64px, 11vw, 96px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(189, 138, 37, 0.34);
+  border-radius: 50%;
+  background: #1b1c18;
+  color: #e4bd69;
+  box-shadow: 0 0 0 12px rgba(189, 138, 37, 0.08);
+}
+
+.workspace-access__signal.is-loading span {
+  animation: workspace-access-pulse 1.1s ease-in-out infinite;
+}
+
+.workspace-access__signal.is-denied {
+  border-color: rgba(132, 47, 32, 0.4);
+  color: #dc8d7f;
+}
+
+.workspace-access__signal span {
+  font-family: var(--font-display), serif;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.workspace-access__index {
+  margin: 0 0 20px;
+}
+
+.workspace-access h1 {
+  max-width: 690px;
+  margin: 0;
+  padding-inline-end: clamp(70px, 14vw, 128px);
+  font-family: var(--font-display), var(--font-arabic), serif;
+  font-size: clamp(2.45rem, 5.2vw, 4.4rem);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.workspace-access[dir="rtl"] h1 {
+  font-family: var(--font-arabic), sans-serif;
+  font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+}
+
+.workspace-access__card > p:not(.workspace-access__index) {
+  max-width: 620px;
+  margin: 18px 0 0;
+  color: #68665e;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.8;
+}
+
+.workspace-access__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: clamp(28px, 4vw, 40px);
+}
+
+.workspace-access__actions a,
+.workspace-access__actions button {
+  display: inline-flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 0 24px;
+  border: 1px solid var(--access-ink);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.workspace-access__primary {
+  background: var(--access-ink);
+  color: #fff;
+}
+
+.workspace-access__secondary {
+  background: transparent;
+  color: var(--access-ink);
+}
+
+@keyframes workspace-access-breathe {
+  50% {
+    transform: scale(1.1);
+    opacity: 0.72;
+  }
+}
+
+@keyframes workspace-access-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (max-width: 600px) {
+  .workspace-access {
+    padding: 14px;
+  }
+
+  .workspace-access__card {
+    min-height: calc(100svh - 28px);
+    padding: 24px;
+  }
+
+  .workspace-access__card header {
+    margin-bottom: 72px;
+  }
+
+  .workspace-access__signal {
+    inset-block-start: 112px;
+    width: 64px;
+  }
+
+  .workspace-access h1 {
+    padding-inline-end: 0;
+    font-size: clamp(2.5rem, 13vw, 3.7rem);
+  }
+
+  .workspace-access__actions,
+  .workspace-access__actions a,
+  .workspace-access__actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-access__glow,
+  .workspace-access__signal span {
+    animation: none;
   }
 }
 

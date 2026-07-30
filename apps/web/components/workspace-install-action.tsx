@@ -73,7 +73,17 @@ export function WorkspaceInstallAction({
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    setInstalled(isStandaloneWebApp());
+    const standalone = isStandaloneWebApp();
+    const launchedWorkspace =
+      standalone && new URLSearchParams(window.location.search).get("source") === "pwa"
+        ? window.location.pathname.split("/").filter(Boolean).at(-1)
+        : null;
+    if (launchedWorkspace === kind) {
+      window.sessionStorage.setItem("rahal:standalone-workspace", kind);
+    }
+    setInstalled(
+      standalone && window.sessionStorage.getItem("rahal:standalone-workspace") === kind,
+    );
     if ("serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/push-sw.js", { scope: "/" }).catch(() => undefined);
     }
@@ -93,7 +103,7 @@ export function WorkspaceInstallAction({
       window.removeEventListener("beforeinstallprompt", capturePrompt);
       window.removeEventListener("appinstalled", markInstalled);
     };
-  }, []);
+  }, [kind]);
 
   useEffect(() => {
     if (!guideOpen) return;
