@@ -42,6 +42,10 @@ const copy = {
     queued: "عملية إرسال في الطابور",
     noHistory: "لم تُرسل حملات بعد.",
     unavailable: "لا تملك صلاحية الإرسال أو تعذر تحميل الحملات.",
+    noRecipients: "لا يوجد عملاء نشطون لاستقبال هذه الرسالة حتى الآن.",
+    noMarketingRecipients:
+      "لا يوجد عملاء نشطون وافقوا على استقبال العروض والرسائل التسويقية حتى الآن.",
+    permissionRequired: "هذا الحساب لا يملك صلاحية إرسال الحملات.",
     required: "أكمل العناوين والرسائل واختر قناة واحدة على الأقل.",
     delivery: "التسليم",
     by: "بواسطة",
@@ -93,6 +97,9 @@ const copy = {
     queued: "deliveries queued",
     noHistory: "No campaigns have been sent yet.",
     unavailable: "You do not have sending access or campaigns could not be loaded.",
+    noRecipients: "No active recipients match this audience.",
+    noMarketingRecipients: "No active recipients have opted in to marketing updates.",
+    permissionRequired: "This account does not have campaign sending access.",
     required: "Complete both languages and select at least one channel.",
     delivery: "Delivery",
     by: "By",
@@ -129,6 +136,17 @@ const allChannels: CampaignChannel[] = ["IN_APP", "PUSH", "EMAIL", "WHATSAPP"];
 
 function isApiSuccess<T>(payload: unknown): payload is ApiSuccess<T> {
   return Boolean(payload && typeof payload === "object" && "data" in payload);
+}
+
+function localizedCampaignError(message: string, text: (typeof copy)[PublicLocale]) {
+  if (message === "No active recipients match this audience.") return text.noRecipients;
+  if (message === "No active recipients have opted in to marketing updates.") {
+    return text.noMarketingRecipients;
+  }
+  if (message.includes("permission") || message.includes("staff account")) {
+    return text.permissionRequired;
+  }
+  return message;
 }
 
 export function NotificationCampaignStudio({
@@ -171,7 +189,11 @@ export function NotificationCampaignStudio({
 
   useEffect(() => {
     load()
-      .catch(() => setError(text.unavailable))
+      .catch((reason) =>
+        setError(
+          localizedCampaignError(reason instanceof Error ? reason.message : text.unavailable, text),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [load, text.unavailable]);
 
@@ -237,7 +259,9 @@ export function NotificationCampaignStudio({
       setTargetPath("");
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : text.unavailable);
+      setError(
+        localizedCampaignError(reason instanceof Error ? reason.message : text.unavailable, text),
+      );
     } finally {
       setSending(false);
     }

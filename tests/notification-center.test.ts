@@ -12,6 +12,7 @@ describe("in-app notification center", () => {
   const publicEntry = read("apps/web/components/public-notification-entry.tsx");
   const publicHeader = read("apps/web/components/public-home.tsx");
   const shell = read("apps/web/components/workspace-shell.tsx");
+  const campaignStudio = read("apps/web/components/notification-campaign-studio.tsx");
   const contracts = read("packages/contracts/src/index.ts");
 
   it("exposes authenticated inbox and idempotent read boundaries", () => {
@@ -90,5 +91,14 @@ describe("in-app notification center", () => {
     expect(styles).toContain(".public-header-notifications .notification-trigger");
     expect(styles).toContain(".notification-trigger.has-unread");
     expect(styles).toContain("@keyframes notification-bell-signal");
+  });
+
+  it("localizes known campaign audience and permission errors", () => {
+    expect(campaignStudio).toContain('"لا يوجد عملاء نشطون لاستقبال هذه الرسالة حتى الآن."');
+    expect(campaignStudio).toContain(
+      '"لا يوجد عملاء نشطون وافقوا على استقبال العروض والرسائل التسويقية حتى الآن."',
+    );
+    expect(campaignStudio).toContain("localizedCampaignError(");
+    expect(campaignStudio).toContain("return text.permissionRequired");
   });
 });
