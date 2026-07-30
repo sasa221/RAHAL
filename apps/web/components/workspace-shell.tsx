@@ -39,6 +39,11 @@ const shellCopy = {
     signingOut: "جاري الخروج...",
     supportTitle: "تحتاج مساعدة؟",
     supportCopy: "فريق رحال يتابع كل طلب من الفرع.",
+    menu: "القائمة",
+    closeMenu: "إغلاق القائمة",
+    commandCenter: "مركز الأوامر",
+    allTools: "كل أدوات العمل",
+    quickLinks: "وصول سريع",
   },
   en: {
     customerBrand: "Rahal Account",
@@ -67,6 +72,11 @@ const shellCopy = {
     signingOut: "Signing out...",
     supportTitle: "Need support?",
     supportCopy: "The Rahal branch team follows every request.",
+    menu: "Menu",
+    closeMenu: "Close menu",
+    commandCenter: "Command center",
+    allTools: "All workspace tools",
+    quickLinks: "Quick access",
   },
 } as const;
 
@@ -96,6 +106,7 @@ export function WorkspaceShell({
   const isStaff = kind !== "customer";
   const [canManageStaff, setCanManageStaff] = useState(kind === "admin");
   const [loggingOut, setLoggingOut] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentHref = localizedPath(
     locale,
     kind === "admin" ? "/admin" : isStaff ? "/sales" : "/account/requests",
@@ -250,6 +261,20 @@ export function WorkspaceShell({
     return () => controller.abort();
   }, [isStaff, locale]);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
+
   async function logout() {
     setLoggingOut(true);
     try {
@@ -322,6 +347,17 @@ export function WorkspaceShell({
               </strong>
             </a>
             <nav>
+              <button
+                aria-controls="portal-mobile-menu"
+                aria-expanded={mobileMenuOpen}
+                aria-label={text.menu}
+                className="portal-mobile-menu-trigger"
+                onClick={() => setMobileMenuOpen(true)}
+                type="button"
+              >
+                <MenuIcon />
+                <span>{text.menu}</span>
+              </button>
               {isStaff ? (
                 <WorkspaceInstallAction
                   kind={kind === "admin" ? "admin" : "sales"}
@@ -348,6 +384,77 @@ export function WorkspaceShell({
           </header>
           <main>{children}</main>
         </div>
+
+        {mobileMenuOpen ? (
+          <>
+            <button
+              aria-label={text.closeMenu}
+              className="portal-mobile-menu-backdrop"
+              onClick={() => setMobileMenuOpen(false)}
+              type="button"
+            />
+            <aside
+              aria-label={text.allTools}
+              className="portal-mobile-menu"
+              id="portal-mobile-menu"
+            >
+              <header>
+                <a href={localizedPath(locale)}>
+                  <Image alt="" height={52} src="/images/rahal-logo.png" width={52} />
+                  <span>
+                    <small>{text.commandCenter}</small>
+                    <strong>
+                      {kind === "admin"
+                        ? text.adminBrand
+                        : kind === "sales"
+                          ? text.salesBrand
+                          : text.customerBrand}
+                    </strong>
+                  </span>
+                </a>
+                <button
+                  aria-label={text.closeMenu}
+                  onClick={() => setMobileMenuOpen(false)}
+                  type="button"
+                >
+                  <CloseIcon />
+                </button>
+              </header>
+
+              <div className="portal-mobile-menu__current">
+                <small>{text.quickLinks}</small>
+                <strong>{activeNavigationItem?.[0] ?? text.overview}</strong>
+                <i />
+              </div>
+
+              <nav aria-label={text.allTools}>
+                {navigation.map(([label, href, icon], index) => (
+                  <a
+                    className={href === activeTarget ? "is-active" : ""}
+                    href={href}
+                    key={`drawer-${label}-${href}`}
+                  >
+                    <small>{String(index + 1).padStart(2, "0")}</small>
+                    <Icon name={icon as "arrow" | "calendar" | "car" | "document"} size={20} />
+                    <span>{label}</span>
+                    <b aria-hidden="true">↗</b>
+                  </a>
+                ))}
+              </nav>
+
+              <footer>
+                <a href={languageHref}>{text.language}</a>
+                <a href={localizedPath(locale, isStaff ? "/account/security" : "/account/profile")}>
+                  {text.account}
+                </a>
+                <button disabled={loggingOut} onClick={logout} type="button">
+                  <LogoutIcon />
+                  {loggingOut ? text.signingOut : text.signOut}
+                </button>
+              </footer>
+            </aside>
+          </>
+        ) : null}
 
         <nav
           className="portal-bottom-nav"
@@ -377,6 +484,32 @@ function LogoutIcon() {
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M4 7h16M4 12h11M4 17h16"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m6 6 12 12M18 6 6 18"
+        stroke="currentColor"
+        strokeLinecap="round"
         strokeWidth="1.8"
       />
     </svg>

@@ -49,4 +49,18 @@ describe("workspace role boundary", () => {
     expect(accountEntry).toContain('session.user.role === "SALES"');
     expect(accountEntry).toContain('"/admin"');
   });
+
+  it("exposes every authorized workspace tool through an accessible mobile command menu", () => {
+    const shell = read("apps/web/components/workspace-shell.tsx");
+    const styles = read("apps/web/app/globals.css");
+
+    expect(shell).toContain('aria-controls="portal-mobile-menu"');
+    expect(shell).toContain("navigation.map(([label, href, icon], index)");
+    expect(shell).toContain('className="portal-mobile-menu-backdrop"');
+    expect(shell).toContain('event.key === "Escape"');
+    expect(shell).toContain('document.body.style.overflow = "hidden"');
+    expect(styles).toContain(".portal-mobile-menu > nav a.is-active");
+    expect(styles).toContain("@keyframes portal-mobile-menu-enter");
+    expect(styles).toContain("@media (max-width: 920px)");
+  });
 });
