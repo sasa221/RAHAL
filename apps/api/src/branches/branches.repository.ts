@@ -7,8 +7,8 @@ import { PrismaService } from "../database/prisma.service";
 export class BranchesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(): Promise<BranchSummary[]> {
-    return this.prisma.client.branch.findMany({
+  async list(): Promise<BranchSummary[]> {
+    const branches = await this.prisma.client.branch.findMany({
       where: { active: true },
       orderBy: { createdAt: "asc" },
       select: {
@@ -17,9 +17,15 @@ export class BranchesRepository {
         nameEn: true,
         addressAr: true,
         addressEn: true,
+        latitude: true,
+        longitude: true,
+        phones: true,
+        whatsappNumbers: true,
+        workingHours: true,
         active: true,
       },
     });
+    return branches.map(toPublicBranch);
   }
 
   async adminList(): Promise<ManagedBranch[]> {
@@ -92,6 +98,7 @@ const managedBranchSelect = {
 } as const;
 
 type BranchRecord = Prisma.BranchGetPayload<{ select: typeof managedBranchSelect }>;
+type PublicBranchRecord = Omit<BranchRecord, "updatedAt">;
 
 type BranchWrite = {
   nameAr: string;
@@ -120,6 +127,22 @@ function toManagedBranch(branch: BranchRecord): ManagedBranch {
     workingHours: asObject(branch.workingHours),
     active: branch.active,
     updatedAt: branch.updatedAt.toISOString(),
+  };
+}
+
+function toPublicBranch(branch: PublicBranchRecord): BranchSummary {
+  return {
+    id: branch.id,
+    nameAr: branch.nameAr,
+    nameEn: branch.nameEn,
+    addressAr: branch.addressAr,
+    addressEn: branch.addressEn,
+    latitude: branch.latitude?.toNumber() ?? null,
+    longitude: branch.longitude?.toNumber() ?? null,
+    phones: asStringArray(branch.phones),
+    whatsappNumbers: asStringArray(branch.whatsappNumbers),
+    workingHours: asObject(branch.workingHours),
+    active: branch.active,
   };
 }
 

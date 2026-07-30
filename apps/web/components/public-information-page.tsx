@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { ExperienceMotion } from "./experience-motion";
+import { PublicBranchSurface } from "./public-branch-surface";
 import { Footer, Header, Icon } from "./public-home";
 
 export type PublicInformationPageKey =
@@ -162,7 +163,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
         {
           number: "01",
           title: "الهاتف",
-          body: "010 111 05159",
+          body: "تظهر أرقام التواصل المعتمدة من إدارة رحال مباشرة في دليل الفرع أدناه.",
           points: [
             "للاستفسارات العامة ومتابعة مواعيد الحضور",
             "ساعات العمل النهائية تُعتمد قبل الإطلاق",
@@ -199,7 +200,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
         {
           number: "01",
           title: "Phone",
-          body: "010 111 05159",
+          body: "Approved contact numbers are published directly from Rahal's branch directory below.",
           points: [
             "General questions and branch-attendance coordination",
             "Final working hours will be approved before launch",
@@ -663,6 +664,12 @@ export function PublicInformationPage({
             </div>
           </div>
         </section>
+
+        {page === "contact" ? (
+          <div className="container">
+            <PublicBranchSurface locale={locale} variant="directory" />
+          </div>
+        ) : null}
 
         {pageContent.notice ? (
           <section className="information-notice">

@@ -3,7 +3,7 @@ import { PublicFleet } from "../../../components/public-fleet";
 
 export const metadata: Metadata = {
   title: "Fleet | RAHAL",
-  description: "Browse the fictional Rahal demo fleet and EGP-only estimates.",
+  description: "Browse the Rahal fleet, vehicle policies, and EGP-only rental estimates.",
 };
 
 type CarsPageProps = {

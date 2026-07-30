@@ -32,6 +32,14 @@ describe("Milestone 2 public home", () => {
     expect(formatEgp(4500, "ar")).not.toContain("$");
   });
 
+  it("loads the home and detail fleet from the deployed API with a safe local fallback", () => {
+    const publicApi = read("apps/web/lib/public-api.ts");
+    expect(component).toContain("await getPublicVehicles()");
+    expect(publicApi).toContain("process.env.API_URL");
+    expect(publicApi).toContain("export async function getPublicVehicles");
+    expect(publicApi).toContain("return publicVehicles");
+  });
+
   it("presents one lead vehicle with supporting fleet choices", () => {
     expect(component).toContain('vehicle.id === "graphite-suv"');
     expect(component).toContain('className="fleet-showcase"');
@@ -57,9 +65,11 @@ describe("Milestone 2 public home", () => {
   });
 
   it("provides dedicated mobile interaction for trust, branch, and footer content", () => {
+    const branchSurface = read("apps/web/components/public-branch-surface.tsx");
     expect(component).toContain('className="trust-card__visual"');
     expect(component).toContain('className="trust-card__visual-line"');
-    expect(component).toContain('className="branch-facts"');
+    expect(branchSurface).toContain('className="branch-facts"');
+    expect(component).toContain("<PublicBranchSurface locale={locale} />");
     expect(component).toContain("footer-statement");
     expect(styles).toContain("scroll-snap-type: inline mandatory");
     expect(styles).toContain("overscroll-behavior-inline: contain");

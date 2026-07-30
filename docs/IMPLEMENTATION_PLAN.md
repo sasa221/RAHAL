@@ -942,3 +942,42 @@ Status: implemented locally on 2026-07-30.
 - Worker coverage for campaign notification identifiers and channel selection.
 - Full repository format, lint, tests, typecheck, production build, migration, and browser
   verification.
+
+## Milestone 23: Public data-source integrity
+
+Goal: make every customer-facing branch and featured-fleet surface reflect the same audited
+database records managed by Rahal administrators.
+
+Status: implemented and verified locally on 2026-07-30.
+
+### Completed scope
+
+- Expanded the public active-branch projection with approved address, contact, map, and working-hour
+  fields without exposing administration-only metadata.
+- Replaced hard-coded homepage, footer, and contact-page phone, WhatsApp, address, coordinates, and
+  hours with the public branch API.
+- Added safe loading, empty, and provider-failure states that never publish invented contact data.
+- Added direct phone, WhatsApp, and Google Maps actions only when the administrator supplied the
+  corresponding value.
+- Connected the public homepage featured fleet to the database vehicle API with a bounded local
+  fallback.
+- Fixed server-rendered vehicle-detail API resolution to use the deployed `API_URL`, so vehicles
+  created through administration open correctly on Arabic and English detail routes.
+- Removed fictional/demo wording from public fleet metadata while preserving the explicit staging
+  disclosure inside the fleet experience until real owner-approved records replace the seed.
+
+### Acceptance criteria
+
+- Inactive branches never appear publicly.
+- Public contact surfaces contain no hard-coded operational number or coordinate.
+- Missing branch data produces honest unavailable copy rather than a broken or invented action.
+- An administrator vehicle update feeds listing, homepage, detail, and reservation selection from
+  one database source.
+- Public server rendering uses the same deployed API endpoint as the same-origin browser proxy.
+
+### Tests
+
+- Static coverage for public active-branch filtering, safe contact rendering, absence of legacy
+  hard-coded numbers, dynamic homepage fleet loading, deployed API resolution, and local fallback.
+- Full repository formatting, lint, 317 tests, type checking, Prisma validation/generation, and
+  production builds.

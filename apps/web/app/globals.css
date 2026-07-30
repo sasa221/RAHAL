@@ -559,6 +559,107 @@
   }
 }
 
+/* Public branch data is always rendered from the audited administrator source. */
+.branch-card__safe-state {
+  border-inline-start: 3px solid var(--gold);
+  padding-inline-start: 1rem;
+}
+
+.public-branch-directory {
+  margin-block: 0 5rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  background: var(--paper);
+  padding: clamp(1.4rem, 4vw, 3rem);
+}
+
+.public-branch-directory > header {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.public-branch-directory > header > span {
+  color: var(--gold-deep);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.public-branch-directory > header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 500;
+}
+
+.public-branch-directory__state {
+  margin: 0;
+  background: color-mix(in srgb, var(--gold) 12%, var(--paper));
+  padding: 1.25rem;
+  color: var(--muted);
+}
+
+.public-branch-directory__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.public-branch-directory__grid > article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  padding-block: 1.5rem;
+}
+
+.public-branch-directory__pin {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.public-branch-directory h3 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+}
+
+.public-branch-directory p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.public-branch-directory dl {
+  display: grid;
+  gap: 0.35rem;
+  margin-block: 1rem;
+}
+
+.public-branch-directory dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  padding-block: 0.45rem;
+}
+
+.public-branch-directory dt {
+  color: var(--muted);
+}
+
+.public-branch-directory dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.public-branch-directory .branch-actions {
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
 /* Notification campaign studio */
 .sales-communications-workspace {
   min-height: 100vh;

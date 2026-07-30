@@ -7,9 +7,11 @@ import {
   publicVehicles,
   type PublicLocale,
 } from "../lib/public-content";
+import { getPublicVehicles } from "../lib/public-api";
 import { AvailabilitySearch } from "./availability-search";
 import { AccountEntryLink } from "./account-entry-link";
 import { ExperienceMotion } from "./experience-motion";
+import { PublicBranchSurface } from "./public-branch-surface";
 import { PublicNotificationEntry } from "./public-notification-entry";
 
 type PublicHomeProps = {
@@ -324,16 +326,7 @@ export function Footer({ locale }: PublicHomeProps) {
         </div>
         <div>
           <h2>{content.contact}</h2>
-          <div className="footer-links footer-links--contact">
-            <a href="tel:01011105159">
-              <Icon name="phone" size={17} />
-              010 111 05159
-            </a>
-            <a href="https://wa.me/201011105159">
-              <Icon name="whatsapp" size={17} />
-              {content.whatsapp}
-            </a>
-          </div>
+          <PublicBranchSurface locale={locale} variant="footer" />
         </div>
       </div>
       <div className="container footer-bottom">
@@ -344,10 +337,16 @@ export function Footer({ locale }: PublicHomeProps) {
   );
 }
 
-export function PublicHome({ locale }: PublicHomeProps) {
+export async function PublicHome({ locale }: PublicHomeProps) {
   const content = getPublicContent(locale);
-  const featuredVehicle = publicVehicles.find((vehicle) => vehicle.id === "graphite-suv")!;
-  const supportingVehicles = publicVehicles.filter((vehicle) => vehicle.id !== featuredVehicle.id);
+  const fleetVehicles = await getPublicVehicles();
+  const featuredVehicle =
+    fleetVehicles.find((vehicle) => vehicle.id === "graphite-suv") ?? fleetVehicles[0];
+  const supportingVehicles = fleetVehicles
+    .filter((vehicle) => vehicle.id !== featuredVehicle?.id)
+    .slice(0, 2);
+
+  if (!featuredVehicle) return null;
 
   return (
     <div className="public-site" dir={content.dir} lang={content.htmlLang}>
@@ -525,48 +524,7 @@ export function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section branch-section" id="branch" data-reveal>
-          <div className="container branch-card">
-            <div className="branch-card__map" aria-hidden="true">
-              <div className="map-grid" />
-              <span className="map-coordinates">30.0444° N · 31.2357° E</span>
-              <span className="map-pin">
-                <Icon name="pin" size={28} />
-              </span>
-              <span className="map-label">RAHAL</span>
-            </div>
-            <div className="branch-card__content">
-              <span className="eyebrow">{content.branchEyebrow}</span>
-              <h2>{content.branchTitle}</h2>
-              <p>{content.branchCopy}</p>
-              <div className="branch-note">
-                <Icon name="pin" size={18} />
-                {content.branchNote}
-              </div>
-              <div className="branch-facts">
-                <span>
-                  {locale === "ar" ? "الاستلام والإرجاع من الفرع" : "Branch pickup & return"}
-                </span>
-                <span>{locale === "ar" ? "الدفع بالجنيه المصري" : "EGP only"}</span>
-                <span>{locale === "ar" ? "لا يوجد دفع أونلاين" : "No online payment"}</span>
-              </div>
-              <div className="branch-actions">
-                <a className="button button--dark" href="tel:01011105159">
-                  <Icon name="phone" size={18} />
-                  {content.call}
-                </a>
-                <a className="button button--whatsapp" href="https://wa.me/201011105159">
-                  <Icon name="whatsapp" size={19} />
-                  {content.whatsapp}
-                </a>
-              </div>
-              <span className="branch-directions">
-                <Icon name="pin" size={16} />
-                {content.directions}
-              </span>
-            </div>
-          </div>
-        </section>
+        <PublicBranchSurface locale={locale} />
       </main>
 
       <Footer locale={locale} />

@@ -504,15 +504,15 @@ export type BranchSummary = {
   nameEn: string;
   addressAr: string;
   addressEn: string | null;
-  active: boolean;
-};
-
-export type ManagedBranch = BranchSummary & {
   latitude: number | null;
   longitude: number | null;
   phones: string[];
   whatsappNumbers: string[];
   workingHours: Record<string, unknown>;
+  active: boolean;
+};
+
+export type ManagedBranch = BranchSummary & {
   updatedAt: string;
 };
 

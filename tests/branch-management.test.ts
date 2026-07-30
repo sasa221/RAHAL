@@ -33,4 +33,21 @@ describe("branch management", () => {
     expect(workspace).toContain('credentials: "include"');
     expect(styles).toContain("@media (max-width: 620px)");
   });
+
+  it("publishes only active administrator-approved branch contact details", () => {
+    const repository = read("apps/api/src/branches/branches.repository.ts");
+    const contracts = read("packages/contracts/src/index.ts");
+    const surface = read("apps/web/components/public-branch-surface.tsx");
+    const home = read("apps/web/components/public-home.tsx");
+    const information = read("apps/web/components/public-information-page.tsx");
+
+    expect(repository).toContain("where: { active: true }");
+    expect(repository).toContain("whatsappNumbers: true");
+    expect(contracts).toContain("workingHours: Record<string, unknown>");
+    expect(surface).toContain('fetch("/api/branches"');
+    expect(surface).toContain("No unconfirmed address or number is shown.");
+    expect(home).toContain("<PublicBranchSurface locale={locale} />");
+    expect(home).not.toContain("01011105159");
+    expect(information).not.toContain("010 111 05159");
+  });
 });

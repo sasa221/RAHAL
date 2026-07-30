@@ -3,7 +3,7 @@ import { PublicFleet } from "../../components/public-fleet";
 
 export const metadata: Metadata = {
   title: "السيارات | RAHAL رحال",
-  description: "استعرض سيارات رحال التجريبية والأسعار التقديرية بالجنيه المصري.",
+  description: "استعرض أسطول رحال وسياسات السيارات والأسعار التقديرية بالجنيه المصري.",
 };
 
 type CarsPageProps = {
