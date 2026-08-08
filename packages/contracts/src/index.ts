@@ -679,6 +679,20 @@ export type PasswordChangeResult = {
   otherSessionsRevoked: number;
 };
 
+export type ContactChangeRequestResult = {
+  channel: "email" | "phone";
+  destination: string;
+  expiresAt: string;
+};
+
+export type ContactChangeResult = {
+  channel: "email" | "phone";
+  changed: true;
+  destination: string;
+  otherSessionsRevoked: number;
+  user: AuthUser;
+};
+
 export type SessionRevocationResult = {
   revoked: number;
   currentSessionRevoked: boolean;

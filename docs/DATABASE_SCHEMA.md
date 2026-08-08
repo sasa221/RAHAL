@@ -34,6 +34,12 @@ The browser contract receives masked contact projections only. Status transactio
 `CUSTOMER_STATUS_CHANGE` with bounded status metadata and reason, never customer profile or identity
 payloads.
 
+`ContactChangeChallenge` stores one customer, finite email/phone kind, HMAC target hash, HMAC code
+hash, attempts, expiry, consumption time, and creation time. It intentionally has no email or phone
+column. Confirmation uses a conditional transaction before updating `User.email` or `User.phone`,
+refreshing the matching verification timestamp, revoking other sessions, and writing bounded audit
+metadata.
+
 ## Branch and content
 
 - `branches`: branch names, address, coordinates, active flag.

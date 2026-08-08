@@ -52,6 +52,9 @@ RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management 
   customer contacts, documents, identities, private notes, or audit payloads.
 - Staff use role and permission constrained workflows to review requests and operate rentals.
 - Customers track requests, upload protected documents, receive notifications, manage preferences, and leave feedback after completed rentals.
+- Customers may change a verified email or phone only through a separate code-verification flow sent
+  to the new destination. The target and code remain hashed at rest; successful confirmation keeps
+  the current session and revokes every other active session.
 - Administrators may search and inspect customer accounts only through a privacy-minimized read
   model. Contact values remain masked, while identity fields, documents, private notes, and storage
   metadata stay outside customer-administration responses.

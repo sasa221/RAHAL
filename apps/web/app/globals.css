@@ -19243,8 +19243,258 @@ select {
 }
 
 .account-contact-locks article {
+  position: relative;
   padding: 20px;
   background: #efeadf;
+}
+
+.account-contact-locks article > button {
+  position: absolute;
+  inset-block-start: 18px;
+  inset-inline-end: 18px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: #976b1c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 0;
+}
+
+.account-contact-change-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(17 18 14 / 82%);
+  padding: 20px;
+  backdrop-filter: blur(12px);
+}
+
+.account-contact-change {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100dvh - 40px));
+  overflow: auto;
+  border: 1px solid #d0c5b2;
+  background: radial-gradient(circle at 92% 8%, rgb(190 145 55 / 18%), transparent 32%), #f5f0e5;
+  box-shadow: 0 34px 100px rgb(0 0 0 / 34%);
+  color: #1b1c18;
+  padding: clamp(24px, 4vw, 42px);
+  animation: account-contact-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.account-contact-change::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, #9c6f1f, #e5c06c, #9c6f1f);
+}
+
+.account-contact-change > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.account-contact-change > header span {
+  color: #9a6d1e;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.account-contact-change h2 {
+  max-width: 470px;
+  margin: 10px 0 0;
+  font-family: var(--font-cormorant), var(--font-alexandria), serif;
+  font-size: clamp(38px, 5vw, 58px);
+  font-weight: 560;
+  line-height: 0.98;
+}
+
+[dir="rtl"] .account-contact-change h2 {
+  font-family: var(--font-alexandria), sans-serif;
+  font-size: clamp(32px, 4.5vw, 48px);
+  font-weight: 630;
+  line-height: 1.25;
+}
+
+.account-contact-change > header > button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #cfc4b1;
+  background: rgb(255 255 255 / 35%);
+  color: #292a25;
+  cursor: pointer;
+  font-size: 27px;
+}
+
+.account-contact-change > p {
+  margin: 22px 0 16px;
+  color: #6f6c64;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.account-contact-change > aside {
+  border-inline-start: 3px solid #b9872f;
+  background: #ebe4d6;
+  color: #625e55;
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.account-contact-change form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.account-contact-change form > label {
+  display: grid;
+  gap: 9px;
+}
+
+.account-contact-change form > label > span,
+.account-contact-change__destination > span {
+  color: #767168;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.account-contact-change input {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid #cfc4b1;
+  border-radius: 0;
+  outline: 0;
+  background: rgb(255 255 255 / 58%);
+  color: #1d1e1a;
+  font: inherit;
+  font-size: 17px;
+  padding: 0 17px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.account-contact-change input:focus {
+  border-color: #a57520;
+  box-shadow: 0 0 0 3px rgb(165 117 32 / 12%);
+}
+
+.account-contact-change form > button:not(.account-contact-change__back) {
+  min-height: 60px;
+  border: 0;
+  background: #1c1d19;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: inherit;
+  font-weight: 800;
+  padding: 0 20px;
+}
+
+.account-contact-change form > button:disabled,
+.account-contact-change > header > button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.account-contact-change__destination {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d6c9b3;
+  background: #211f1a;
+  color: white;
+  padding: 16px 18px;
+}
+
+.account-contact-change__destination > span {
+  color: #bfaa80;
+}
+
+.account-contact-change__destination strong {
+  color: #e0b95e;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.account-contact-change__back {
+  justify-self: start;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: #716b60;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.account-contact-change__error {
+  border-inline-start: 3px solid #9c342c;
+  background: #f0ddda;
+  color: #8b2f28;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@keyframes account-contact-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .account-contact-change-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .account-contact-change {
+    width: 100%;
+    max-height: 92dvh;
+    border-inline: 0;
+    border-block-end: 0;
+    padding: 28px 18px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .account-contact-change h2 {
+    font-size: 39px;
+  }
+
+  [dir="rtl"] .account-contact-change h2 {
+    font-size: 33px;
+  }
+
+  .account-contact-locks article > button {
+    inset-block-start: 14px;
+    inset-inline-end: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-contact-change {
+    animation: none;
+  }
 }
 
 .account-contact-locks article > span,

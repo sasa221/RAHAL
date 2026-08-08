@@ -227,6 +227,14 @@ The public read model queries approved rows only and projects rating, comment, l
 
 Customer self-service is an owner-scoped read/update boundary separate from authentication and reservation snapshots. Verified email and phone are returned for the signed-in owner but are not accepted by the profile DTO. Profile changes update future account defaults only; previously submitted reservations retain their point-in-time customer snapshots.
 
+Verified contact replacement is a separate authentication boundary. A request normalizes and checks
+the new destination, stores only HMAC target/code hashes with a ten-minute expiry and attempt count,
+then delivers the code to that new destination. Confirmation resubmits the destination, recomputes
+its hash, and conditionally consumes the exact owner/channel/hash challenge. The transaction updates
+and verifies the contact, preserves only the current session, revokes other active sessions, and
+audits channel plus revocation count without old or new contact values. Existing reservation
+snapshots remain unchanged.
+
 Sensitive profile audit events contain the names of changed fields, not their previous or new values. Communication preferences are less sensitive and use a bounded before/after audit record. In-app remains an essential operational channel. Email, WhatsApp, Push, marketing consent, and quiet hours are stored independently; delivery workers must read these settings before creating optional external attempts. Important legally or operationally required behavior still needs approved policy before provider rollout.
 
 ## Administrator customer-control architecture

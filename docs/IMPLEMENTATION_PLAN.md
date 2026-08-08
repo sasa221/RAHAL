@@ -589,7 +589,8 @@ Status: implemented and verified locally on 2026-07-26. External delivery prefer
 
 - Owner-scoped customer account API returns personal profile, verified sign-in contacts, verification state, membership date, and communication preferences.
 - Customers may update names, preferred language, date of birth, nationality, address, and emergency contact details.
-- Verified email and phone remain read-only; changing either requires a future dedicated re-verification workflow.
+- Verified email and phone remain outside general profile updates. Milestone 27 adds a dedicated
+  re-verification workflow for changing either sign-in contact.
 - Profile updates audit changed field names only, never old or new address, birth date, nationality, or emergency contact values.
 - In-app notifications remain an essential enabled channel; Email, WhatsApp, Push, and marketing choices are independent.
 - Marketing consent defaults off and remains separate from operational channel preferences.
@@ -1104,3 +1105,46 @@ Status: implemented, verified, and deployed to production on 2026-08-08.
 - Static coverage for endpoints, session revocation, privacy exclusions, routes, responsive UI,
   debounced search, modal workflow, and reduced motion.
 - Full repository format, lint, tests, typecheck, production build, and live-route verification.
+
+## Milestone 27: Verified sign-in contact changes
+
+Goal: let a customer replace an email address or phone number without weakening verification,
+uniqueness, session, or privacy guarantees.
+
+Status: implemented locally on 2026-08-08; migration and production deployment verification are
+part of milestone closure.
+
+### Completed scope
+
+- Added finite email/phone contact-change challenges with target hashes, code hashes, expiry,
+  attempt counts, consumption state, and owner relation.
+- Added authenticated, customer-only request and confirmation endpoints with shared rate limiting,
+  destination normalization, duplicate checks, six-digit codes, provider delivery, and five-attempt
+  enforcement.
+- Bound every code to its customer, channel, and target hash so it cannot authorize another value.
+- Added atomic confirmation that consumes the challenge, updates and verifies the contact, keeps the
+  current device signed in, revokes every other active session, and writes a privacy-bounded audit
+  entry.
+- Added a dedicated bilingual email-change template with expiry and unsolicited-change guidance.
+- Added a bilingual, two-step profile dialog with masked destination, OTP autofill, clear security
+  explanation, mobile bottom-sheet composition, Escape handling, scroll locking, and reduced motion.
+
+### Acceptance criteria
+
+- Staff sessions cannot request or confirm a customer contact change.
+- The new value must be valid, different, and unused by every other account.
+- The challenge table never stores the new email or phone as plaintext.
+- A code is valid only for the exact owner, channel, target hash, expiry, and attempt window.
+- Delivery failure consumes the pending challenge and never changes the account.
+- Confirmation verifies the new contact and revokes all sessions except the current one.
+- Audit metadata contains channel and revoked-session count, never the old/new contact value.
+- Arabic RTL and English LTR remain usable on mobile and desktop.
+
+### Tests
+
+- Service coverage for role boundaries, normalization, duplicate/current-value rejection, hashing,
+  invalid attempts, valid confirmation, and session revocation inputs.
+- Template coverage for bilingual content, direction, OTP, expiry, and unsolicited-change guidance.
+- Static coverage for migration privacy, endpoint throttling, transaction behavior, responsive flow,
+  Escape handling, and reduced motion.
+- Full repository format, lint, tests, typecheck, build, migration, and live verification.

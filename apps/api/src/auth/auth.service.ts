@@ -13,6 +13,8 @@ import type {
   AuthLoginResult,
   AuthSession,
   AuthUser,
+  ContactChangeRequestResult,
+  ContactChangeResult,
   PasswordChangeResult,
   PasswordResetRequestResult,
   PasswordResetResult,
@@ -27,18 +29,21 @@ import { loadApiConfig } from "../config";
 import { sendConfiguredEmail } from "../email-delivery";
 import { AuthRepository, type AuthUserRecord } from "./auth.repository";
 import type {
+  ConfirmContactChangeDto,
   ConfirmVerificationDto,
   ChangePasswordDto,
   ConfirmStaffMfaDto,
   ConfirmPasswordResetDto,
   LoginDto,
   RegisterDto,
+  RequestContactChangeDto,
   RequestPasswordResetDto,
   RequestVerificationDto,
 } from "./auth.dto";
 import { PasswordService } from "./password.service";
 import { StaffMfaService } from "./staff-mfa.service";
 import { buildPasswordResetEmail } from "./password-reset-email.template";
+import { buildContactChangeEmail } from "./contact-change-email.template";
 import { buildVerificationEmail } from "./verification-email.template";
 
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
@@ -57,6 +62,21 @@ function normalizePhone(value: string) {
 function normalizeIdentifier(value: string) {
   const trimmed = value.trim();
   return trimmed.includes("@") ? trimmed.toLowerCase() : normalizePhone(trimmed);
+}
+
+function normalizeContactChange(channel: "email" | "phone", rawValue: string) {
+  const value = channel === "email" ? rawValue.trim().toLowerCase() : normalizePhone(rawValue);
+  if (
+    (channel === "email" && (value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) ||
+    (channel === "phone" && !/^\+[1-9]\d{7,14}$/.test(value))
+  ) {
+    throw new BadRequestException(
+      channel === "email"
+        ? "A valid email address is required."
+        : "Phone must use international E.164 format.",
+    );
+  }
+  return value;
 }
 
 export function hashSessionToken(token: string) {
@@ -647,6 +667,177 @@ export class AuthService {
     return { channel: input.channel, verified: true as const, user: toAuthUser(user) };
   }
 
+  async requestContactChange(
+    token: string | undefined,
+    input: RequestContactChangeDto,
+    context: AuthRequestContext,
+  ): Promise<ContactChangeRequestResult> {
+    const { session } = await this.requireSessionRecord(token);
+    if (session.user.systemRole !== "CUSTOMER") {
+      throw new ForbiddenException("A customer account is required.");
+    }
+    const value = normalizeContactChange(input.channel, input.value);
+    const current = input.channel === "email" ? session.user.email : session.user.phone;
+    if (value === current) {
+      throw new ConflictException("The new contact must be different from the current contact.");
+    }
+    if (await this.repository.findByIdentifier(value)) {
+      throw new ConflictException("Another account already uses this contact method.");
+    }
+    if (!this.hasVerificationDelivery(input.channel)) {
+      throw new ServiceUnavailableException("Verification delivery provider is not configured.");
+    }
+
+    const kind = input.channel === "email" ? "EMAIL" : "PHONE";
+    const valueHash = this.hashContactChangeValue(input.channel, value);
+    const usesTwilioVerify = this.usesTwilioVerifyWhatsApp(input.channel);
+    const code = usesTwilioVerify ? "" : String(randomInt(100_000, 1_000_000));
+    const expiresAt = new Date(Date.now() + verificationLifetimeMs);
+    await this.repository.invalidateContactChangeChallenges(session.user.id, kind);
+    await this.repository.createContactChangeChallenge({
+      userId: session.user.id,
+      kind,
+      valueHash,
+      codeHash: this.hashContactChangeCode(
+        session.user.id,
+        kind,
+        valueHash,
+        usesTwilioVerify ? twilioVerifyCodeMarker : code,
+      ),
+      expiresAt,
+    });
+
+    try {
+      await this.deliverVerificationCode({
+        channel: input.channel,
+        destination: value,
+        locale: session.user.preferredLocale,
+        code,
+        expiresAt,
+        ...(input.channel === "email"
+          ? {
+              email: buildContactChangeEmail({
+                locale: session.user.preferredLocale,
+                code,
+                expiresAt,
+              }),
+            }
+          : {}),
+      });
+    } catch (error) {
+      await this.repository.invalidateContactChangeChallenges(session.user.id, kind);
+      await this.repository.writeAudit({
+        actorId: session.user.id,
+        action: "AUTH_CONTACT_CHANGE_REQUEST",
+        entityType: "USER",
+        entityId: session.user.id,
+        reason: `${kind}_DELIVERY_FAILED`,
+        ...context,
+        succeeded: false,
+      });
+      throw error;
+    }
+
+    await this.repository.writeAudit({
+      actorId: session.user.id,
+      action: "AUTH_CONTACT_CHANGE_REQUEST",
+      entityType: "USER",
+      entityId: session.user.id,
+      reason: kind,
+      ...context,
+      succeeded: true,
+    });
+    return {
+      channel: input.channel,
+      destination: input.channel === "email" ? this.maskEmail(value) : this.maskPhone(value),
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async confirmContactChange(
+    token: string | undefined,
+    input: ConfirmContactChangeDto,
+    context: AuthRequestContext,
+  ): Promise<ContactChangeResult> {
+    const { session } = await this.requireSessionRecord(token);
+    if (session.user.systemRole !== "CUSTOMER") {
+      throw new ForbiddenException("A customer account is required.");
+    }
+    const value = normalizeContactChange(input.channel, input.value);
+    const kind = input.channel === "email" ? "EMAIL" : "PHONE";
+    const valueHash = this.hashContactChangeValue(input.channel, value);
+    const record = await this.repository.findActiveContactChangeChallenge(
+      session.user.id,
+      kind,
+      valueHash,
+    );
+    if (!record || record.attempts >= verificationAttemptLimit) {
+      throw new BadRequestException("Invalid or expired contact-change code.");
+    }
+
+    const providerMarker = this.hashContactChangeCode(
+      session.user.id,
+      kind,
+      valueHash,
+      twilioVerifyCodeMarker,
+    );
+    const providerVerified =
+      input.channel === "phone" &&
+      record.codeHash === providerMarker &&
+      this.config.verificationTwilioVerifyWhatsApp
+        ? await this.checkTwilioWhatsAppVerification({ destination: value, code: input.code })
+        : undefined;
+    const expected = Buffer.from(record.codeHash, "hex");
+    const actual = Buffer.from(
+      this.hashContactChangeCode(session.user.id, kind, valueHash, input.code),
+      "hex",
+    );
+    const locallyVerified = expected.length === actual.length && timingSafeEqual(expected, actual);
+    if (providerVerified === false || (providerVerified === undefined && !locallyVerified)) {
+      const attempt = await this.repository.incrementContactChangeAttempts(record.id);
+      if (attempt.attempts >= verificationAttemptLimit) {
+        throw new HttpException(
+          "Too many contact-change attempts. Request a new code.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      throw new BadRequestException("Invalid or expired contact-change code.");
+    }
+
+    const owner = await this.repository.findByIdentifier(value);
+    if (owner && owner.id !== session.user.id) {
+      throw new ConflictException("Another account already uses this contact method.");
+    }
+    try {
+      const result = await this.repository.completeContactChange({
+        challengeId: record.id,
+        userId: session.user.id,
+        currentSessionId: session.id,
+        kind,
+        valueHash,
+        value,
+        audit: context,
+      });
+      return {
+        channel: input.channel,
+        changed: true,
+        destination: input.channel === "email" ? this.maskEmail(value) : this.maskPhone(value),
+        otherSessionsRevoked: result.revoked,
+        user: toAuthUser(result.user),
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      if (
+        error instanceof Error &&
+        (error.message === "CONTACT_CHANGE_STATE_CONFLICT" ||
+          ("code" in error && error.code === "P2002"))
+      ) {
+        throw new ConflictException("The contact change could not be completed.");
+      }
+      throw error;
+    }
+  }
+
   private verificationPurpose(channel: "email" | "phone"): VerificationPurpose {
     return channel === "email" ? "VERIFY_EMAIL" : "VERIFY_PHONE";
   }
@@ -725,12 +916,30 @@ export class AuthService {
       .digest("hex");
   }
 
+  private hashContactChangeValue(channel: "email" | "phone", value: string) {
+    return createHmac("sha256", this.config.authSecret)
+      .update(`contact-change:${channel}:${value}`)
+      .digest("hex");
+  }
+
+  private hashContactChangeCode(
+    userId: string,
+    kind: "EMAIL" | "PHONE",
+    valueHash: string,
+    code: string,
+  ) {
+    return createHmac("sha256", this.config.authSecret)
+      .update(`${userId}:${kind}:${valueHash}:${code}`)
+      .digest("hex");
+  }
+
   private async deliverVerificationCode(input: {
     channel: "email" | "phone";
     destination: string;
     locale: string;
     code: string;
     expiresAt: Date;
+    email?: { subject: string; text: string; html: string };
   }) {
     if (input.channel === "email" && this.config.verificationGmail) {
       await this.deliverGmailVerification(input);

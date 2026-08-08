@@ -4,6 +4,8 @@ import type {
   ApiSuccess,
   AuthLoginResult,
   AuthSession,
+  ContactChangeRequestResult,
+  ContactChangeResult,
   PasswordChangeResult,
   PasswordResetRequestResult,
   PasswordResetResult,
@@ -23,11 +25,13 @@ import {
 import { AuthRateLimitService } from "./auth-rate-limit.service";
 import {
   ChangePasswordDto,
+  ConfirmContactChangeDto,
   ConfirmStaffMfaDto,
   ConfirmPasswordResetDto,
   ConfirmVerificationDto,
   LoginDto,
   RegisterDto,
+  RequestContactChangeDto,
   RequestPasswordResetDto,
   RequestVerificationDto,
 } from "./auth.dto";
@@ -225,6 +229,38 @@ export class AuthController {
     );
     return {
       data: await this.auth.confirmVerification(readAuthCookie(request), input, context),
+    };
+  }
+
+  @Post("contact-change/request")
+  async requestContactChange(
+    @Body() input: RequestContactChangeDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<ContactChangeRequestResult>> {
+    const context = this.context(request);
+    await this.rateLimits.assertAllowed(
+      `contact-change-request:${context.ipHash ?? "unknown"}:${input.channel}`,
+      3,
+      15 * 60 * 1000,
+    );
+    return {
+      data: await this.auth.requestContactChange(readAuthCookie(request), input, context),
+    };
+  }
+
+  @Post("contact-change/confirm")
+  async confirmContactChange(
+    @Body() input: ConfirmContactChangeDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<ContactChangeResult>> {
+    const context = this.context(request);
+    await this.rateLimits.assertAllowed(
+      `contact-change-confirm:${context.ipHash ?? "unknown"}:${input.channel}`,
+      8,
+      15 * 60 * 1000,
+    );
+    return {
+      data: await this.auth.confirmContactChange(readAuthCookie(request), input, context),
     };
   }
 

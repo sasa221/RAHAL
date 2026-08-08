@@ -31,6 +31,11 @@ enum VerificationPurpose {
   RESET_PASSWORD
 }
 
+enum ContactChangeKind {
+  EMAIL
+  PHONE
+}
+
 enum VehicleStatus {
   AVAILABLE
   PENDING_REQUEST
@@ -198,6 +203,7 @@ model User {
   reservations              Reservation[]            @relation("CustomerReservations")
   assignedReservations      Reservation[]            @relation("AssignedSales")
   verificationCodes         VerificationCode[]
+  contactChangeChallenges   ContactChangeChallenge[]
   sessions                  Session[]
   devices                   Device[]
   permissionOverrides       UserPermissionOverride[]
@@ -310,6 +316,22 @@ model VerificationCode {
   createdAt DateTime            @default(now())
 
   @@index([userId, purpose, expiresAt])
+}
+
+model ContactChangeChallenge {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      ContactChangeKind
+  valueHash String
+  codeHash  String
+  attempts  Int               @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  @@index([userId, kind, expiresAt])
+  @@index([valueHash, kind, expiresAt])
 }
 
 model StaffRole {

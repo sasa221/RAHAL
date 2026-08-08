@@ -55,6 +55,7 @@ The release audit covers both Arabic and English variants at mobile, tablet, and
 - Reservation wizard and saved draft recovery
 - Request history, request detail, conversation, alternatives, and branch progress
 - Profile and notification preferences
+- Verified email/phone replacement with destination-bound OTP and other-session revocation
 - Password and session security
 - Completed-rental review
 - Notification center

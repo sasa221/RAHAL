@@ -246,6 +246,103 @@ export class AuthRepository {
     });
   }
 
+  invalidateContactChangeChallenges(userId: string, kind: "EMAIL" | "PHONE") {
+    return this.prisma.client.contactChangeChallenge.updateMany({
+      where: { userId, kind, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  createContactChangeChallenge(input: {
+    userId: string;
+    kind: "EMAIL" | "PHONE";
+    valueHash: string;
+    codeHash: string;
+    expiresAt: Date;
+  }) {
+    return this.prisma.client.contactChangeChallenge.create({
+      data: input,
+      select: { id: true, expiresAt: true },
+    });
+  }
+
+  findActiveContactChangeChallenge(userId: string, kind: "EMAIL" | "PHONE", valueHash: string) {
+    return this.prisma.client.contactChangeChallenge.findFirst({
+      where: { userId, kind, valueHash, usedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, codeHash: true, attempts: true, expiresAt: true },
+    });
+  }
+
+  incrementContactChangeAttempts(id: string) {
+    return this.prisma.client.contactChangeChallenge.update({
+      where: { id },
+      data: { attempts: { increment: 1 } },
+      select: { attempts: true },
+    });
+  }
+
+  completeContactChange(input: {
+    challengeId: string;
+    userId: string;
+    currentSessionId: string;
+    kind: "EMAIL" | "PHONE";
+    valueHash: string;
+    value: string;
+    audit: { ipHash?: string; userAgent?: string };
+  }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const consumed = await transaction.contactChangeChallenge.updateMany({
+        where: {
+          id: input.challengeId,
+          userId: input.userId,
+          kind: input.kind,
+          valueHash: input.valueHash,
+          usedAt: null,
+          expiresAt: { gt: new Date() },
+          attempts: { lt: 5 },
+        },
+        data: { usedAt: new Date() },
+      });
+      if (consumed.count !== 1) throw new Error("CONTACT_CHANGE_STATE_CONFLICT");
+
+      const verifiedAt = new Date();
+      const user = await transaction.user.update({
+        where: { id: input.userId },
+        data:
+          input.kind === "EMAIL"
+            ? { email: input.value, emailVerifiedAt: verifiedAt }
+            : { phone: input.value, phoneVerifiedAt: verifiedAt },
+        select: authUserSelect,
+      });
+      const revoked = await transaction.session.updateMany({
+        where: {
+          userId: input.userId,
+          id: { not: input.currentSessionId },
+          status: "ACTIVE",
+        },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      });
+      await transaction.contactChangeChallenge.updateMany({
+        where: { userId: input.userId, kind: input.kind, usedAt: null },
+        data: { usedAt: verifiedAt },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId: input.userId,
+          action: "AUTH_CONTACT_CHANGE_COMPLETE",
+          entityType: "USER",
+          entityId: input.userId,
+          reason: input.kind,
+          newData: { channel: input.kind, otherSessionsRevoked: revoked.count },
+          ...input.audit,
+          succeeded: true,
+        },
+      });
+      return { user, revoked: revoked.count };
+    });
+  }
+
   invalidateStaffLoginChallenges(userId: string) {
     return this.prisma.client.staffLoginChallenge.updateMany({
       where: { userId, usedAt: null },

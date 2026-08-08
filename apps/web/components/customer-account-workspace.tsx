@@ -1,6 +1,11 @@
 "use client";
 
-import type { ApiSuccess, CustomerAccountOverview } from "@rahal/contracts";
+import type {
+  ApiSuccess,
+  ContactChangeRequestResult,
+  ContactChangeResult,
+  CustomerAccountOverview,
+} from "@rahal/contracts";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { Icon } from "./public-home";
@@ -8,6 +13,21 @@ import { WorkspaceShell } from "./workspace-shell";
 
 const copy = {
   ar: {
+    change: "تغيير",
+    changeContact: "تغيير بيانات الدخول بأمان",
+    changeContactCopy:
+      "سنرسل رمزًا من 6 أرقام إلى وسيلة التواصل الجديدة. لن تتغير بيانات الدخول قبل تأكيد الرمز.",
+    newEmail: "البريد الإلكتروني الجديد",
+    newPhone: "رقم الهاتف الجديد بصيغة دولية",
+    sendCode: "إرسال رمز التحقق",
+    codeSent: "أرسلنا الرمز إلى",
+    verificationCode: "رمز التحقق المكوّن من 6 أرقام",
+    confirmChange: "تأكيد التغيير",
+    resend: "تغيير البيانات أو إرسال رمز جديد",
+    contactChanged: "تم تحديث وسيلة الدخول وتوثيقها وسحب الجلسات الأخرى.",
+    close: "إغلاق",
+    contactSecurity:
+      "لأمانك، يستمر هذا الجهاز فقط بعد النجاح وتُسحب الجلسات المفتوحة على الأجهزة الأخرى.",
     eyebrow: "مساحتك الشخصية",
     title: "حسابك، مضبوط على طريقتك.",
     subtitle:
@@ -65,6 +85,21 @@ const copy = {
     signIn: "تسجيل الدخول",
   },
   en: {
+    change: "Change",
+    changeContact: "Change a sign-in contact securely",
+    changeContactCopy:
+      "We will send a six-digit code to the new contact. Your sign-in details do not change until that code is confirmed.",
+    newEmail: "New email address",
+    newPhone: "New phone in international format",
+    sendCode: "Send verification code",
+    codeSent: "We sent the code to",
+    verificationCode: "Six-digit verification code",
+    confirmChange: "Confirm contact change",
+    resend: "Edit the contact or request a new code",
+    contactChanged: "Your verified sign-in contact was updated and other sessions were revoked.",
+    close: "Close",
+    contactSecurity:
+      "For your security, only this device stays signed in after success; other active sessions are revoked.",
     eyebrow: "YOUR PERSONAL SPACE",
     title: "Your account, tuned to you.",
     subtitle:
@@ -126,6 +161,14 @@ const copy = {
 } as const;
 
 type PageState = "LOADING" | "READY" | "UNAUTHORIZED" | "ERROR";
+type ContactChannel = "email" | "phone";
+type ContactFlow = {
+  channel: ContactChannel;
+  step: "VALUE" | "CODE";
+  value: string;
+  destination?: string;
+  expiresAt?: string;
+};
 
 export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
   const text = copy[locale];
@@ -134,6 +177,9 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
   const [saving, setSaving] = useState<"profile" | "notifications" | null>(null);
   const [notice, setNotice] = useState("");
   const [failed, setFailed] = useState(false);
+  const [contactFlow, setContactFlow] = useState<ContactFlow | null>(null);
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState("");
   const [preferences, setPreferences] = useState<CustomerAccountOverview["notifications"] | null>(
     null,
   );
@@ -159,6 +205,20 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
       .catch(() => setState("ERROR"));
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (!contactFlow) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !contactBusy) setContactFlow(null);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [contactBusy, contactFlow]);
 
   const completeness = useMemo(() => {
     if (!overview) return 0;
@@ -255,6 +315,70 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
     setPreferences((current) => (current ? { ...current, [key]: value } : current));
   }
 
+  async function requestContactChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!contactFlow) return;
+    const data = new FormData(event.currentTarget);
+    const value = String(data.get("value") ?? "").trim();
+    setContactBusy(true);
+    setContactError("");
+    try {
+      const response = await fetch("/api/auth/contact-change/request", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ channel: contactFlow.channel, value }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response, text.failed));
+      const result = ((await response.json()) as ApiSuccess<ContactChangeRequestResult>).data;
+      setContactFlow({
+        channel: result.channel,
+        step: "CODE",
+        value,
+        destination: result.destination,
+        expiresAt: result.expiresAt,
+      });
+    } catch (error) {
+      setContactError(error instanceof Error ? error.message : text.failed);
+    } finally {
+      setContactBusy(false);
+    }
+  }
+
+  async function confirmContactChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!contactFlow) return;
+    const data = new FormData(event.currentTarget);
+    setContactBusy(true);
+    setContactError("");
+    try {
+      const response = await fetch("/api/auth/contact-change/confirm", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          channel: contactFlow.channel,
+          value: contactFlow.value,
+          code: String(data.get("code") ?? ""),
+        }),
+      });
+      if (!response.ok) throw new Error(await responseMessage(response, text.failed));
+      (await response.json()) as ApiSuccess<ContactChangeResult>;
+      const refreshed = await fetch("/api/account", { credentials: "include", cache: "no-store" });
+      if (!refreshed.ok) throw new Error(text.failed);
+      const next = ((await refreshed.json()) as ApiSuccess<CustomerAccountOverview>).data;
+      setOverview(next);
+      setPreferences(next.notifications);
+      setContactFlow(null);
+      showSuccess(text.contactChanged);
+      window.dispatchEvent(new Event("rahal:session-changed"));
+    } catch (error) {
+      setContactError(error instanceof Error ? error.message : text.failed);
+    } finally {
+      setContactBusy(false);
+    }
+  }
+
   return (
     <WorkspaceShell activePage="profile" kind="customer" locale={locale}>
       <div className="customer-account-workspace" dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -306,6 +430,98 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
               <div className={`account-profile-notice${failed ? " is-error" : ""}`}>{notice}</div>
             ) : null}
 
+            {contactFlow ? (
+              <div className="account-contact-change-backdrop" role="presentation">
+                <section
+                  aria-labelledby="account-contact-change-title"
+                  aria-modal="true"
+                  className="account-contact-change"
+                  role="dialog"
+                >
+                  <header>
+                    <div>
+                      <span>RAHAL / VERIFIED CONTACT</span>
+                      <h2 id="account-contact-change-title">{text.changeContact}</h2>
+                    </div>
+                    <button
+                      aria-label={text.close}
+                      disabled={contactBusy}
+                      onClick={() => setContactFlow(null)}
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  </header>
+                  <p>{text.changeContactCopy}</p>
+                  <aside>◇ {text.contactSecurity}</aside>
+                  {contactFlow.step === "VALUE" ? (
+                    <form onSubmit={requestContactChange}>
+                      <label>
+                        <span>
+                          {contactFlow.channel === "email" ? text.newEmail : text.newPhone}
+                        </span>
+                        <input
+                          autoFocus
+                          defaultValue={contactFlow.value}
+                          maxLength={254}
+                          name="value"
+                          pattern={
+                            contactFlow.channel === "phone" ? "^\\+[1-9]\\d{7,14}$" : undefined
+                          }
+                          placeholder={
+                            contactFlow.channel === "email" ? "name@example.com" : "+20..."
+                          }
+                          required
+                          type={contactFlow.channel === "email" ? "email" : "tel"}
+                        />
+                      </label>
+                      {contactError ? (
+                        <p className="account-contact-change__error">{contactError}</p>
+                      ) : null}
+                      <button disabled={contactBusy} type="submit">
+                        {contactBusy ? text.saving : text.sendCode}
+                        <span>→</span>
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={confirmContactChange}>
+                      <div className="account-contact-change__destination">
+                        <span>{text.codeSent}</span>
+                        <strong>{contactFlow.destination}</strong>
+                      </div>
+                      <label>
+                        <span>{text.verificationCode}</span>
+                        <input
+                          autoComplete="one-time-code"
+                          autoFocus
+                          inputMode="numeric"
+                          maxLength={6}
+                          name="code"
+                          pattern="^\d{6}$"
+                          required
+                        />
+                      </label>
+                      {contactError ? (
+                        <p className="account-contact-change__error">{contactError}</p>
+                      ) : null}
+                      <button disabled={contactBusy} type="submit">
+                        {contactBusy ? text.saving : text.confirmChange}
+                        <span>→</span>
+                      </button>
+                      <button
+                        className="account-contact-change__back"
+                        disabled={contactBusy}
+                        onClick={() => setContactFlow({ ...contactFlow, step: "VALUE" })}
+                        type="button"
+                      >
+                        {text.resend}
+                      </button>
+                    </form>
+                  )}
+                </section>
+              </div>
+            ) : null}
+
             <div className="account-profile-grid">
               <form className="account-profile-form" onSubmit={saveProfile}>
                 <header>
@@ -316,10 +532,12 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
                   </div>
                 </header>
                 <div className="account-contact-locks">
-                  {[
-                    [text.email, overview.profile.email, overview.profile.emailVerified],
-                    [text.phone, overview.profile.phone, overview.profile.phoneVerified],
-                  ].map(([label, value, verified]) => (
+                  {(
+                    [
+                      ["email", text.email, overview.profile.email, overview.profile.emailVerified],
+                      ["phone", text.phone, overview.profile.phone, overview.profile.phoneVerified],
+                    ] as const
+                  ).map(([channel, label, value, verified]) => (
                     <article key={String(label)}>
                       <span>{label}</span>
                       <strong>{value}</strong>
@@ -327,6 +545,15 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
                         <Icon name={verified ? "check" : "clock"} size={14} />
                         {verified ? text.verified : text.pending}
                       </small>
+                      <button
+                        onClick={() => {
+                          setContactError("");
+                          setContactFlow({ channel, step: "VALUE", value: "" });
+                        }}
+                        type="button"
+                      >
+                        {text.change} ↗
+                      </button>
                     </article>
                   ))}
                 </div>
@@ -534,6 +761,15 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
       </div>
     </WorkspaceShell>
   );
+}
+
+async function responseMessage(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as { error?: { message?: string } };
+    return payload.error?.message ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function ChannelToggle({

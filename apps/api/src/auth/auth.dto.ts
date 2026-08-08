@@ -47,6 +47,20 @@ export class ConfirmVerificationDto extends RequestVerificationDto {
   code!: string;
 }
 
+export class RequestContactChangeDto {
+  @IsIn(["email", "phone"])
+  channel!: "email" | "phone";
+
+  @IsString()
+  @MaxLength(254)
+  value!: string;
+}
+
+export class ConfirmContactChangeDto extends RequestContactChangeDto {
+  @Matches(/^\d{6}$/, { message: "code must contain exactly six digits" })
+  code!: string;
+}
+
 export class RequestPasswordResetDto {
   @IsString()
   @MaxLength(254)
