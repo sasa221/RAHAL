@@ -175,16 +175,16 @@ export function AccountSecurityWorkspace({ locale }: { locale: PublicLocale }) {
   }
 
   if (state === "LOADING") {
-    return <div className="account-security-standalone">{text.loading}</div>;
+    return <main className="account-security-standalone">{text.loading}</main>;
   }
 
   if (state === "UNAUTHORIZED" || state === "ERROR" || !session) {
     return (
-      <div className="account-security-standalone">
+      <main className="account-security-standalone">
         <span>RAHAL | رحال</span>
         <h1>{state === "UNAUTHORIZED" ? text.unauthorized : text.failed}</h1>
         <a href={localizedPath(locale, "/auth")}>{text.signIn}</a>
-      </div>
+      </main>
     );
   }
 

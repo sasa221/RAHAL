@@ -1149,3 +1149,45 @@ and protected-route smoke checks passed.
 - Static coverage for migration privacy, endpoint throttling, transaction behavior, responsive flow,
   Escape handling, and reduced motion.
 - Full repository format, lint, tests, typecheck, build, migration, and live verification.
+
+## Milestone 28: Automated browser release audit
+
+Goal: make mobile, desktop, Arabic, English, and anonymous role-boundary quality repeatable in CI
+instead of relying on visual spot checks or source-only assertions.
+
+Status: implemented and verified locally on 2026-08-08; deployment and a second live audit are
+part of milestone closure.
+
+### Completed scope
+
+- Added isolated Playwright production-mode web/API servers that cannot reuse an unrelated local
+  process, plus an optional deployed-environment target.
+- Added Chromium projects for a 390px mobile viewport and a 1440px desktop viewport.
+- Added real-browser coverage for 20 Arabic/English public routes, ten protected customer/sales/
+  administrator routes, mobile navigation, and reduced-motion behavior.
+- Added runtime JavaScript and unexpected HTTP failure capture, exact Egyptian locale direction,
+  horizontal-overflow, main-landmark, page-title, image-alt, visible-button-name, and prohibited
+  legacy-copy checks.
+- Added CI database seeding, Chromium installation, the browser release gate, and retained failure
+  screenshots, video, traces, and HTML reports.
+- Fixed the account-security access boundary to use a semantic `main` landmark.
+- Fixed the global reduced-motion contract so hero entrances, floating logos, map pins, and every
+  other CSS animation collapse to one near-instant iteration when the user requests less motion.
+
+### Acceptance criteria
+
+- The suite runs against isolated local production builds and can target the deployed site through
+  `RAHAL_E2E_BASE_URL`.
+- Arabic uses `ar-EG`/RTL and English uses `en-EG`/LTR on every covered route.
+- Covered pages have no horizontal overflow at 390px or 1440px.
+- Browser exceptions, unexpected HTTP 4xx/5xx responses, missing image alt attributes, unnamed
+  visible buttons, missing main landmarks, and forbidden legacy copy fail the release.
+- Anonymous users see a sign-in boundary on customer, sales, and administrator routes.
+- Reduced-motion mode leaves no long-running or infinite CSS animation.
+
+### Tests
+
+- 63 browser checks pass across the two projects; the desktop copy of the mobile-menu-only test is
+  skipped intentionally.
+- The full repository format, lint, unit/integration tests, typecheck, build, and browser release
+  suite must all pass before deployment.

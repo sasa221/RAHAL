@@ -11,6 +11,9 @@ This file is the working release gate for the first real RAHAL launch. A product
 - Protected document metadata, staff permissions, audit, staff MFA, booking operations, and in-app notifications have server-side boundaries.
 - The public information surface now includes About, How it works, Contact, FAQ, Rental terms, Privacy, and Cancellation in Arabic and English.
 - The root HTML language and direction are selected from the requested route before render.
+- A repeatable Chromium release audit covers public Arabic/English routes and anonymous role
+  boundaries at 390px and 1440px, including overflow, runtime/network failures, accessible image
+  and button names, mobile navigation, forbidden legacy copy, and reduced-motion behavior.
 - A public Vercel staging tier may run with managed PostgreSQL and Redis while missing document, scanner, or WhatsApp providers fail closed at their feature boundaries. This does not close or defer any production launch blocker.
 
 ## Release gates
@@ -29,7 +32,7 @@ This file is the working release gate for the first real RAHAL launch. A product
 | Shared rate limiting            | **Launch blocker** | Redis-backed atomic throttling and readiness are implemented; provision a production TLS Redis service.                                                                                                                                                                                                                                                           |
 | Secrets                         | **Launch blocker** | Provision unique production database, auth, MFA, provider, webhook, storage, and queue secrets through the deployment secret manager.                                                                                                                                                                                                                             |
 | Production operations           | **Launch blocker** | Readiness, bounded request logging, dependency audit, containers, backup/restore, deploy, and rollback procedures exist; provision monitoring and execute a restore drill.                                                                                                                                                                                        |
-| CI and staging                  | **Launch blocker** | CI quality gates are committed; deploy staging, apply migrations, seed fictional staging data, and complete role-based E2E acceptance.                                                                                                                                                                                                                            |
+| CI and staging                  | **Launch blocker** | CI now migrates/seeds PostgreSQL and runs the mobile/desktop public plus anonymous-boundary Playwright suite with retained failure artifacts. Complete authenticated customer, sales, and administrator lifecycle E2E acceptance against managed staging dependencies.                                                                                            |
 
 ## UI route matrix
 

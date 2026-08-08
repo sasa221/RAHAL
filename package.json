@@ -11,6 +11,8 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @rahal/database generate",
     "db:format": "pnpm --filter @rahal/database format",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.55.1",
     "@types/supertest": "^7.2.1",
     "eslint": "^10.7.0",
     "prettier": "^3.9.5",

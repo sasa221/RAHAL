@@ -34,6 +34,8 @@ This runbook is the production release procedure. It does not authorize a releas
    - `pnpm test`
    - `pnpm typecheck`
    - `pnpm build`
+   - `pnpm exec playwright install chromium`
+   - `pnpm test:e2e`
    - `pnpm audit`
 4. Build both container targets and scan the images and dependency lockfile with the approved platform scanners.
 5. Verify that a current database backup and object-storage recovery point exist.

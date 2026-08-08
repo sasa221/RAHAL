@@ -178,8 +178,13 @@ pnpm lint
 pnpm test
 pnpm typecheck
 pnpm build
+pnpm exec playwright install chromium
+pnpm test:e2e
 pnpm audit
 ```
+
+The browser release suite starts isolated production-mode web/API servers on ports `3300` and
+`4300`. Set `RAHAL_E2E_BASE_URL` to audit an already deployed environment instead.
 
 The repository also includes a GitHub Actions quality gate, production Docker images,
 database migrations, runtime readiness checks, and backup, restore, deployment, and rollback
