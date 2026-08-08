@@ -863,6 +863,98 @@ export type AdminOperationsOverview = {
   generatedAt: string;
 };
 
+export type AdminReportRangeDays = 7 | 30 | 90 | 365;
+
+export type AdminReportMetric = {
+  key:
+    | "SUBMITTED_REQUESTS"
+    | "COHORT_CONFIRMATION_RATE"
+    | "COMPLETED_RENTALS"
+    | "DEPOSITS_RECORDED_EGP"
+    | "MEDIAN_FIRST_REVIEW_MINUTES"
+    | "FLEET_UTILIZATION_RATE";
+  unit: "COUNT" | "PERCENT" | "EGP" | "MINUTES";
+  value: number;
+  previousValue: number | null;
+  changePercent: number | null;
+};
+
+export type AdminReportTrendPoint = {
+  date: string;
+  submitted: number;
+  confirmed: number;
+  completed: number;
+  depositsEgp: number;
+};
+
+export type AdminReportFunnelPoint = {
+  key: "SUBMITTED" | "REVIEW_STARTED" | "PRE_APPROVED" | "CONFIRMED" | "COMPLETED" | "LOST";
+  value: number;
+};
+
+export type AdminReportVehicleRow = {
+  vehicleId: string;
+  nameAr: string;
+  nameEn: string;
+  requests: number;
+  confirmed: number;
+  completed: number;
+  occupiedDays: number;
+};
+
+export type AdminReportSalesRow = {
+  userId: string;
+  nameAr: string | null;
+  nameEn: string;
+  assigned: number;
+  confirmed: number;
+  completed: number;
+  medianFirstReviewMinutes: number | null;
+};
+
+export type AdminReportQualityCheck = {
+  key:
+    | "MISSING_SUBMISSION_TIME"
+    | "MISSING_COMPLETION_TIME"
+    | "DEPOSIT_WITHOUT_ATTENDANCE"
+    | "BOOKING_WITHOUT_COMPLETION_TIME"
+    | "FUTURE_SUBMISSION_TIME"
+    | "INVALID_DEPOSIT_AMOUNT";
+  severity: "HIGH" | "MEDIUM";
+  count: number;
+};
+
+export type AdminReportsOverview = {
+  rangeDays: AdminReportRangeDays;
+  period: {
+    start: string;
+    end: string;
+    previousStart: string;
+    previousEnd: string;
+  };
+  selectedBranchId: string | null;
+  branches: Array<{ id: string; nameAr: string; nameEn: string }>;
+  metrics: AdminReportMetric[];
+  trend: AdminReportTrendPoint[];
+  funnel: AdminReportFunnelPoint[];
+  statusMix: Array<{ status: CustomerReservationStatus; count: number }>;
+  fleet: {
+    activeVehicles: number;
+    occupiedDays: number;
+    capacityDays: number;
+    utilizationRate: number;
+    statusMix: Array<{ status: VehicleOperationalStatus; count: number }>;
+  };
+  vehicles: AdminReportVehicleRow[];
+  sales: AdminReportSalesRow[];
+  today: { pickups: number; returns: number };
+  quality: {
+    status: "TRUSTED" | "REVIEW_REQUIRED";
+    checks: AdminReportQualityCheck[];
+  };
+  generatedAt: string;
+};
+
 export type AdminAuditPage = {
   items: AdminAuditEntry[];
   nextCursor: string | null;

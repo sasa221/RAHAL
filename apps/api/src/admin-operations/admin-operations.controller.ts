@@ -5,6 +5,7 @@ import type {
   AdminCommunicationsOverview,
   AdminDocumentAccessPage,
   AdminOperationsOverview,
+  AdminReportsOverview,
   ApiSuccess,
 } from "@rahal/contracts";
 import type { Request } from "express";
@@ -22,6 +23,17 @@ export class AdminOperationsController {
   ): Promise<ApiSuccess<AdminOperationsOverview>> {
     return {
       data: await this.operations.overview(readAuthCookie(request), locale === "ar" ? "ar" : "en"),
+    };
+  }
+
+  @Get("reports")
+  async reports(
+    @Req() request: Request,
+    @Query("range") range?: string,
+    @Query("branchId") branchId?: string,
+  ): Promise<ApiSuccess<AdminReportsOverview>> {
+    return {
+      data: await this.operations.reports(readAuthCookie(request), range, branchId),
     };
   }
 

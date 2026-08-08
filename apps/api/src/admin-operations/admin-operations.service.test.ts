@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AdminOperationsService } from "./admin-operations.service";
 
@@ -7,6 +7,130 @@ const adminSession = {
 };
 
 describe("AdminOperationsService", () => {
+  it("builds cohort-safe operational reports without customer contact data", async () => {
+    const submittedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const reviewedAt = new Date(submittedAt.getTime() + 30 * 60 * 1000);
+    const completedAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const currentWindow = [
+      [
+        {
+          id: "reservation-1",
+          status: "COMPLETED",
+          submittedAt,
+          confirmedAt: new Date(submittedAt.getTime() + 60 * 60 * 1000),
+          completedAt,
+          vehicleId: "vehicle-1",
+          assignedSalesId: "sales-1",
+          vehicle: { nameAr: "Ø³ÙŠØ§Ø±Ø© Ø±Ø­Ø§Ù„", nameEn: "Rahal Sedan" },
+          assignedSales: { fullNameAr: "Ù…Ø¨ÙŠØ¹Ø§Øª Ø±Ø­Ø§Ù„", fullNameEn: "Rahal Sales" },
+        },
+        {
+          id: "reservation-2",
+          status: "PENDING_REVIEW",
+          submittedAt,
+          confirmedAt: null,
+          completedAt: null,
+          vehicleId: "vehicle-1",
+          assignedSalesId: null,
+          vehicle: { nameAr: "Ø³ÙŠØ§Ø±Ø© Ø±Ø­Ø§Ù„", nameEn: "Rahal Sedan" },
+          assignedSales: null,
+        },
+      ],
+      [{ submittedAt, confirmedAt: null, completedAt }],
+      [
+        {
+          reservationId: "reservation-1",
+          toStatus: "UNDER_REVIEW",
+          createdAt: reviewedAt,
+          reservation: { submittedAt, assignedSalesId: "sales-1" },
+        },
+        {
+          reservationId: "reservation-1",
+          toStatus: "PRE_APPROVED",
+          createdAt: reviewedAt,
+          reservation: { submittedAt, assignedSalesId: "sales-1" },
+        },
+      ],
+      [
+        {
+          amount: { toNumber: () => 10_000 },
+          recordedAt: completedAt,
+          reservation: { vehicleId: "vehicle-1" },
+        },
+      ],
+      [
+        {
+          vehicleId: "vehicle-1",
+          status: "COMPLETED",
+          pickupAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          returnAt: completedAt,
+          completedAt,
+        },
+      ],
+      [
+        { status: "COMPLETED", _count: { _all: 1 } },
+        { status: "PENDING_REVIEW", _count: { _all: 1 } },
+      ],
+    ];
+    const emptyWindow = [[], [], [], [], [], []];
+    const repository = {
+      reportWindow: vi.fn().mockResolvedValueOnce(currentWindow).mockResolvedValueOnce(emptyWindow),
+      reportContext: vi
+        .fn()
+        .mockResolvedValue([
+          [{ id: "branch-1", nameAr: "ÙØ±Ø¹ Ø±Ø­Ø§Ù„", nameEn: "Rahal Branch" }],
+          [{ id: "vehicle-1", status: "AVAILABLE", nameAr: "Ø±Ø­Ø§Ù„", nameEn: "Rahal" }],
+          2,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          [{ status: "AVAILABLE", _count: { _all: 1 } }],
+        ]),
+    };
+    const service = new AdminOperationsService(
+      { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
+      { require: vi.fn() } as never,
+      repository as never,
+      { runDeliveryBatch: vi.fn() } as never,
+    );
+
+    const result = await service.reports("session", "30", "branch-1");
+
+    expect(result.metrics.find((metric) => metric.key === "SUBMITTED_REQUESTS")?.value).toBe(2);
+    expect(result.metrics.find((metric) => metric.key === "COHORT_CONFIRMATION_RATE")?.value).toBe(
+      50,
+    );
+    expect(result.metrics.find((metric) => metric.key === "DEPOSITS_RECORDED_EGP")?.value).toBe(
+      10_000,
+    );
+    expect(result.sales[0]).toMatchObject({
+      userId: "sales-1",
+      assigned: 1,
+      medianFirstReviewMinutes: 30,
+    });
+    expect(result.today).toEqual({ pickups: 2, returns: 1 });
+    expect(result.quality.status).toBe("TRUSTED");
+    expect(JSON.stringify(result)).not.toContain("email");
+    expect(JSON.stringify(result)).not.toContain("phone");
+  });
+
+  it("rejects unsupported report ranges before querying data", async () => {
+    const service = new AdminOperationsService(
+      { getSession: vi.fn().mockResolvedValue(adminSession) } as never,
+      { require: vi.fn() } as never,
+      { reportWindow: vi.fn(), reportContext: vi.fn() } as never,
+      { runDeliveryBatch: vi.fn() } as never,
+    );
+
+    await expect(service.reports("session", "15", undefined)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
   it("returns live aggregates without raw audit payloads", async () => {
     const repository = {
       overview: vi.fn().mockResolvedValue([

@@ -1025,3 +1025,44 @@ part of this milestone closure.
   and public-page integration.
 - Full repository format, lint, tests, typecheck, production build, migration, and live-route
   verification.
+
+## Milestone 25: Administrator operating intelligence
+
+Goal: turn Rahal's operational records into one trustworthy, actionable administrator dashboard
+without exposing customer data or mislabelling branch deposits as online revenue.
+
+Status: implemented locally on 2026-08-08; deployment verification is part of milestone closure.
+
+### Completed scope
+
+- Added administrator-only reports for 7, 30, 90, and 365-day rolling windows with optional active
+  branch filtering and equal-length prior-period comparisons.
+- Defined submitted-request volume, cohort confirmation, completed-rental activity, branch-deposit
+  EGP, median first-review speed, and current-capacity fleet utilization.
+- Added request funnel, lifecycle status mix, daily/period trend, vehicle activity, sales workload,
+  today's pickups/returns, and fleet-state views.
+- Added stable data-quality checks for lifecycle timestamps, future submissions, branch attendance,
+  and deposit validity.
+- Added a bilingual, chart-led, responsive administration workspace with loading, error, empty,
+  reduced-motion, mobile horizontal KPI navigation, live filters, and aggregate CSV export.
+- Excluded customer contacts, documents, identities, notes, messages, storage metadata, and audit
+  payloads from the entire report projection.
+
+### Acceptance criteria
+
+- Customer and sales sessions cannot access reports.
+- Confirmation rate uses only requests submitted in the selected period as its denominator.
+- Deposit values are labelled as physical-branch records and never online revenue.
+- Period and previous-period metrics have identical duration and reconcile with trends and tables.
+- Unknown or inactive branch filters fail closed.
+- First-review measurement uses the earliest review event and does not duplicate reservations.
+- Data-quality failures remain visible and do not leak the affected customer records.
+- Arabic RTL and English LTR remain usable at mobile, tablet, and desktop widths.
+
+### Tests
+
+- Service coverage for cohort calculations, prior-period values, deposit totals, first-review
+  median, permission boundaries, branch validation, and privacy-safe responses.
+- Static coverage for endpoint restrictions, metric source paths, data-quality checks, bilingual
+  routes, responsive charts, export, navigation, and forbidden customer fields.
+- Full repository formatting, lint, tests, typecheck, production build, and browser verification.

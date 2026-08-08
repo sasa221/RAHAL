@@ -87,6 +87,147 @@ export class AdminOperationsRepository {
     ]);
   }
 
+  async reportWindow(start: Date, end: Date, branchId?: string) {
+    const branchWhere = branchId ? { branchId } : {};
+    const cohortWhere = {
+      submittedAt: { gte: start, lt: end },
+      ...branchWhere,
+    };
+    return Promise.all([
+      this.prisma.client.reservation.findMany({
+        where: cohortWhere,
+        select: {
+          id: true,
+          status: true,
+          submittedAt: true,
+          confirmedAt: true,
+          completedAt: true,
+          vehicleId: true,
+          assignedSalesId: true,
+          vehicle: { select: { nameAr: true, nameEn: true } },
+          assignedSales: { select: { fullNameAr: true, fullNameEn: true } },
+        },
+      }),
+      this.prisma.client.reservation.findMany({
+        where: {
+          ...branchWhere,
+          OR: [
+            { submittedAt: { gte: start, lt: end } },
+            { confirmedAt: { gte: start, lt: end } },
+            { completedAt: { gte: start, lt: end } },
+          ],
+        },
+        select: { submittedAt: true, confirmedAt: true, completedAt: true },
+      }),
+      this.prisma.client.reservationEvent.findMany({
+        where: {
+          toStatus: { in: ["UNDER_REVIEW", "PRE_APPROVED"] },
+          reservation: cohortWhere,
+        },
+        orderBy: { createdAt: "asc" },
+        select: {
+          reservationId: true,
+          toStatus: true,
+          createdAt: true,
+          reservation: { select: { submittedAt: true, assignedSalesId: true } },
+        },
+      }),
+      this.prisma.client.deposit.findMany({
+        where: {
+          recordedAt: { gte: start, lt: end },
+          ...(branchId ? { reservation: { branchId } } : {}),
+        },
+        select: {
+          amount: true,
+          recordedAt: true,
+          reservation: { select: { vehicleId: true } },
+        },
+      }),
+      this.prisma.client.booking.findMany({
+        where: {
+          status: { in: ["CONFIRMED", "ACTIVE", "COMPLETED"] },
+          pickupAt: { lt: end },
+          returnAt: { gt: start },
+          ...branchWhere,
+        },
+        select: {
+          vehicleId: true,
+          status: true,
+          pickupAt: true,
+          returnAt: true,
+          completedAt: true,
+          vehicle: { select: { nameAr: true, nameEn: true } },
+        },
+      }),
+      this.prisma.client.reservation.groupBy({
+        by: ["status"],
+        where: cohortWhere,
+        _count: { _all: true },
+      }),
+    ]);
+  }
+
+  async reportContext(input: { branchId?: string; now: Date; todayStart: Date; todayEnd: Date }) {
+    const branchWhere = input.branchId ? { branchId: input.branchId } : {};
+    const futureTolerance = new Date(input.now.getTime() + 5 * 60 * 1000);
+    return Promise.all([
+      this.prisma.client.branch.findMany({
+        where: { active: true },
+        orderBy: { nameEn: "asc" },
+        select: { id: true, nameAr: true, nameEn: true },
+      }),
+      this.prisma.client.vehicle.findMany({
+        where: { active: true, archivedAt: null, ...branchWhere },
+        select: { id: true, status: true, nameAr: true, nameEn: true },
+      }),
+      this.prisma.client.booking.count({
+        where: {
+          pickupAt: { gte: input.todayStart, lt: input.todayEnd },
+          status: { in: ["CONFIRMED", "ACTIVE"] },
+          ...branchWhere,
+        },
+      }),
+      this.prisma.client.booking.count({
+        where: {
+          returnAt: { gte: input.todayStart, lt: input.todayEnd },
+          status: { in: ["ACTIVE", "COMPLETED"] },
+          ...branchWhere,
+        },
+      }),
+      this.prisma.client.reservation.count({
+        where: { status: { not: "DRAFT" }, submittedAt: null, ...branchWhere },
+      }),
+      this.prisma.client.reservation.count({
+        where: { status: "COMPLETED", completedAt: null, ...branchWhere },
+      }),
+      this.prisma.client.deposit.count({
+        where: {
+          amount: { lte: 0 },
+          ...(input.branchId ? { reservation: { branchId: input.branchId } } : {}),
+        },
+      }),
+      this.prisma.client.deposit.count({
+        where: {
+          reservation: {
+            branchAttendedAt: null,
+            ...(input.branchId ? { branchId: input.branchId } : {}),
+          },
+        },
+      }),
+      this.prisma.client.booking.count({
+        where: { status: "COMPLETED", completedAt: null, ...branchWhere },
+      }),
+      this.prisma.client.reservation.count({
+        where: { submittedAt: { gt: futureTolerance }, ...branchWhere },
+      }),
+      this.prisma.client.vehicle.groupBy({
+        by: ["status"],
+        where: { active: true, archivedAt: null, ...branchWhere },
+        _count: { _all: true },
+      }),
+    ]);
+  }
+
   async communicationStats() {
     const [deliveries, outbox] = await Promise.all([
       this.prisma.client.notificationDelivery.groupBy({

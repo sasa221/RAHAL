@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { MarketingConsentGate } from "../components/marketing-consent-gate";
 import { PushPermissionGate } from "../components/push-permission-gate";
 import "./globals.css";
+import "./reports.css";
 
 const manrope = localFont({
   src: "./fonts/manrope-latin.woff2",

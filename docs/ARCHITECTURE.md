@@ -267,6 +267,24 @@ copy as the empty-state fallback. Legal policies do not use this editor; their i
 publication workflow remains the only authority for rental, privacy, and cancellation copy. See
 `docs/decisions/0004-site-content-draft-publishing.md`.
 
+## Operational reporting architecture
+
+The administrator-only report read model joins no customer presentation data. It selects bounded
+reservation lifecycle timestamps, booking occupancy, physical-branch deposit amounts, active fleet
+state, vehicle display names, and assigned staff display names. Customer names, contacts, documents,
+identity values, messages, notes, storage keys, and raw audit JSON are not selected.
+
+Request confirmation is a cohort metric: the numerator and denominator both begin with reservations
+submitted inside the selected range. Completed rentals and deposits are activity metrics based on
+their own completion and branch-recording timestamps. First-review speed uses the earliest
+`UNDER_REVIEW` event per reservation and reports a median. Fleet utilization clips each eligible
+booking to the selected period before dividing occupied days by current active-fleet capacity.
+
+Equal-length prior periods supply comparison context. A finite 7/30/90/365-day range and an active
+branch identifier are the only filters. Stable data-quality counts run independently of the report
+cards so broken timestamps, invalid deposits, or missing branch attendance are visible rather than
+silently hidden. See `docs/decisions/0005-operational-report-metrics.md`.
+
 ## Architecture decisions and external inputs needed later
 
 - Production vendors/accounts for public media, S3-compatible storage, malware scanning, an

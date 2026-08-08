@@ -27,6 +27,7 @@ const shellCopy = {
     communications: "مركز التواصل",
     policies: "السياسات والموافقات",
     content: "محتوى الموقع",
+    reports: "التقارير والتشغيل",
     staff: "الفريق والصلاحيات",
     reviews: "تقييمات العملاء",
     audit: "سجل العمليات",
@@ -61,6 +62,7 @@ const shellCopy = {
     communications: "Communications",
     policies: "Policies & consent",
     content: "Website content",
+    reports: "Reports & intelligence",
     staff: "Staff & access",
     reviews: "Customer reviews",
     audit: "Audit log",
@@ -99,6 +101,7 @@ export function WorkspaceShell({
     | "communications"
     | "policies"
     | "content"
+    | "reports"
     | "staff"
     | "reviews"
     | "audit"
@@ -133,17 +136,19 @@ export function WorkspaceShell({
                   ? "/en/admin/policies"
                   : activePage === "content"
                     ? "/en/admin/content"
-                    : activePage === "staff"
-                      ? "/en/admin/staff"
-                      : activePage === "reviews"
-                        ? "/en/admin/reviews"
-                        : activePage === "audit"
-                          ? "/en/admin/audit"
-                          : activePage === "security"
-                            ? "/en/account/security"
-                            : kind === "admin"
-                              ? "/en/admin"
-                              : "/en/sales"
+                    : activePage === "reports"
+                      ? "/en/admin/reports"
+                      : activePage === "staff"
+                        ? "/en/admin/staff"
+                        : activePage === "reviews"
+                          ? "/en/admin/reviews"
+                          : activePage === "audit"
+                            ? "/en/admin/audit"
+                            : activePage === "security"
+                              ? "/en/account/security"
+                              : kind === "admin"
+                                ? "/en/admin"
+                                : "/en/sales"
         : activePage === "security"
           ? "/en/account/security"
           : activePage === "profile"
@@ -164,17 +169,19 @@ export function WorkspaceShell({
                   ? "/admin/policies"
                   : activePage === "content"
                     ? "/admin/content"
-                    : activePage === "staff"
-                      ? "/admin/staff"
-                      : activePage === "reviews"
-                        ? "/admin/reviews"
-                        : activePage === "audit"
-                          ? "/admin/audit"
-                          : activePage === "security"
-                            ? "/account/security"
-                            : kind === "admin"
-                              ? "/admin"
-                              : "/sales"
+                    : activePage === "reports"
+                      ? "/admin/reports"
+                      : activePage === "staff"
+                        ? "/admin/staff"
+                        : activePage === "reviews"
+                          ? "/admin/reviews"
+                          : activePage === "audit"
+                            ? "/admin/audit"
+                            : activePage === "security"
+                              ? "/account/security"
+                              : kind === "admin"
+                                ? "/admin"
+                                : "/sales"
         : activePage === "security"
           ? "/account/security"
           : activePage === "profile"
@@ -193,6 +200,7 @@ export function WorkspaceShell({
                 [text.communications, localizedPath(locale, "/admin/communications"), "bell"],
                 [text.policies, localizedPath(locale, "/admin/policies"), "document"],
                 [text.content, localizedPath(locale, "/admin/content"), "document"],
+                [text.reports, localizedPath(locale, "/admin/reports"), "calendar"],
                 [text.branches, localizedPath(locale, "/admin/branches"), "car"],
                 [text.staff, localizedPath(locale, "/admin/staff"), "document"],
                 [text.reviews, localizedPath(locale, "/admin/reviews"), "users"],
@@ -226,17 +234,19 @@ export function WorkspaceShell({
               ? localizedPath(locale, "/admin/policies")
               : activePage === "content"
                 ? localizedPath(locale, "/admin/content")
-                : activePage === "staff"
-                  ? localizedPath(locale, "/admin/staff")
-                  : activePage === "reviews"
-                    ? localizedPath(locale, "/admin/reviews")
-                    : activePage === "audit"
-                      ? localizedPath(locale, "/admin/audit")
-                      : activePage === "profile"
-                        ? localizedPath(locale, "/account/profile")
-                        : activePage === "security"
-                          ? localizedPath(locale, "/account/security")
-                          : currentHref;
+                : activePage === "reports"
+                  ? localizedPath(locale, "/admin/reports")
+                  : activePage === "staff"
+                    ? localizedPath(locale, "/admin/staff")
+                    : activePage === "reviews"
+                      ? localizedPath(locale, "/admin/reviews")
+                      : activePage === "audit"
+                        ? localizedPath(locale, "/admin/audit")
+                        : activePage === "profile"
+                          ? localizedPath(locale, "/account/profile")
+                          : activePage === "security"
+                            ? localizedPath(locale, "/account/security")
+                            : currentHref;
   const preferredMobileNavigation =
     activePage === "reviews"
       ? navigation.filter((_, index) => index !== 3).slice(0, 4)
