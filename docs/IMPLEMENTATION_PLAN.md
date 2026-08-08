@@ -1155,8 +1155,8 @@ and protected-route smoke checks passed.
 Goal: make mobile, desktop, Arabic, English, and anonymous role-boundary quality repeatable in CI
 instead of relying on visual spot checks or source-only assertions.
 
-Status: implemented and verified locally on 2026-08-08; deployment and a second live audit are
-part of milestone closure.
+Status: completed on 2026-08-08. The web application was deployed to Vercel and the complete
+mobile/desktop browser release audit passed against the production alias.
 
 ### Completed scope
 
