@@ -28,6 +28,12 @@ The production schema should support the entities below. Some already exist part
 - `role_permissions`: role-to-permission mapping.
 - `user_permission_overrides`: explicit allow/deny overrides with reason and actor metadata.
 
+Administrator customer control reuses `User.status`, `Session.status/revokedAt`, reservation and
+booking counts, `NotificationPreference`, and `AuditLog`; it requires no duplicate customer table.
+The browser contract receives masked contact projections only. Status transactions record
+`CUSTOMER_STATUS_CHANGE` with bounded status metadata and reason, never customer profile or identity
+payloads.
+
 ## Branch and content
 
 - `branches`: branch names, address, coordinates, active flag.

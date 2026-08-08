@@ -52,6 +52,12 @@ RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management 
   customer contacts, documents, identities, private notes, or audit payloads.
 - Staff use role and permission constrained workflows to review requests and operate rentals.
 - Customers track requests, upload protected documents, receive notifications, manage preferences, and leave feedback after completed rentals.
+- Administrators may search and inspect customer accounts only through a privacy-minimized read
+  model. Contact values remain masked, while identity fields, documents, private notes, and storage
+  metadata stay outside customer-administration responses.
+- Suspending, blocking, or reactivating a customer requires a recorded operational reason, revokes
+  every active session, and appends an immutable audit entry. Customer and sales roles cannot use
+  this control surface.
 - Customer, sales, and administrator experiences must remain installable as role-appropriate web
   apps. Sales and administrator installations use distinct manifest identities and open their
   protected workspaces directly; installation never bypasses authentication, MFA, permissions, or

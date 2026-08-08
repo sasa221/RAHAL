@@ -1066,3 +1066,41 @@ Status: implemented locally on 2026-08-08; deployment verification is part of mi
 - Static coverage for endpoint restrictions, metric source paths, data-quality checks, bilingual
   routes, responsive charts, export, navigation, and forbidden customer fields.
 - Full repository formatting, lint, tests, typecheck, production build, and browser verification.
+
+## Milestone 26: Secure customer administration
+
+Goal: give Rahal administrators an accountable operating view of customer accounts without turning
+the back office into a source of exposed identity or document data.
+
+Status: implemented locally on 2026-08-08; deployment verification is part of milestone closure.
+
+### Completed scope
+
+- Added administrator-only, cursor-bounded customer search with status and verification filters.
+- Added masked email/phone presentation, verification signals, account activity, request/booking
+  counts, communication preference flags, recent request metadata, and status-decision history.
+- Added reason-gated activation, suspension, and blocking with atomic active-session revocation and
+  immutable audit logging.
+- Added a bilingual, responsive customer relationship workspace with debounced search, live
+  filters, animated cards, privacy notice, mobile detail drawer, status confirmation flow, loading,
+  empty, error, pagination, and reduced-motion behavior.
+- Kept identity profile fields, documents, storage metadata, private notes, session/device data,
+  audit payloads, and raw contact values outside every browser contract.
+
+### Acceptance criteria
+
+- Customer and sales sessions cannot list, inspect, or change customer accounts.
+- Email and phone values are always masked in list and detail responses.
+- Customer identity fields, documents, and private operational notes never enter the read model.
+- Every status change requires a 10–300 character reason, revokes active sessions, and records the
+  actor plus previous/new status.
+- Archived accounts and no-op status updates fail closed.
+- Search is bounded, paginated, and usable in Arabic RTL and English LTR on mobile and desktop.
+
+### Tests
+
+- Service coverage for authorization, masking, safe detail projection, missing/archived/no-op
+  accounts, and audit inputs.
+- Static coverage for endpoints, session revocation, privacy exclusions, routes, responsive UI,
+  debounced search, modal workflow, and reduced motion.
+- Full repository format, lint, tests, typecheck, production build, and live-route verification.

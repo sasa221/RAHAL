@@ -1,5 +1,59 @@
 export type Locale = "ar" | "en";
 
+export type AdminCustomerStatus =
+  "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "BLOCKED" | "ARCHIVED";
+
+export type AdminCustomerListItem = {
+  id: string;
+  displayName: string;
+  emailMasked: string;
+  phoneMasked: string;
+  status: AdminCustomerStatus;
+  preferredLocale: Locale;
+  verification: { email: boolean; phone: boolean };
+  reservationCount: number;
+  bookingCount: number;
+  lastActivityAt: string | null;
+  createdAt: string;
+};
+
+export type AdminCustomerPage = {
+  items: AdminCustomerListItem[];
+  nextCursor: string | null;
+  summary: {
+    total: number;
+    active: number;
+    pendingVerification: number;
+    restricted: number;
+  };
+};
+
+export type AdminCustomerDetail = AdminCustomerListItem & {
+  preferences: {
+    inApp: boolean;
+    push: boolean;
+    email: boolean;
+    whatsapp: boolean;
+    marketing: boolean;
+  };
+  recentReservations: Array<{
+    id: string;
+    reference: string;
+    status: string;
+    vehicleName: string;
+    pickupAt: string;
+    returnAt: string;
+    createdAt: string;
+  }>;
+  recentStatusChanges: Array<{
+    id: string;
+    action: string;
+    reason: string | null;
+    actorName: string;
+    createdAt: string;
+  }>;
+};
+
 export type ApiSuccess<T> = {
   data: T;
   meta?: Record<string, unknown>;

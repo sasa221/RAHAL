@@ -229,6 +229,20 @@ Customer self-service is an owner-scoped read/update boundary separate from auth
 
 Sensitive profile audit events contain the names of changed fields, not their previous or new values. Communication preferences are less sensitive and use a bounded before/after audit record. In-app remains an essential operational channel. Email, WhatsApp, Push, marketing consent, and quiet hours are stored independently; delivery workers must read these settings before creating optional external attempts. Important legally or operationally required behavior still needs approved policy before provider rollout.
 
+## Administrator customer-control architecture
+
+Customer administration is an administrator-only boundary separate from staff access and customer
+self-service. Its list and detail projections return masked contact values, verification signals,
+aggregate request/booking counts, communication preference flags, bounded recent request metadata,
+and bounded account-status audit entries. They never return date of birth, nationality, address,
+emergency contacts, identity numbers, documents, object keys, private notes, password hashes,
+session tokens, IP hashes, or device metadata.
+
+Account status changes accept only `ACTIVE`, `SUSPENDED`, or `BLOCKED` with a mandatory bounded
+reason. The transaction updates the customer, revokes every active session, and writes a
+`CUSTOMER_STATUS_CHANGE` audit entry containing only previous/new status and revoked-session count.
+Archived accounts fail closed and cannot be restored through this operational surface.
+
 ## Document security architecture
 
 - Browser uploads should use short-lived, server-authorized upload flows.

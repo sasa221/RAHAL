@@ -15,6 +15,7 @@ import { DocumentRequirementsModule } from "./document-requirements/document-req
 import { PoliciesModule } from "./policies/policies.module";
 import { BackgroundJobsModule } from "./background-jobs/background-jobs.module";
 import { ContentModule } from "./content/content.module";
+import { AdminCustomersModule } from "./admin-customers/admin-customers.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ContentModule } from "./content/content.module";
     PoliciesModule,
     BackgroundJobsModule,
     ContentModule,
+    AdminCustomersModule,
   ],
   controllers: [HealthController],
 })
