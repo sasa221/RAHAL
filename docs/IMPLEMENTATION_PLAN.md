@@ -1111,8 +1111,9 @@ Status: implemented, verified, and deployed to production on 2026-08-08.
 Goal: let a customer replace an email address or phone number without weakening verification,
 uniqueness, session, or privacy guarantees.
 
-Status: implemented locally on 2026-08-08; migration and production deployment verification are
-part of milestone closure.
+Status: completed on 2026-08-08. The additive migration was applied to the managed production
+database, the API and web applications were deployed, and live health, authorization-boundary,
+and protected-route smoke checks passed.
 
 ### Completed scope
 
