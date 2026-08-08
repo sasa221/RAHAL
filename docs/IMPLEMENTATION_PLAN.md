@@ -1191,3 +1191,44 @@ mobile/desktop browser release audit passed against the production alias.
   skipped intentionally.
 - The full repository format, lint, unit/integration tests, typecheck, build, and browser release
   suite must all pass before deployment.
+
+## Milestone 29: Authenticated role and request lifecycle audit
+
+Goal: verify the real customer, sales, and administrator journey in a browser and prove that role
+separation and single-owner sales review hold across the complete request-review handoff.
+
+Status: completed and verified locally on 2026-08-08. The fixture harness is deliberately restricted
+to isolated local databases and cannot seed a deployed or production database.
+
+### Completed scope
+
+- Added deterministic, verified customer, primary sales, rival sales, and administrator sessions for
+  both the 390px mobile and 1440px desktop browser projects.
+- Added one isolated submitted request per browser project using the seeded Rahal branch and vehicle,
+  with customer snapshots, consent state, and lifecycle history.
+- Exercised the request from customer visibility through atomic sales claim, information request,
+  customer reply, sales pre-approval, and administrator oversight.
+- Proved that the second sales employee cannot inspect a request after another employee claims it.
+- Proved that customers, sales staff, and administrators receive a visible role boundary when they
+  attempt to enter another role's workspace.
+- Kept credentials and generated browser state under ignored test output; no production account,
+  secret, customer document, or full identity number is used.
+
+### Acceptance criteria
+
+- Fixture setup refuses every database host except localhost, `127.0.0.1`, or `::1`.
+- Authenticated fixture setup is skipped when the browser suite targets a deployed URL.
+- A customer can see only their submitted request and receives HTTP 403 from the sales queue.
+- Claiming moves the request to `UNDER_REVIEW`, assigns one sales owner, and blocks a rival sales
+  session from opening it.
+- A sales information request reaches the customer; a valid customer reply returns the request to
+  review; only the assigned sales owner can pre-approve it.
+- An administrator can inspect the resulting request state through the oversight API while the
+  customer, sales, and administrator visual workspaces remain separated.
+- The same lifecycle passes on mobile and desktop Chromium projects.
+
+### Tests
+
+- Eight authenticated lifecycle checks pass across mobile and desktop.
+- The complete browser suite now runs 72 checks: 71 pass and the desktop copy of the
+  mobile-navigation-only check is intentionally skipped.
