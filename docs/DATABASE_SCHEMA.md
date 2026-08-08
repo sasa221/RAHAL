@@ -211,3 +211,15 @@ PostgreSQL range types and exclusion constraints should be considered for overla
 4. Add document access logs before implementing any document viewing.
 5. Add session/device models before production authentication.
 6. Add raw SQL constraints for booking/block overlap before confirmation workflows are enabled.
+
+## Public content publication snapshot
+
+`ContentEntry.key` is a finite application-owned identifier for an editable public section.
+`ContentTranslation.locale` provides the Arabic or English row. The existing `title` and `body`
+columns are the current draft; nullable `publishedTitle` and `publishedBody` columns preserve the
+last explicitly published snapshot. `ContentEntry.publishedAt` records the section publication
+time. Public reads select only rows with complete published snapshots, while administrator reads
+may compare draft and published hashes to show unpublished changes.
+
+The snapshot columns deliberately do not replace the immutable legal-policy schema. Policy text
+continues to use `PolicyVersion` and `PolicyTranslation` with its dedicated approval rules.

@@ -516,6 +516,46 @@ export type ManagedBranch = BranchSummary & {
   updatedAt: string;
 };
 
+export type SiteContentKey =
+  "HOME_HERO" | "HOME_PROCESS" | "HOME_TRUST" | "ABOUT" | "HOW_IT_WORKS" | "FAQ" | "CONTACT";
+
+export type SiteContentItem = {
+  title: string;
+  body: string;
+};
+
+export type SiteContentTranslation = {
+  locale: Locale;
+  eyebrow: string;
+  title: string;
+  introduction: string;
+  statement: string;
+  items: SiteContentItem[];
+};
+
+export type ManagedSiteContent = {
+  key: SiteContentKey;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  translations: SiteContentTranslation[];
+  publishedTranslations: SiteContentTranslation[];
+  hasUnpublishedChanges: boolean;
+  publishedAt: string | null;
+  updatedAt: string;
+};
+
+export type SiteContentAdminOverview = {
+  entries: ManagedSiteContent[];
+  supportedKeys: SiteContentKey[];
+};
+
+export type PublishedSiteContent = {
+  entries: Array<{
+    key: SiteContentKey;
+    translations: SiteContentTranslation[];
+    publishedAt: string;
+  }>;
+};
+
 export type AuthUser = {
   id: string;
   email: string;

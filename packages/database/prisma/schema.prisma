@@ -981,12 +981,14 @@ model ContentEntry {
 }
 
 model ContentTranslation {
-  id        String       @id @default(cuid())
-  contentId String
-  content   ContentEntry @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  locale    String
-  title     String?
-  body      Json
+  id             String       @id @default(cuid())
+  contentId      String
+  content        ContentEntry @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  locale         String
+  title          String?
+  body           Json
+  publishedTitle String?
+  publishedBody  Json?
 
   @@unique([contentId, locale])
 }

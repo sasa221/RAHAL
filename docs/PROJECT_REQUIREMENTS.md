@@ -42,6 +42,10 @@ RAHAL is a bilingual Arabic/English car-rental reservation and fleet-management 
 - Reservation requests require a verified customer account.
 - Final booking confirmation happens after staff review, branch attendance, deposit payment at the branch, and signed rental documents.
 - Admins manage fleet, branch data, pricing/rules, roles, permissions, content, policies, notifications, and audit.
+- Administrators manage the public Home, About, How it works, FAQ, and Contact presentation through
+  one bilingual draft/publish studio. Arabic and English are required together; draft edits remain
+  private until an explicit audited publish action. Versioned legal policies remain in their
+  dedicated approval workflow.
 - Staff use role and permission constrained workflows to review requests and operate rentals.
 - Customers track requests, upload protected documents, receive notifications, manage preferences, and leave feedback after completed rentals.
 - Customer, sales, and administrator experiences must remain installable as role-appropriate web

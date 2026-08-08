@@ -14,6 +14,7 @@ import { AdminOperationsModule } from "./admin-operations/admin-operations.modul
 import { DocumentRequirementsModule } from "./document-requirements/document-requirements.module";
 import { PoliciesModule } from "./policies/policies.module";
 import { BackgroundJobsModule } from "./background-jobs/background-jobs.module";
+import { ContentModule } from "./content/content.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { BackgroundJobsModule } from "./background-jobs/background-jobs.module";
     DocumentRequirementsModule,
     PoliciesModule,
     BackgroundJobsModule,
+    ContentModule,
   ],
   controllers: [HealthController],
 })

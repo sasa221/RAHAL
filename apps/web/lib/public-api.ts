@@ -1,7 +1,9 @@
+import type { PublishedSiteContent } from "@rahal/contracts";
 import { publicVehicles, type PublicVehicle } from "./public-content";
 
 type VehicleResponse = { data?: PublicVehicle };
 type VehicleListResponse = { data?: PublicVehicle[] };
+type SiteContentResponse = { data?: PublishedSiteContent };
 
 function apiBaseUrl() {
   return (
@@ -23,6 +25,17 @@ export async function getPublicVehicles(): Promise<PublicVehicle[]> {
     return payload.data?.length ? payload.data : publicVehicles;
   } catch {
     return publicVehicles;
+  }
+}
+
+export async function getPublishedSiteContent(): Promise<PublishedSiteContent> {
+  try {
+    const response = await fetch(`${apiBaseUrl()}/api/content/public`, { cache: "no-store" });
+    if (!response.ok) return { entries: [] };
+    const payload = (await response.json()) as SiteContentResponse;
+    return payload.data ?? { entries: [] };
+  } catch {
+    return { entries: [] };
   }
 }
 

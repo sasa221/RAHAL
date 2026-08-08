@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import type { SiteContentKey } from "@rahal/contracts";
+import { getPublishedSiteContent } from "../lib/public-api";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
+import { publishedTranslation } from "../lib/site-content";
 import { ExperienceMotion } from "./experience-motion";
 import { PublicBranchSurface } from "./public-branch-surface";
 import { Footer, Header, Icon } from "./public-home";
@@ -573,14 +576,32 @@ export function publicInformationMetadata(
   };
 }
 
-export function PublicInformationPage({
+export async function PublicInformationPage({
   locale,
   page,
 }: {
   locale: PublicLocale;
   page: PublicInformationPageKey;
 }) {
-  const pageContent = content[page][locale];
+  const baseContent = content[page][locale];
+  const key = informationContentKey(page);
+  const published = key ? publishedTranslation(await getPublishedSiteContent(), key, locale) : null;
+  const pageContent: InformationPageContent = published
+    ? {
+        ...baseContent,
+        eyebrow: published.eyebrow,
+        title: published.title,
+        introduction: published.introduction,
+        statement: published.statement,
+        chapters: published.items.length
+          ? published.items.map((item, index) => ({
+              number: String(index + 1).padStart(2, "0"),
+              title: item.title,
+              body: item.body,
+            }))
+          : baseContent.chapters,
+      }
+    : baseContent;
   const isFaq = page === "faq";
 
   return (
@@ -704,4 +725,12 @@ export function PublicInformationPage({
       <Footer locale={locale} />
     </div>
   );
+}
+
+function informationContentKey(page: PublicInformationPageKey): SiteContentKey | null {
+  if (page === "about") return "ABOUT";
+  if (page === "how-it-works") return "HOW_IT_WORKS";
+  if (page === "faq") return "FAQ";
+  if (page === "contact") return "CONTACT";
+  return null;
 }

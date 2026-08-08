@@ -247,6 +247,26 @@ Policy publication is a separate administrator boundary. One immutable version c
 
 The web `/api/*` boundary is a runtime server-side proxy. It forwards only bounded request headers, preserves response cookies, strips hop-by-hop headers, returns a safe 503 on upstream failure, and resolves `API_URL` at request time rather than baking an environment hostname into a browser build.
 
+## Public content publishing architecture
+
+General public copy uses `ContentEntry` as the finite section identity and one
+`ContentTranslation` per locale. Mutable `title` and `body` fields are the administrator draft;
+`publishedTitle` and `publishedBody` are the last customer-visible snapshot. A draft save never
+changes the public projection. Publishing requires complete Arabic and English drafts and copies
+both snapshots atomically.
+
+The unauthenticated public endpoint projects only the published snapshots. The administrator
+overview is restricted to `ADMIN` and `SUPER_ADMIN`, includes draft and publication status for the
+editor, and never weakens the public read boundary. Save and publish actions require a bounded
+reason and append privacy-bounded audit events containing a content hash rather than a second copy
+of the text. Forbidden legacy geography, currency, pickup, concierge, Elite, and SMS wording is
+rejected before persistence.
+
+Home, About, How it works, FAQ, and Contact consume the published projection with reviewed source
+copy as the empty-state fallback. Legal policies do not use this editor; their immutable versioned
+publication workflow remains the only authority for rental, privacy, and cancellation copy. See
+`docs/decisions/0004-site-content-draft-publishing.md`.
+
 ## Architecture decisions and external inputs needed later
 
 - Production vendors/accounts for public media, S3-compatible storage, malware scanning, an

@@ -7,7 +7,8 @@ import {
   publicVehicles,
   type PublicLocale,
 } from "../lib/public-content";
-import { getPublicVehicles } from "../lib/public-api";
+import { getPublishedSiteContent, getPublicVehicles } from "../lib/public-api";
+import { homeContent } from "../lib/site-content";
 import { AvailabilitySearch } from "./availability-search";
 import { AccountEntryLink } from "./account-entry-link";
 import { ExperienceMotion } from "./experience-motion";
@@ -338,8 +339,9 @@ export function Footer({ locale }: PublicHomeProps) {
 }
 
 export async function PublicHome({ locale }: PublicHomeProps) {
-  const content = getPublicContent(locale);
   const fleetVehicles = await getPublicVehicles();
+  const published = await getPublishedSiteContent();
+  const content = homeContent(locale, published);
   const featuredVehicle =
     fleetVehicles.find((vehicle) => vehicle.id === "graphite-suv") ?? fleetVehicles[0];
   const supportingVehicles = fleetVehicles

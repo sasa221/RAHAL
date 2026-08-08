@@ -984,3 +984,44 @@ Status: implemented and verified locally on 2026-07-30.
   hard-coded numbers, dynamic homepage fleet loading, deployed API resolution, and local fallback.
 - Full repository formatting, lint, 317 tests, type checking, Prisma validation/generation, and
   production builds.
+
+## Milestone 24: Bilingual public content studio
+
+Goal: let Rahal administrators update approved public presentation copy without a code deployment
+or exposing unfinished work to customers.
+
+Status: implemented locally on 2026-08-08; production migration and deployment verification are
+part of this milestone closure.
+
+### Completed scope
+
+- Added finite Home hero, Home process, Home trust, About, How it works, FAQ, and Contact content
+  sections with required Arabic and English drafts.
+- Added separate draft and published snapshots so saving work cannot change the live site.
+- Added administrator-only save and publish endpoints with mandatory operational reasons and
+  content-hash audit events.
+- Added prohibited legacy-content validation before persistence.
+- Added a responsive Arabic/English administration studio with section navigation, locale editing,
+  repeatable detail items, publication state, unsaved-change state, and live preview.
+- Connected published content to public Home and information pages while preserving reviewed
+  source copy as the pre-publication fallback.
+- Kept versioned legal policies outside the general content editor.
+
+### Acceptance criteria
+
+- Customers and sales employees cannot read drafts or mutate public content.
+- Saving a draft does not change the public API or website.
+- Publishing fails unless both Arabic and English drafts are complete.
+- Publishing updates both locale snapshots atomically and records actor, reason, and content hash.
+- Forbidden UAE, Dubai, AED, airport-pickup, concierge, Elite, and SMS content cannot be saved.
+- Public pages keep their reviewed fallback until an administrator publishes a section.
+- The editor remains usable in Arabic RTL and English LTR at mobile and desktop widths.
+
+### Tests
+
+- Unit coverage for public reads, administrator authorization, bilingual validation, forbidden
+  content, draft normalization, and publication.
+- Static coverage for the schema/migration boundary, routes, responsive editor, navigation, audit,
+  and public-page integration.
+- Full repository format, lint, tests, typecheck, production build, migration, and live-route
+  verification.
