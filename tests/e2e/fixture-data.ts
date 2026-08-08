@@ -9,6 +9,10 @@ export function fixtureIds(projectName: string) {
   return {
     reservationId: `e2e-reservation-${key}`,
     reference: `RAHAL-E2E-${key.toUpperCase()}`,
+    cancellationReservationId: `e2e-cancel-reservation-${key}`,
+    cancellationReference: `RAHAL-E2E-CANCEL-${key.toUpperCase()}`,
+    noShowReservationId: `e2e-no-show-reservation-${key}`,
+    noShowReference: `RAHAL-E2E-NO-SHOW-${key.toUpperCase()}`,
     users: {
       customer: `e2e-customer-${key}`,
       sales: `e2e-sales-${key}`,

@@ -1192,10 +1192,11 @@ mobile/desktop browser release audit passed against the production alias.
 - The full repository format, lint, unit/integration tests, typecheck, build, and browser release
   suite must all pass before deployment.
 
-## Milestone 29: Authenticated role and request lifecycle audit
+## Milestone 29: Authenticated role, request, and booking lifecycle audit
 
 Goal: verify the real customer, sales, and administrator journey in a browser and prove that role
-separation and single-owner sales review hold across the complete request-review handoff.
+separation, single-owner sales review, physical-branch confirmation, and rental operations hold
+across the complete request-to-completion lifecycle.
 
 Status: completed and verified locally on 2026-08-08. The fixture harness is deliberately restricted
 to isolated local databases and cannot seed a deployed or production database.
@@ -1208,6 +1209,10 @@ to isolated local databases and cannot seed a deployed or production database.
   with customer snapshots, consent state, and lifecycle history.
 - Exercised the request from customer visibility through atomic sales claim, information request,
   customer reply, sales pre-approval, and administrator oversight.
+- Exercised protected signed-contract upload, physical-branch attendance, the exact EGP deposit,
+  final booking confirmation, vehicle delivery, branch return, and rental completion.
+- Gave the mobile and desktop projects separate seeded vehicles so confirmation and availability
+  checks run concurrently without weakening real overlap protection.
 - Proved that the second sales employee cannot inspect a request after another employee claims it.
 - Proved that customers, sales staff, and administrators receive a visible role boundary when they
   attempt to enter another role's workspace.
@@ -1225,10 +1230,16 @@ to isolated local databases and cannot seed a deployed or production database.
   review; only the assigned sales owner can pre-approve it.
 - An administrator can inspect the resulting request state through the oversight API while the
   customer, sales, and administrator visual workspaces remain separated.
+- Confirmation remains blocked until the signed contract, branch attendance, and physical deposit
+  are recorded; the customer then receives the booking reference in their request timeline.
+- Delivery, return, and completion record odometer/fuel state and end with the completed state
+  visible in the customer workspace.
+- Cancellation and post-pickup no-show run as separate terminal outcomes and remain visible on the
+  owning customer's request records.
 - The same lifecycle passes on mobile and desktop Chromium projects.
 
 ### Tests
 
-- Eight authenticated lifecycle checks pass across mobile and desktop.
-- The complete browser suite now runs 72 checks: 71 pass and the desktop copy of the
+- Fourteen authenticated lifecycle checks pass across mobile and desktop.
+- The complete browser suite now runs 78 checks: 77 pass and the desktop copy of the
   mobile-navigation-only check is intentionally skipped.

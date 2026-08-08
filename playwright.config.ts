@@ -58,6 +58,7 @@ export default defineConfig({
             WEB_URL: "http://127.0.0.1:3300",
             DATABASE_URL: databaseUrl,
             AUTH_SECRET: "rahal-e2e-auth-secret-with-at-least-32-characters",
+            PRIVATE_DOCUMENT_STORAGE_PATH: "../../.private-storage/e2e",
           },
         },
         {

@@ -18,17 +18,35 @@ export default async function globalSetup(config: FullConfig) {
 
   const prisma = createPrismaClient(databaseUrl);
   try {
-    const [vehicle, branch, salesRole] = await Promise.all([
-      prisma.vehicle.findUnique({ where: { slug: "silver-executive" } }),
+    const [vehicles, branch, salesRole] = await Promise.all([
+      prisma.vehicle.findMany({
+        where: {
+          slug: {
+            in: ["silver-executive", "graphite-suv", "white-compact", "family-seven"],
+          },
+        },
+      }),
       prisma.branch.findUnique({ where: { id: "demo-branch-cairo" } }),
       prisma.staffRole.findUnique({ where: { id: "role-sales-agent" } }),
     ]);
-    if (!vehicle || !branch || !salesRole) {
+    const vehicleBySlug = new Map(vehicles.map((vehicle) => [vehicle.slug, vehicle]));
+    if (vehicleBySlug.size !== 4 || !branch || !salesRole) {
       throw new Error("Run the Rahal database seed before the authenticated browser suite.");
     }
 
     for (const project of config.projects) {
-      await prepareProjectFixtures(prisma, project.name, vehicle.id, branch.id, salesRole.id);
+      const vehicle = vehicleBySlug.get(
+        project.name.includes("mobile") ? "silver-executive" : "graphite-suv",
+      )!;
+      await prepareProjectFixtures(
+        prisma,
+        project.name,
+        vehicle.id,
+        vehicleBySlug.get("white-compact")!.id,
+        vehicleBySlug.get("family-seven")!.id,
+        branch.id,
+        salesRole.id,
+      );
     }
   } finally {
     await prisma.$disconnect();
@@ -48,6 +66,8 @@ async function prepareProjectFixtures(
   prisma: ReturnType<typeof createPrismaClient>,
   projectName: string,
   vehicleId: string,
+  cancellationVehicleId: string,
+  noShowVehicleId: string,
   branchId: string,
   salesRoleId: string,
 ) {
@@ -126,9 +146,9 @@ async function prepareProjectFixtures(
     await writeStorageState(projectName, role, token, expiresAt);
   }
 
-  await prisma.notification.deleteMany({ where: { reservationId: ids.reservationId } });
-  await prisma.notificationEvent.deleteMany({ where: { aggregateId: ids.reservationId } });
-  await prisma.reservation.deleteMany({ where: { id: ids.reservationId } });
+  await resetReservation(prisma, ids.reservationId);
+  await resetReservation(prisma, ids.cancellationReservationId);
+  await resetReservation(prisma, ids.noShowReservationId);
 
   const pickupAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const returnAt = new Date(now.getTime() + 33 * 24 * 60 * 60 * 1000);
@@ -165,6 +185,110 @@ async function prepareProjectFixtures(
           toStatus: "PENDING_REVIEW",
           actorId: ids.users.customer,
           note: "Isolated authenticated E2E request fixture",
+        },
+      },
+    },
+  });
+
+  const projectOffset = projectName.includes("mobile") ? 0 : 30;
+  await createConfirmedFixture(prisma, {
+    id: ids.cancellationReservationId,
+    reference: ids.cancellationReference,
+    customerId: ids.users.customer,
+    salesId: ids.users.sales,
+    vehicleId: cancellationVehicleId,
+    branchId,
+    pickupAt: new Date(now.getTime() + (60 + projectOffset) * 24 * 60 * 60 * 1000),
+    returnAt: new Date(now.getTime() + (63 + projectOffset) * 24 * 60 * 60 * 1000),
+    now,
+  });
+  await createConfirmedFixture(prisma, {
+    id: ids.noShowReservationId,
+    reference: ids.noShowReference,
+    customerId: ids.users.customer,
+    salesId: ids.users.sales,
+    vehicleId: noShowVehicleId,
+    branchId,
+    pickupAt: new Date(now.getTime() - (20 + projectOffset) * 24 * 60 * 60 * 1000),
+    returnAt: new Date(now.getTime() - (17 + projectOffset) * 24 * 60 * 60 * 1000),
+    now,
+  });
+}
+
+async function resetReservation(
+  prisma: ReturnType<typeof createPrismaClient>,
+  reservationId: string,
+) {
+  const previousBooking = await prisma.booking.findUnique({
+    where: { reservationId },
+    select: { id: true },
+  });
+  await prisma.notification.deleteMany({ where: { reservationId } });
+  await prisma.notificationEvent.deleteMany({
+    where: {
+      aggregateId: { in: [reservationId, ...(previousBooking ? [previousBooking.id] : [])] },
+    },
+  });
+  await prisma.contractAccessLog.deleteMany({ where: { contract: { reservationId } } });
+  await prisma.contract.deleteMany({ where: { reservationId } });
+  await prisma.booking.deleteMany({ where: { reservationId } });
+  await prisma.reservation.deleteMany({ where: { id: reservationId } });
+}
+
+async function createConfirmedFixture(
+  prisma: ReturnType<typeof createPrismaClient>,
+  input: {
+    id: string;
+    reference: string;
+    customerId: string;
+    salesId: string;
+    vehicleId: string;
+    branchId: string;
+    pickupAt: Date;
+    returnAt: Date;
+    now: Date;
+  },
+) {
+  await prisma.reservation.create({
+    data: {
+      id: input.id,
+      reference: input.reference,
+      customerId: input.customerId,
+      assignedSalesId: input.salesId,
+      vehicleId: input.vehicleId,
+      branchId: input.branchId,
+      status: "CONFIRMED",
+      pickupAt: input.pickupAt,
+      returnAt: input.returnAt,
+      driverRequested: false,
+      vehicleRateSnapshot: "1900.00",
+      estimatedTotal: "5700.00",
+      finalTotal: "5700.00",
+      customerNameSnapshot: "E2E Customer",
+      customerEmailSnapshot: `${input.customerId}@example.test`,
+      customerPhoneSnapshot: "+201100008888",
+      nationalitySnapshot: "Egyptian",
+      customerCategorySnapshot: "EGYPTIAN",
+      submittedAt: input.now,
+      confirmedAt: input.now,
+      events: {
+        create: {
+          toStatus: "CONFIRMED",
+          actorId: input.salesId,
+          note: "Isolated terminal booking-operation E2E fixture",
+        },
+      },
+      booking: {
+        create: {
+          id: `e2e-booking-${input.id}`,
+          reference: `BKG-${input.reference}`,
+          customerId: input.customerId,
+          vehicleId: input.vehicleId,
+          branchId: input.branchId,
+          status: "CONFIRMED",
+          pickupAt: input.pickupAt,
+          returnAt: input.returnAt,
+          confirmedAt: input.now,
         },
       },
     },
