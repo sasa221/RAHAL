@@ -81,6 +81,8 @@ The release audit covers both Arabic and English variants at mobile, tablet, and
 - Bilingual public content studio with separate draft and published states
 - Operational reports with period/branch filters, cohort conversion, fleet utilization, branch
   deposits, staff/vehicle performance, data-quality status, and aggregate CSV export
+- Privacy-minimized customer administration with masked contacts, verification/activity filters,
+  bounded request history, audited account controls, and immediate session revocation
 
 ## Owner and external inputs
 

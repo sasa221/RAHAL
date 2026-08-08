@@ -1031,7 +1031,7 @@ part of this milestone closure.
 Goal: turn Rahal's operational records into one trustworthy, actionable administrator dashboard
 without exposing customer data or mislabelling branch deposits as online revenue.
 
-Status: implemented locally on 2026-08-08; deployment verification is part of milestone closure.
+Status: implemented, verified, and deployed to production on 2026-08-08.
 
 ### Completed scope
 
@@ -1072,7 +1072,7 @@ Status: implemented locally on 2026-08-08; deployment verification is part of mi
 Goal: give Rahal administrators an accountable operating view of customer accounts without turning
 the back office into a source of exposed identity or document data.
 
-Status: implemented locally on 2026-08-08; deployment verification is part of milestone closure.
+Status: implemented, verified, and deployed to production on 2026-08-08.
 
 ### Completed scope
 
