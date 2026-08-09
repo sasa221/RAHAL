@@ -1303,8 +1303,9 @@ Status: implemented and verified against the production web deployment on 2026-0
 - Changed browser fixture setup to load the database runtime only for isolated local journeys, so
   a deployed read-only audit runs from a clean install without generated Prisma or database build
   output.
-- Retains the Playwright HTML report for 14 days and cancels an obsolete run when a newer web
-  deployment supersedes it.
+- Retains the Playwright HTML report for 14 days and cancels an obsolete run only when a newer
+  deployment for the same Vercel project supersedes it; the separate API deployment cannot cancel
+  an in-progress web audit.
 
 ### Acceptance criteria
 

@@ -14,6 +14,9 @@ describe("production smoke workflow", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("github.event.deployment_status.state == 'success'");
     expect(workflow).toContain("github.event.deployment.environment == 'Production – rahal-eg'");
+    expect(workflow).toContain(
+      "group: production-smoke-${{ github.event.deployment.environment || 'manual' }}",
+    );
   });
 
   it("audits the public production alias with the read-only public suite", () => {
