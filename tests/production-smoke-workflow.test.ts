@@ -15,9 +15,9 @@ describe("production smoke workflow", () => {
     expect(workflow).toContain("github.event.deployment.environment == 'Production – rahal-eg'");
   });
 
-  it("audits the immutable deployed URL with the read-only public suite", () => {
-    expect(workflow).toContain("github.event.deployment_status.environment_url");
+  it("audits the public production alias with the read-only public suite", () => {
     expect(workflow).toContain("https://rahal-eg.vercel.app");
+    expect(workflow).not.toContain("github.event.deployment_status.environment_url");
     expect(workflow).toContain("pnpm exec playwright test tests/e2e/public-release.spec.ts");
     expect(workflow).not.toContain("authenticated-release.spec.ts");
     expect(workflow).not.toContain("authenticated-lifecycle.spec.ts");

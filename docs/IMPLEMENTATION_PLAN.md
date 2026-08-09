@@ -1287,7 +1287,7 @@ test artifacts and are ignored by Git.
 
 ## Milestone 31: Post-deployment public release gate
 
-Goal: verify the immutable Vercel web deployment after it becomes available, so a successful local
+Goal: verify the public Vercel web deployment after it becomes available, so a successful local
 or CI build cannot silently ship a broken public route, proxy boundary, language direction, or
 mobile experience.
 
@@ -1298,7 +1298,7 @@ Status: implemented and verified against the production web deployment on 2026-0
 - Added a dedicated GitHub Actions workflow triggered by the successful `Production – rahal-eg`
   deployment status and by explicit manual dispatch.
 - Restricted the automatic trigger to the web deployment, excluding the separately deployed API.
-- Runs the existing read-only public release audit against the immutable Vercel deployment URL;
+- Runs the existing read-only public release audit against the canonical public Vercel alias;
   it does not seed accounts, mutate production data, or require production secrets.
 - Retains the Playwright HTML report for 14 days and cancels an obsolete run when a newer web
   deployment supersedes it.
@@ -1306,8 +1306,9 @@ Status: implemented and verified against the production web deployment on 2026-0
 ### Acceptance criteria
 
 - Failed, pending, preview, or API-only deployments cannot start the automatic public smoke gate.
-- The deployed URL is supplied by the signed GitHub deployment-status payload rather than copied
-  from application content.
+- The signed GitHub deployment status starts the audit only after the web release succeeds, then
+  the suite checks the canonical alias customers actually use. Vercel's immutable build URLs are
+  intentionally avoided because this project protects them behind Vercel authentication.
 - Arabic/English public routes, anonymous protected-route boundaries, mobile navigation, browser
   failures, HTTP failures, accessibility names, overflow, prohibited copy, and reduced motion are
   checked at mobile and desktop widths.

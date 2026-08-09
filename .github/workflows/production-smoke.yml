@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 12
     env:
       CI: true
-      RAHAL_E2E_BASE_URL: ${{ github.event_name == 'deployment_status' && github.event.deployment_status.environment_url || 'https://rahal-eg.vercel.app' }}
+      RAHAL_E2E_BASE_URL: https://rahal-eg.vercel.app
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
