@@ -2,13 +2,17 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { FullConfig } from "@playwright/test";
-import { createPrismaClient } from "@rahal/database";
+import type { createPrismaClient as CreatePrismaClientFactory } from "@rahal/database";
 import { fixtureIds, sessionToken, storageStatePath, type E2eRole } from "./fixture-data";
 
 const roles: E2eRole[] = ["customer", "sales", "rival-sales", "admin"];
+type E2ePrismaClient = ReturnType<typeof CreatePrismaClientFactory>;
 
 export default async function globalSetup(config: FullConfig) {
   if (process.env.RAHAL_E2E_BASE_URL) return;
+
+  const { createPrismaClient } =
+    (await import("../../packages/database/dist/src/index.js")) as typeof import("@rahal/database");
 
   const databaseUrl =
     process.env.RAHAL_E2E_DATABASE_URL ??
@@ -63,7 +67,7 @@ function assertLocalDatabase(databaseUrl: string) {
 }
 
 async function prepareProjectFixtures(
-  prisma: ReturnType<typeof createPrismaClient>,
+  prisma: E2ePrismaClient,
   projectName: string,
   vehicleId: string,
   cancellationVehicleId: string,
@@ -215,10 +219,7 @@ async function prepareProjectFixtures(
   });
 }
 
-async function resetReservation(
-  prisma: ReturnType<typeof createPrismaClient>,
-  reservationId: string,
-) {
+async function resetReservation(prisma: E2ePrismaClient, reservationId: string) {
   const previousBooking = await prisma.booking.findUnique({
     where: { reservationId },
     select: { id: true },
@@ -236,7 +237,7 @@ async function resetReservation(
 }
 
 async function createConfirmedFixture(
-  prisma: ReturnType<typeof createPrismaClient>,
+  prisma: E2ePrismaClient,
   input: {
     id: string;
     reference: string;

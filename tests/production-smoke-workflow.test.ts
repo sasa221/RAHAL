@@ -6,6 +6,7 @@ const workflow = readFileSync(
   resolve(process.cwd(), ".github/workflows/production-smoke.yml"),
   "utf8",
 );
+const globalSetup = readFileSync(resolve(process.cwd(), "tests/e2e/global-setup.ts"), "utf8");
 
 describe("production smoke workflow", () => {
   it("runs only for a successful Rahal web deployment or an explicit manual dispatch", () => {
@@ -27,5 +28,13 @@ describe("production smoke workflow", () => {
     expect(workflow).toContain("contents: read");
     expect(workflow).not.toContain("secrets.");
     expect(workflow).not.toContain("DATABASE_URL");
+  });
+
+  it("does not load the local database runtime for a deployed audit", () => {
+    expect(globalSetup).not.toContain('import { createPrismaClient } from "@rahal/database"');
+    expect(globalSetup).toContain('"../../packages/database/dist/src/index.js"');
+    expect(globalSetup.indexOf("if (process.env.RAHAL_E2E_BASE_URL) return;")).toBeLessThan(
+      globalSetup.indexOf('"../../packages/database/dist/src/index.js"'),
+    );
   });
 });

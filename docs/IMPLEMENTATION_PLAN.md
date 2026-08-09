@@ -1300,6 +1300,9 @@ Status: implemented and verified against the production web deployment on 2026-0
 - Restricted the automatic trigger to the web deployment, excluding the separately deployed API.
 - Runs the existing read-only public release audit against the canonical public Vercel alias;
   it does not seed accounts, mutate production data, or require production secrets.
+- Changed browser fixture setup to load the database runtime only for isolated local journeys, so
+  a deployed read-only audit runs from a clean install without generated Prisma or database build
+  output.
 - Retains the Playwright HTML report for 14 days and cancels an obsolete run when a newer web
   deployment supersedes it.
 
@@ -1313,6 +1316,8 @@ Status: implemented and verified against the production web deployment on 2026-0
   failures, HTTP failures, accessibility names, overflow, prohibited copy, and reduced motion are
   checked at mobile and desktop widths.
 - The workflow is read-only and has only `contents: read` repository permission.
+- A clean deployed audit does not import the local database runtime before the external-target
+  boundary returns.
 - Failure evidence remains available without retaining credentials or authenticated browser state.
 
 ### Tests
