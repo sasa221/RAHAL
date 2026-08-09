@@ -20,6 +20,9 @@ This file is the working release gate for the first real RAHAL launch. A product
 - A second authenticated Chromium route audit covers every localized customer, sales, fleet, and
   administrator workspace at both widths, including semantic structure, accessible controls,
   overflow, browser/network failures, and repeatable visual captures of the critical workspaces.
+- Every successful Vercel production web deployment now triggers a separate, read-only mobile and
+  desktop audit of the immutable deployed URL; API-only deployments are excluded and failure
+  reports are retained without production credentials or fixture writes.
 - A public Vercel staging tier may run with managed PostgreSQL and Redis while missing document, scanner, or WhatsApp providers fail closed at their feature boundaries. This does not close or defer any production launch blocker.
 
 ## Release gates

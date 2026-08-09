@@ -1284,3 +1284,37 @@ test artifacts and are ignored by Git.
 - 68 authenticated workspace checks pass across mobile and desktop Chromium.
 - The complete browser suite now runs 146 checks: 145 pass and the desktop copy of the
   mobile-navigation-only check is intentionally skipped.
+
+## Milestone 31: Post-deployment public release gate
+
+Goal: verify the immutable Vercel web deployment after it becomes available, so a successful local
+or CI build cannot silently ship a broken public route, proxy boundary, language direction, or
+mobile experience.
+
+Status: implemented and verified against the production web deployment on 2026-08-09.
+
+### Completed scope
+
+- Added a dedicated GitHub Actions workflow triggered by the successful `Production – rahal-eg`
+  deployment status and by explicit manual dispatch.
+- Restricted the automatic trigger to the web deployment, excluding the separately deployed API.
+- Runs the existing read-only public release audit against the immutable Vercel deployment URL;
+  it does not seed accounts, mutate production data, or require production secrets.
+- Retains the Playwright HTML report for 14 days and cancels an obsolete run when a newer web
+  deployment supersedes it.
+
+### Acceptance criteria
+
+- Failed, pending, preview, or API-only deployments cannot start the automatic public smoke gate.
+- The deployed URL is supplied by the signed GitHub deployment-status payload rather than copied
+  from application content.
+- Arabic/English public routes, anonymous protected-route boundaries, mobile navigation, browser
+  failures, HTTP failures, accessibility names, overflow, prohibited copy, and reduced motion are
+  checked at mobile and desktop widths.
+- The workflow is read-only and has only `contents: read` repository permission.
+- Failure evidence remains available without retaining credentials or authenticated browser state.
+
+### Tests
+
+- The deployed public suite runs 64 browser checks: 63 pass and the desktop copy of the
+  mobile-navigation-only interaction is intentionally skipped.
