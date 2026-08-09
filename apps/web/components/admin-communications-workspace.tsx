@@ -124,7 +124,7 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
 
   return (
     <WorkspaceShell activePage="communications" kind="admin" locale={locale}>
-      <main className="communications-workspace">
+      <div className="communications-workspace">
         <header className="communications-hero">
           <div>
             <span>{text.eyebrow}</span>
@@ -247,7 +247,7 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
             </section>
           </>
         )}
-      </main>
+      </div>
     </WorkspaceShell>
   );
 }

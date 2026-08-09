@@ -17,6 +17,9 @@ This file is the working release gate for the first real RAHAL launch. A product
 - A local authenticated Chromium lifecycle audit covers customer visibility, exclusive sales claim,
   information exchange, pre-approval, protected contract, branch deposit, confirmation, delivery,
   return, completion, administrator oversight, and cross-role workspace denial at both widths.
+- A second authenticated Chromium route audit covers every localized customer, sales, fleet, and
+  administrator workspace at both widths, including semantic structure, accessible controls,
+  overflow, browser/network failures, and repeatable visual captures of the critical workspaces.
 - A public Vercel staging tier may run with managed PostgreSQL and Redis while missing document, scanner, or WhatsApp providers fail closed at their feature boundaries. This does not close or defer any production launch blocker.
 
 ## Release gates

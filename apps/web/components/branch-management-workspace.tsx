@@ -196,7 +196,7 @@ export function BranchManagementWorkspace({ locale }: { locale: PublicLocale }) 
 
   return (
     <WorkspaceShell activePage="branches" kind="admin" locale={locale}>
-      <main className="branch-admin">
+      <div className="branch-admin">
         <header className="branch-admin__hero">
           <span>{text.eyebrow}</span>
           <h1>{text.title}</h1>
@@ -366,7 +366,7 @@ export function BranchManagementWorkspace({ locale }: { locale: PublicLocale }) 
             </form>
           </div>
         )}
-      </main>
+      </div>
     </WorkspaceShell>
   );
 }

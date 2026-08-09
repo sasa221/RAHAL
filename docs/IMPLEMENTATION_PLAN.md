@@ -1243,3 +1243,44 @@ to isolated local databases and cannot seed a deployed or production database.
 - Fourteen authenticated lifecycle checks pass across mobile and desktop.
 - The complete browser suite now runs 78 checks: 77 pass and the desktop copy of the
   mobile-navigation-only check is intentionally skipped.
+
+## Milestone 30: Authenticated workspace release audit
+
+Goal: verify every customer, sales, and administrator workspace in a real authenticated browser,
+across Arabic/English and mobile/desktop, instead of treating lifecycle coverage as a substitute
+for complete route and interface coverage.
+
+Status: completed and verified locally on 2026-08-09. Authenticated screenshots remain optional
+test artifacts and are ignored by Git.
+
+### Completed scope
+
+- Added authenticated coverage for all 17 localized customer, sales, fleet, and administrator
+  workspace routes in both Arabic and English at 390px and 1440px.
+- Added runtime/network failure capture, exact language/direction, single-main and single-heading
+  structure, page title, horizontal overflow, image alternative text, visible control naming, and
+  role-boundary assertions.
+- Added opt-in visual captures for the customer request workspace, sales queue, administrator
+  overview, communications studio, and customer administration at both viewport sizes.
+- Removed nested `main` landmarks from five workspaces whose shared shell already owns the page
+  landmark.
+- Sequenced the customer marketing-consent choice ahead of the persistent push reminder so two
+  post-login prompts can never cover one another.
+
+### Acceptance criteria
+
+- Every covered authenticated route returns successfully and renders exactly one visible `main`
+  landmark and one page-level heading.
+- Customer, sales, and administrator fixtures never render a cross-role access boundary inside
+  their own workspaces.
+- Arabic uses `ar-EG`/RTL and English uses `en-EG`/LTR on every covered route.
+- No covered workspace produces unexpected browser exceptions, console errors, HTTP 4xx/5xx
+  responses, horizontal overflow, unnamed visible controls, or images without alternative text.
+- Marketing consent and notification reminders remain individually actionable without overlap.
+- Screenshot review can be repeated without changing production notification behavior.
+
+### Tests
+
+- 68 authenticated workspace checks pass across mobile and desktop Chromium.
+- The complete browser suite now runs 146 checks: 145 pass and the desktop copy of the
+  mobile-navigation-only check is intentionally skipped.

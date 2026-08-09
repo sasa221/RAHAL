@@ -8162,6 +8162,11 @@ body {
   backdrop-filter: blur(14px);
 }
 
+/* Keep the two post-login choices sequential so neither prompt covers the other. */
+body:has(.marketing-consent-card) .push-consent-reminder {
+  display: none;
+}
+
 .push-consent-reminder > span {
   display: grid;
   width: 42px;

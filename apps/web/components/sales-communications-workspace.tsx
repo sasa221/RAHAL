@@ -7,12 +7,12 @@ import { WorkspaceShell } from "./workspace-shell";
 export function SalesCommunicationsWorkspace({ locale }: { locale: PublicLocale }) {
   return (
     <WorkspaceShell activePage="communications" kind="sales" locale={locale}>
-      <main className="sales-communications-workspace">
+      <div className="sales-communications-workspace">
         <h1 className="visually-hidden">
           {locale === "ar" ? "مركز حملات وإشعارات رحال" : "Rahal notification campaigns"}
         </h1>
         <NotificationCampaignStudio kind="sales" locale={locale} />
-      </main>
+      </div>
     </WorkspaceShell>
   );
 }

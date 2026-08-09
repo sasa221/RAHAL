@@ -248,7 +248,7 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
 
   return (
     <WorkspaceShell activePage="content" kind="admin" locale={locale}>
-      <main className="content-studio">
+      <div className="content-studio">
         <header className="content-studio__hero">
           <span>{text.eyebrow}</span>
           <h1>{text.title}</h1>
@@ -457,7 +457,7 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
             </aside>
           </div>
         )}
-      </main>
+      </div>
     </WorkspaceShell>
   );
 }

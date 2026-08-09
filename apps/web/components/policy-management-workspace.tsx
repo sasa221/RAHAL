@@ -222,7 +222,7 @@ export function PolicyManagementWorkspace({ locale }: { locale: PublicLocale }) 
 
   return (
     <WorkspaceShell activePage="policies" kind="admin" locale={locale}>
-      <main className="policy-center">
+      <div className="policy-center">
         <header className="policy-center__hero">
           <div>
             <p className="section-kicker">{text.eyebrow}</p>
@@ -386,7 +386,7 @@ export function PolicyManagementWorkspace({ locale }: { locale: PublicLocale }) 
             </section>
           </>
         )}
-      </main>
+      </div>
     </WorkspaceShell>
   );
 }
