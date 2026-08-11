@@ -1,4 +1,7 @@
+import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsBoolean,
   IsIn,
   IsInt,
@@ -9,7 +12,26 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
+  Matches,
 } from "class-validator";
+
+export class ManagedVehicleImageDto {
+  @IsString()
+  @MaxLength(2048)
+  @Matches(/^(?:\/images\/[A-Za-z0-9._/-]+|https:\/\/[^\s]+)$/)
+  url!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  altAr?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  altEn?: string;
+}
 
 export class SaveManagedVehicleDto {
   @IsString()
@@ -110,4 +132,10 @@ export class SaveManagedVehicleDto {
 
   @IsBoolean()
   featured!: boolean;
+
+  @ArrayMinSize(1)
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => ManagedVehicleImageDto)
+  images!: ManagedVehicleImageDto[];
 }

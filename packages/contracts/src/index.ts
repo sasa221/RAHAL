@@ -775,6 +775,14 @@ export type ManagedVehicle = {
   depositAmountEgp: number | null;
   active: boolean;
   featured: boolean;
+  images: Array<{
+    id: string;
+    url: string;
+    altAr: string | null;
+    altEn: string | null;
+    isPrimary: boolean;
+    sortOrder: number;
+  }>;
   updatedAt: string;
 };
 

@@ -321,3 +321,17 @@ silently hidden. See `docs/decisions/0005-operational-report-metrics.md`.
 - Whether shared validation contracts use Zod or Nest DTO classes as the primary source.
 - Final legal/privacy copy and document retention policy.
 - Branch address/contact data from the owner and storefront image.
+
+## Administrator vehicle studio architecture
+
+Vehicle creation and editing use one administrator-only modal workspace opened immediately from
+the fleet page or dashboard quick action. The browser sends one bounded vehicle write containing
+the operational fields and between one and six ordered image records. The first image is always the
+primary image. Image values are limited to project-owned `/images/...` paths or HTTPS URLs, and
+localized alternative text is stored beside each image.
+
+The repository creates or replaces the ordered image set in the same database transaction as the
+vehicle write, so the public card cannot observe a partially updated gallery. Existing vehicles
+without media remain editable and receive an empty first image slot in the editor. Public binary
+upload remains a separate infrastructure decision: this studio does not pretend that a local file
+is durable storage, and production uploads must eventually use the approved public-media provider.

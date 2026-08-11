@@ -25,6 +25,13 @@ const input = {
   depositAmountEgp: 10_000,
   active: true,
   featured: false,
+  images: [
+    {
+      url: "/images/silver-sedan.jpg",
+      altAr: "سيارة رحال سيدان فضية",
+      altEn: "Silver Rahal sedan",
+    },
+  ],
 };
 
 function setup(role: "CUSTOMER" | "SALES" | "ADMIN" | "SUPER_ADMIN" = "ADMIN") {
@@ -60,6 +67,13 @@ describe("VehiclesService administrator boundary", () => {
         registrationNumber: "RHL 1026",
         dailyRate: 2500,
         driverChargeType: "PER_DAY",
+        images: [
+          {
+            url: "/images/silver-sedan.jpg",
+            altAr: "سيارة رحال سيدان فضية",
+            altEn: "Silver Rahal sedan",
+          },
+        ],
       }),
       "actor-1",
     );

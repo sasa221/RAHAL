@@ -184,10 +184,12 @@ export class VehiclesRepository {
 
   createManagedVehicle(input: ManagedVehicleWrite, actorId: string): Promise<ManagedVehicle> {
     return this.prisma.client.$transaction(async (transaction) => {
+      const { images, ...vehicleData } = input;
       const vehicle = await transaction.vehicle.create({
         data: {
-          ...input,
+          ...vehicleData,
           status: input.active ? "AVAILABLE" : "INACTIVE",
+          images: { create: imageWrites(images) },
         },
         select: managedVehicleSelect,
       });
@@ -220,9 +222,14 @@ export class VehiclesRepository {
             ? "AVAILABLE"
             : "INACTIVE"
           : previous.status;
+      const { images, ...vehicleData } = input;
       const vehicle = await transaction.vehicle.update({
         where: { id },
-        data: { ...input, status },
+        data: {
+          ...vehicleData,
+          status,
+          images: { deleteMany: {}, create: imageWrites(images) },
+        },
         select: managedVehicleSelect,
       });
       await transaction.auditLog.create({
@@ -266,6 +273,17 @@ const managedVehicleSelect = {
   depositAmount: true,
   active: true,
   featured: true,
+  images: {
+    orderBy: { sortOrder: "asc" },
+    select: {
+      id: true,
+      url: true,
+      altAr: true,
+      altEn: true,
+      isPrimary: true,
+      sortOrder: true,
+    },
+  },
   updatedAt: true,
 } as const;
 
@@ -295,6 +313,14 @@ type ManagedVehicleRecord = {
   depositAmount: { toNumber(): number } | null;
   active: boolean;
   featured: boolean;
+  images: Array<{
+    id: string;
+    url: string;
+    altAr: string | null;
+    altEn: string | null;
+    isPrimary: boolean;
+    sortOrder: number;
+  }>;
   updatedAt: Date;
 };
 
@@ -323,6 +349,7 @@ type ManagedVehicleWrite = {
   depositAmount: number | null;
   active: boolean;
   featured: boolean;
+  images: Array<{ url: string; altAr: string | null; altEn: string | null }>;
 };
 
 function toManagedVehicle(vehicle: ManagedVehicleRecord): ManagedVehicle {
@@ -352,8 +379,20 @@ function toManagedVehicle(vehicle: ManagedVehicleRecord): ManagedVehicle {
     depositAmountEgp: vehicle.depositAmount?.toNumber() ?? null,
     active: vehicle.active,
     featured: vehicle.featured,
+    images: vehicle.images,
     updatedAt: vehicle.updatedAt.toISOString(),
   };
+}
+
+function imageWrites(images: ManagedVehicleWrite["images"]) {
+  return images.map((image, index) => ({
+    storageKey: `external:${index}`,
+    url: image.url,
+    altAr: image.altAr,
+    altEn: image.altEn,
+    isPrimary: index === 0,
+    sortOrder: index,
+  }));
 }
 
 function auditVehicle(vehicle: ManagedVehicleRecord) {

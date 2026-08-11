@@ -58,6 +58,41 @@ test.describe("authenticated workspace release audit", () => {
       await context.close();
     });
   }
+
+  test("administrator vehicle studio opens immediately above the fleet", async ({
+    browser,
+  }, testInfo) => {
+    const context = await roleContext(browser, testInfo, "admin");
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      sessionStorage.setItem("rahal:push-consent-decision", "deferred");
+    });
+    await page.goto("/admin/fleet", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "إضافة عربية جديدة" }).first().click();
+
+    const dialog = page.getByRole("dialog", { name: "جهّز العربية الجديدة" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText("صور العربية", { exact: true }).first()).toBeVisible();
+    await expect(dialog.getByText("البيانات الأساسية", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "حفظ ونشر العربية" })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+
+    if (process.env.RAHAL_E2E_VISUAL_CAPTURE) {
+      const file = resolve(
+        "test-results",
+        "visual-audit",
+        testInfo.project.name,
+        "admin-fleet-editor.png",
+      );
+      await mkdir(dirname(file), { recursive: true });
+      await page.screenshot({ path: file, animations: "disabled" });
+    }
+    await context.close();
+  });
 });
 
 function localizedRoutes(role: WorkspaceRole, paths: string[]) {

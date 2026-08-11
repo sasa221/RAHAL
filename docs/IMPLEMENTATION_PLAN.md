@@ -1488,3 +1488,43 @@ Status: implemented and production-verified on 2026-08-11.
   vehicle form, and first-login marketing decision.
 - Full format, lint, unit/integration, typecheck, production build, authenticated route audit, and
   deployed desktop/mobile visual verification.
+
+## Milestone 35: Administrator vehicle studio and visual inventory
+
+Goal: replace the buried fleet form with an immediate, image-led vehicle workspace that feels like
+an intentional operating product on desktop and mobile.
+
+Status: implemented locally on 2026-08-11; production verification follows the release gate.
+
+### Completed scope
+
+- Replaced the scroll-to-form interaction with a portal-backed modal that opens immediately from
+  both the fleet command bar and administrator dashboard.
+- Rebuilt the inventory as visual vehicle cards with primary imagery, publishing state, branch,
+  registration, availability, and price context.
+- Added a live primary-image preview, one-to-six ordered image records, localized alternative text,
+  preset project imagery, reordering, removal, and a clear first-image-primary rule.
+- Grouped identity, pricing, operations, and publishing controls into a responsive two-pane studio
+  with a persistent save action and a full-screen mobile treatment.
+- Persisted the vehicle and ordered gallery atomically while keeping legacy vehicles without media
+  safely editable.
+
+### Acceptance criteria
+
+- Add and edit actions open an accessible dialog immediately without navigating or scrolling.
+- Every saved vehicle has one to six valid project-local or HTTPS images and exactly one primary
+  image derived from order zero.
+- Existing image-less vehicle records can be opened and repaired without a blank or broken editor.
+- The dialog closes by its close action, backdrop, or Escape when no save is in progress.
+- Desktop shows a useful side-by-side preview/editor layout; mobile has no horizontal overflow and
+  keeps all fields, image controls, and save actions reachable.
+- Vehicle creation/update and gallery replacement remain one database transaction.
+
+### Tests
+
+- DTO validation for image count, nested fields, local paths, HTTPS URLs, and insecure URL rejection.
+- Service/repository/static coverage for ordered image mapping, transactional writes, portal dialog,
+  direct dashboard opening, image controls, and responsive styles.
+- Authenticated browser checks open the studio from the administrator fleet at desktop and mobile
+  widths and assert visible media, core-detail, and save controls without horizontal overflow.
+- Full format, lint, unit/integration, typecheck, production build, and post-deployment visual gates.

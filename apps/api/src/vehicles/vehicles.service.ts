@@ -112,6 +112,11 @@ function toWriteInput(input: SaveManagedVehicleDto, currentSlug?: string) {
     depositAmount: input.depositAmountEgp ?? null,
     active: input.active,
     featured: input.featured,
+    images: input.images.map((image) => ({
+      url: image.url.trim(),
+      altAr: image.altAr?.trim() || null,
+      altEn: image.altEn?.trim() || null,
+    })),
   };
 }
 

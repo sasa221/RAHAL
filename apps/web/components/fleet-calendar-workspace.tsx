@@ -226,9 +226,13 @@ export function FleetCalendarWorkspace({
           </div>
           <div className="fleet-range-controls">
             {kind === "admin" ? (
-              <a className="fleet-add-vehicle-action" href="#vehicle-registry">
+              <button
+                className="fleet-add-vehicle-action"
+                onClick={() => window.dispatchEvent(new Event("rahal:fleet-editor-open"))}
+                type="button"
+              >
                 <span>+</span> {text.addVehicle}
-              </a>
+              </button>
             ) : null}
             <button
               onClick={() => setAnchor(new Date(anchor.getTime() - 14 * dayMs))}

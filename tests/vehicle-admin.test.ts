@@ -29,6 +29,9 @@ describe("administrator vehicle management", () => {
     expect(dto).toContain("dailyRateEgp");
     expect(dto).toContain("depositAmountEgp");
     expect(dto).toContain("@Max(100_000_000)");
+    expect(dto).toContain("@ArrayMinSize(1)");
+    expect(dto).toContain("@ArrayMaxSize(6)");
+    expect(dto).toContain("ManagedVehicleImageDto");
   });
 
   it("does not let administrators fake workflow-owned vehicle states", () => {
@@ -54,19 +57,30 @@ describe("administrator vehicle management", () => {
     expect(repository).toContain("where: { id, active: true }");
   });
 
-  it("ships one bilingual responsive registry and editor", () => {
+  it("ships one bilingual responsive visual registry and immediate modal editor", () => {
     expect(manager).toContain("ar: {");
     expect(manager).toContain("en: {");
     expect(manager).toContain('"/api/vehicles/admin/catalog"');
     expect(manager).toContain('method: id ? "PATCH" : "POST"');
     expect(calendar).toContain("<FleetVehicleManager");
     expect(calendar).toContain('kind === "admin"');
-    expect(calendar).toContain('href="#vehicle-registry"');
-    expect(manager).toContain('className="fleet-editor-advanced"');
+    expect(calendar).toContain('new Event("rahal:fleet-editor-open")');
+    expect(manager).toContain('get("editor") === "new"');
+    expect(manager).toContain("createPortal(");
+    expect(manager).toContain('role="dialog"');
+    expect(manager).toContain('aria-modal="true"');
+    expect(manager).toContain("fleet-editor-preview");
+    expect(manager).toContain("vehicle.images[0]?.url");
+    expect(manager).toContain("presetImages.map");
+    expect(repository).toContain("images: { deleteMany: {}, create: imageWrites(images) }");
+    expect(repository).toContain("isPrimary: index === 0");
     expect(read("apps/web/app/admin/fleet/page.tsx")).toContain('kind="admin"');
     expect(read("apps/web/app/en/admin/fleet/page.tsx")).toContain('kind="admin"');
     expect(styles).toContain(".fleet-vehicle-registry");
     expect(styles).toContain(".fleet-vehicle-editor");
+    expect(styles).toContain(".fleet-editor-overlay");
+    expect(styles).toContain(".fleet-vehicle-card__visual");
+    expect(styles).toContain(".fleet-editor-preview");
     expect(styles).toContain(".fleet-editor-advanced");
     expect(styles).toContain("@media (max-width: 760px)");
   });

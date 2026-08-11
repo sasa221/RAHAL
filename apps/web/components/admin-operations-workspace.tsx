@@ -135,7 +135,7 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
         </section>
         <section className="ops-quick-actions" aria-label={text.quickActions}>
           <strong>{text.quickActions}</strong>
-          <a href={localizedPath(locale, "/admin/fleet#vehicle-registry")}>
+          <a href={localizedPath(locale, "/admin/fleet?editor=new")}>
             <span>+</span>
             {text.manageFleet}
             <b>↗</b>

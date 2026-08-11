@@ -228,6 +228,17 @@ PostgreSQL range types and exclusion constraints should be considered for overla
 5. Add session/device models before production authentication.
 6. Add raw SQL constraints for booking/block overlap before confirmation workflows are enabled.
 
+## Administrator-managed vehicle imagery
+
+`VehicleImage` is the ordered presentation gallery for a vehicle. Administrator writes accept one
+to six images, assign `sortOrder` from the submitted order, and make order zero the only primary
+image. Updating a vehicle replaces its gallery inside the vehicle transaction so primary state and
+ordering cannot drift. Each row keeps bounded Arabic and English alternative text; the API returns
+URLs and presentation metadata but no private object-storage credentials.
+
+The current editor accepts project-owned public image paths and HTTPS media URLs. Direct binary
+upload is intentionally deferred until an approved public-media storage service is configured.
+
 ## Public content publication snapshot
 
 `ContentEntry.key` is a finite application-owned identifier for an editable public section.
