@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
           "object-src 'none'",
           "frame-ancestors 'none'",
           "form-action 'self'",
-          "connect-src 'self'",
+          "connect-src 'self' blob:",
           "img-src 'self' data: blob: https:",
           "font-src 'self' data:",
           "style-src 'self' 'unsafe-inline'",

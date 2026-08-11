@@ -18115,10 +18115,13 @@ body::before {
   grid-template-columns: 1.3fr repeat(3, minmax(145px, 0.82fr)) auto;
   gap: 0;
   padding: 0 18px;
-  border: 0;
+  color: #f7f2e7;
+  background: rgb(19 20 17 / 96%);
+  border: 1px solid rgb(211 177 108 / 28%);
   border-top: 3px solid #b58a3a;
   border-radius: 2px;
-  box-shadow: 0 22px 65px rgb(22 20 16 / 15%);
+  box-shadow: 0 26px 72px rgb(0 0 0 / 30%);
+  backdrop-filter: blur(22px);
 }
 
 .availability-form__intro {
@@ -18135,6 +18138,10 @@ body::before {
   font-size: 0.98rem;
 }
 
+.availability-form__intro p {
+  color: rgb(247 242 231 / 58%);
+}
+
 .field {
   align-self: stretch;
   align-content: center;
@@ -18144,7 +18151,7 @@ body::before {
 }
 
 .field > span {
-  color: #77736a;
+  color: rgb(247 242 231 / 58%);
   font-size: 0.61rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -18160,11 +18167,13 @@ body::before {
 .field select {
   height: 34px;
   padding-inline: 0;
+  color: #f7f2e7;
   background: transparent;
   border: 0;
   border-radius: 0;
   font-size: 0.84rem;
   font-weight: 650;
+  color-scheme: dark;
 }
 
 .field__localized {
@@ -18175,14 +18184,14 @@ body::before {
   align-self: center;
   height: 50px;
   margin-inline-start: 17px;
-  color: #fff;
-  background: #151514;
+  color: #17130a;
+  background: #d3b16c;
   border-radius: 2px;
 }
 
 .availability-form__submit:hover {
-  color: #17130a;
-  background: #d3b16c;
+  color: #fff;
+  background: #8e6825;
 }
 
 @media (max-width: 1100px) {

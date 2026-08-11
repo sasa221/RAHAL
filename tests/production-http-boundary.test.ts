@@ -49,6 +49,7 @@ describe("production HTTP boundary", () => {
     expect(webConfig).toContain("Content-Security-Policy");
     expect(webConfig).toContain("frame-ancestors 'none'");
     expect(webConfig).toContain("object-src 'none'");
+    expect(webConfig).toContain("connect-src 'self' blob:");
     expect(webConfig).toContain("Strict-Transport-Security");
   });
 
