@@ -15251,7 +15251,9 @@ body::before {
 .fleet-section {
   padding-block: clamp(3.25rem, 6vw, 6.5rem) clamp(6.5rem, 10vw, 9rem);
   color: #f7f2e7;
-  background: radial-gradient(circle at 12% 0%, rgb(211 177 108 / 10%), transparent 34rem), #171714;
+  background:
+    radial-gradient(circle at 12% 0%, rgb(211 177 108 / 10%), transparent 34rem),
+    rgb(23 23 20 / 92%);
   border-top: 1px solid rgb(211 177 108 / 16%);
 }
 
@@ -17978,6 +17980,11 @@ body::before {
 /* Homepage editorial pass: Stitch-inspired structure with Rahal's production identity. */
 .public-home-main {
   background: #121210;
+}
+
+.public-home-main > section:not(.hero) {
+  position: relative;
+  z-index: 5;
 }
 
 .home-search-stage {
