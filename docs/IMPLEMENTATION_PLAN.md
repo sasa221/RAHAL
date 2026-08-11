@@ -1449,7 +1449,7 @@ and commercial-use licence confirmation.
 Goal: let authorized staff reach one intended user without broadening a campaign, and make vehicle
 creation an obvious administrator task instead of an action buried below the operations calendar.
 
-Status: implemented locally on 2026-08-11; production verification pending.
+Status: implemented and production-verified on 2026-08-11.
 
 ### Completed scope
 
