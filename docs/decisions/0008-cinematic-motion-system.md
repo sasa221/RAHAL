@@ -28,8 +28,9 @@ remain responsive on lower-powered phones and accessible when reduced motion is 
   the browser is idle, stop the render loop while offscreen, cap device pixel ratio, and never make
   booking behavior depend on the scene.
 - Render at display cadence while the user scrolls and while smoke particles decay, then stop the
-  loop at rest. Use a simplified mesh and device-aware antialiasing, shadows, and pixel density so
-  mobile performance does not depend on desktop GPU capacity.
+  loop at rest. Keep realtime WebGL shadows and multisample antialiasing disabled, cap pixel density
+  close to one device pixel, and use fewer smoke sprites on the simplified mesh so mobile performance
+  does not depend on desktop GPU capacity. Let the CSS-composited ground treatment provide depth.
 - Package the licensed production model in Rahal's encrypted asset format rather than publishing a
   directly downloadable GLB. Replace the source logo and number plate materials before rendering so
   the experience does not present third-party brand marks. Encryption is a practical deterrent for

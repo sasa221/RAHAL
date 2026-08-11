@@ -152,7 +152,8 @@ describe("Milestone 2 public home", () => {
     expect(driveScene).toContain("smokeParticles");
     expect(driveScene).toContain("activeUntil");
     expect(driveScene).toContain("animationFrame = undefined");
-    expect(driveScene).toContain("renderer.shadowMap.enabled = window.innerWidth >= 720");
+    expect(driveScene).toContain("renderer.shadowMap.enabled = false");
+    expect(driveScene).toContain("width < 720 ? 0.85 : 1.05");
     expect(driveScene).toContain("requestIdleCallback");
     expect(driveScene).toContain("RHL3D1");
     expect(styles).toContain(".hero__drive-car--ready");

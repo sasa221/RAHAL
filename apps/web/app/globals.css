@@ -143,7 +143,7 @@
 
   .hero__drive-car--ready,
   .public-site[dir="rtl"] .hero__drive-car--ready {
-    opacity: 0.62;
+    opacity: 0.54;
   }
 
   .hero__drive-streak {
@@ -15249,8 +15249,14 @@ body::before {
 
 /* Fleet showcase: one confident lead vehicle with two supporting choices. */
 .fleet-section {
-  padding-block: clamp(6.5rem, 10vw, 9rem);
-  background: #f4f3ef;
+  padding-block: clamp(3.25rem, 6vw, 6.5rem) clamp(6.5rem, 10vw, 9rem);
+  color: #f7f2e7;
+  background: radial-gradient(circle at 12% 0%, rgb(211 177 108 / 10%), transparent 34rem), #171714;
+  border-top: 1px solid rgb(211 177 108 / 16%);
+}
+
+.fleet-section .section-heading > p {
+  color: rgb(247 242 231 / 62%);
 }
 
 .fleet-showcase {
@@ -17970,6 +17976,17 @@ body::before {
 }
 
 /* Homepage editorial pass: Stitch-inspired structure with Rahal's production identity. */
+.public-home-main {
+  background: #121210;
+}
+
+.home-search-stage {
+  position: relative;
+  z-index: 7;
+  min-height: 58px;
+  background: linear-gradient(90deg, transparent, rgb(211 177 108 / 9%) 50%, transparent), #121210;
+}
+
 .site-header {
   height: 76px;
   background: rgb(250 250 248 / 94%);

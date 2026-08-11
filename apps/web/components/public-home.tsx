@@ -359,7 +359,7 @@ export async function PublicHome({ locale }: PublicHomeProps) {
       </a>
       <Header locale={locale} />
 
-      <main id="main-content">
+      <main className="public-home-main" id="main-content">
         <CinematicDriveCar locale={locale} />
         <section className="hero" data-scroll-scene id="top">
           <Image
@@ -414,8 +414,10 @@ export async function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <div className="container">
-          <AvailabilitySearch locale={locale} />
+        <div className="home-search-stage">
+          <div className="container">
+            <AvailabilitySearch locale={locale} />
+          </div>
         </div>
 
         <section className="section fleet-section" id="fleet" data-reveal>

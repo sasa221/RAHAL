@@ -73,16 +73,14 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
 
         const renderer = new THREE.WebGLRenderer({
           alpha: true,
-          antialias: window.innerWidth >= 720,
+          antialias: false,
           canvas,
           powerPreference: "high-performance",
         });
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 0.86;
-        const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
-        renderer.shadowMap.enabled = window.innerWidth >= 720 && deviceMemory > 4;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.enabled = false;
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
@@ -92,8 +90,6 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
 
         const keyLight = new THREE.DirectionalLight(0xfff8ed, 2.15);
         keyLight.position.set(5, 8, 6);
-        keyLight.castShadow = true;
-        keyLight.shadow.mapSize.set(512, 512);
         scene.add(keyLight);
 
         const museumRim = new THREE.SpotLight(0xf0a740, 4.8, 20, Math.PI / 4, 0.7, 1.2);
@@ -107,15 +103,6 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
         const frontFill = new THREE.SpotLight(0xffffff, 0.95, 18, Math.PI / 3, 0.8, 1.1);
         frontFill.position.set(0, 4, 7);
         scene.add(frontFill);
-
-        const shadow = new THREE.Mesh(
-          new THREE.PlaneGeometry(7.2, 4.2),
-          new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.44 }),
-        );
-        shadow.rotation.x = -Math.PI / 2;
-        shadow.position.y = -0.02;
-        shadow.receiveShadow = true;
-        scene.add(shadow);
 
         const loader = new loaderModule.GLTFLoader();
         const gltf = await loadProtectedModel(loader);
@@ -137,8 +124,8 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
         neutralPlateMaterial.name = "RahalNeutralPlate";
         model.traverse((child) => {
           if (!(child instanceof THREE.Mesh)) return;
-          child.castShadow = true;
-          child.receiveShadow = true;
+          child.castShadow = false;
+          child.receiveShadow = false;
           const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material];
           const materials = sourceMaterials.map((material) => {
             if (material.name === "Logo") return hiddenBrandMaterial;
@@ -170,14 +157,16 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
 
         const sourceBounds = new THREE.Box3().setFromObject(model);
         const sourceSize = sourceBounds.getSize(new THREE.Vector3());
-        model.scale.setScalar(2.42 / Math.max(sourceSize.x, sourceSize.z));
+        const compactScene = window.innerWidth < 720;
+        model.scale.setScalar((compactScene ? 1.82 : 2.42) / Math.max(sourceSize.x, sourceSize.z));
         const bounds = new THREE.Box3().setFromObject(model);
         const center = bounds.getCenter(new THREE.Vector3());
         const size = bounds.getSize(new THREE.Vector3());
         model.position.set(-center.x, size.y / 2 - center.y + 0.02, -center.z);
         model.rotation.y = locale === "ar" ? -0.62 : 0.62;
-        model.position.x = locale === "ar" ? -1.4 : 1.4;
-        model.position.y = window.innerWidth < 720 ? -0.48 : -0.58;
+        model.position.x =
+          locale === "ar" ? (compactScene ? -1.55 : -1.4) : compactScene ? 1.55 : 1.4;
+        model.position.y = compactScene ? -1.05 : -0.58;
         model.position.z = -0.55;
         scene.add(model);
 
@@ -194,7 +183,7 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
           smokeContext.fillRect(0, 0, 96, 96);
         }
         const smokeTexture = new THREE.CanvasTexture(smokeCanvas);
-        const smokeParticles = Array.from({ length: 14 }, (_, index) => {
+        const smokeParticles = Array.from({ length: 8 }, (_, index) => {
           const material = new THREE.SpriteMaterial({
             color: index % 3 === 0 ? 0xd7c6a7 : 0xa7a39a,
             depthWrite: false,
@@ -214,7 +203,7 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
           const width = Math.max(host.clientWidth, 1);
           const height = Math.max(host.clientHeight, 1);
           const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
-          const pixelRatioLimit = memory <= 4 || width < 720 ? 1 : 1.35;
+          const pixelRatioLimit = memory <= 4 || width < 720 ? 0.85 : 1.05;
           renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelRatioLimit));
           renderer.setSize(width, height, false);
           camera.aspect = width / height;
@@ -248,7 +237,7 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
             : locale === "ar"
               ? -1.4
               : 1.4;
-          const targetY = moving ? (mobile ? -0.86 : -1.02) : mobile ? -0.48 : -0.58;
+          const targetY = moving ? (mobile ? -1.08 : -1.02) : mobile ? -1.05 : -0.58;
           const targetZ = moving ? -3.8 + depthWave * 5.15 : -0.55;
           const targetRotation = driveDirection * 0.86;
           const rotationDelta = Math.atan2(
@@ -256,11 +245,11 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
             Math.cos(targetRotation - model.rotation.y),
           );
 
-          model.position.x += (targetX - model.position.x) * 0.075;
+          model.position.x += (targetX - model.position.x) * 0.13;
           model.position.y +=
-            (targetY + Math.sin(journey * Math.PI * 9) * 0.025 - model.position.y) * 0.075;
-          model.position.z += (targetZ - model.position.z) * 0.065;
-          model.rotation.y += rotationDelta * 0.045;
+            (targetY + Math.sin(journey * Math.PI * 9) * 0.025 - model.position.y) * 0.12;
+          model.position.z += (targetZ - model.position.z) * 0.11;
+          model.rotation.y += rotationDelta * 0.08;
 
           const scrollVelocity = Math.abs(progress - lastProgress);
           tireMaterials.forEach((material) => {
@@ -271,7 +260,7 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
           });
 
           if (moving && scrollVelocity > 0.00004) {
-            const emissions = Math.min(Math.ceil(scrollVelocity * 900), 3);
+            const emissions = Math.min(Math.ceil(scrollVelocity * 700), 2);
             for (let index = 0; index < emissions; index += 1) {
               const particle = smokeParticles[smokeCursor % smokeParticles.length];
               smokeCursor += 1;
@@ -316,7 +305,7 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
           }
         };
         const activateDrive = () => {
-          activeUntil = performance.now() + 850;
+          activeUntil = performance.now() + 520;
           resumeScene?.();
         };
         window.addEventListener("scroll", activateDrive, { passive: true });
