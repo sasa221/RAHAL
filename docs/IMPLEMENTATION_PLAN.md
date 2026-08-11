@@ -1494,7 +1494,8 @@ Status: implemented and production-verified on 2026-08-11.
 Goal: replace the buried fleet form with an immediate, image-led vehicle workspace that feels like
 an intentional operating product on desktop and mobile.
 
-Status: implemented and production-verified on 2026-08-11 in release `0983068`.
+Status: visual studio production-verified on 2026-08-11 in release `0983068`; device upload is
+implemented and awaiting the production Vercel Blob store connection.
 
 ### Completed scope
 
@@ -1504,6 +1505,8 @@ Status: implemented and production-verified on 2026-08-11 in release `0983068`.
   registration, availability, and price context.
 - Added a live primary-image preview, one-to-six ordered image records, localized alternative text,
   preset project imagery, reordering, removal, and a clear first-image-primary rule.
+- Added administrator-only device upload and drag-and-drop for signature-validated JPG, PNG, and
+  WebP images up to 4 MB through server-only Vercel Blob credentials.
 - Grouped identity, pricing, operations, and publishing controls into a responsive two-pane studio
   with a persistent save action and a full-screen mobile treatment.
 - Persisted the vehicle and ordered gallery atomically while keeping legacy vehicles without media
@@ -1514,6 +1517,8 @@ Status: implemented and production-verified on 2026-08-11 in release `0983068`.
 - Add and edit actions open an accessible dialog immediately without navigating or scrolling.
 - Every saved vehicle has one to six valid project-local or HTTPS images and exactly one primary
   image derived from order zero.
+- Device uploads reject non-image signatures, unsupported types, oversized files, and
+  non-administrator sessions before public storage is written.
 - Existing image-less vehicle records can be opened and repaired without a blank or broken editor.
 - The dialog closes by its close action, backdrop, or Escape when no save is in progress.
 - Desktop shows a useful side-by-side preview/editor layout; mobile has no horizontal overflow and

@@ -72,6 +72,10 @@ describe("administrator vehicle management", () => {
     expect(manager).toContain("fleet-editor-preview");
     expect(manager).toContain("vehicle.images[0]?.url");
     expect(manager).toContain("presetImages.map");
+    expect(manager).toContain('type="file"');
+    expect(manager).toContain('accept="image/jpeg,image/png,image/webp"');
+    expect(manager).toContain('fetch("/api/admin/vehicle-images"');
+    expect(manager).toContain("onDrop");
     expect(repository).toContain("images: { deleteMany: {}, create: imageWrites(images) }");
     expect(repository).toContain("isPrimary: index === 0");
     expect(read("apps/web/app/admin/fleet/page.tsx")).toContain('kind="admin"');
@@ -83,5 +87,17 @@ describe("administrator vehicle management", () => {
     expect(styles).toContain(".fleet-editor-preview");
     expect(styles).toContain(".fleet-editor-advanced");
     expect(styles).toContain("@media (max-width: 760px)");
+  });
+
+  it("protects device uploads and validates real image signatures", () => {
+    const route = read("apps/web/app/api/admin/vehicle-images/route.ts");
+    expect(route).toContain('role === "ADMIN"');
+    expect(route).toContain('role === "SUPER_ADMIN"');
+    expect(route).toContain("BLOB_READ_WRITE_TOKEN");
+    expect(route).toContain("maximumImageBytes");
+    expect(route).toContain("isJpeg");
+    expect(route).toContain("isPng");
+    expect(route).toContain("isWebp");
+    expect(route).toContain('access: "public"');
   });
 });

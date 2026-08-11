@@ -236,8 +236,10 @@ image. Updating a vehicle replaces its gallery inside the vehicle transaction so
 ordering cannot drift. Each row keeps bounded Arabic and English alternative text; the API returns
 URLs and presentation metadata but no private object-storage credentials.
 
-The current editor accepts project-owned public image paths and HTTPS media URLs. Direct binary
-upload is intentionally deferred until an approved public-media storage service is configured.
+The editor accepts project-owned public image paths, HTTPS media URLs, and administrator device
+uploads stored in the approved Vercel Blob public-media store. The database still stores only the
+provider URL and presentation metadata; provider credentials and binary bodies never enter a
+vehicle row or API response.
 
 ## Public content publication snapshot
 

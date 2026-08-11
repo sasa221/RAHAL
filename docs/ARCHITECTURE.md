@@ -332,6 +332,8 @@ localized alternative text is stored beside each image.
 
 The repository creates or replaces the ordered image set in the same database transaction as the
 vehicle write, so the public card cannot observe a partially updated gallery. Existing vehicles
-without media remain editable and receive an empty first image slot in the editor. Public binary
-upload remains a separate infrastructure decision: this studio does not pretend that a local file
-is durable storage, and production uploads must eventually use the approved public-media provider.
+without media remain editable and receive an empty first image slot in the editor. Administrator
+device uploads pass through a dedicated web boundary that revalidates the authenticated
+administrator session, limits files to 4 MB JPG/PNG/WebP, checks file signatures, and writes public
+media to Vercel Blob. The browser receives only the resulting public URL; the Blob write token
+remains server-only.

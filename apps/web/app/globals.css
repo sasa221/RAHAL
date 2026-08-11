@@ -11636,6 +11636,67 @@ body:has(.marketing-consent-card) .push-consent-reminder {
   line-height: 1.55;
 }
 
+.fleet-editor-device-upload {
+  display: grid;
+  min-height: 112px;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  margin-bottom: 14px;
+  color: #181815;
+  text-align: center;
+  cursor: pointer;
+  background: rgb(255 253 250 / 58%);
+  border: 1px dashed rgb(154 107 25 / 55%);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.fleet-editor-device-upload:hover,
+.fleet-editor-device-upload:focus-within {
+  background: #fffdfa;
+  border-color: #9a6b19;
+  transform: translateY(-2px);
+}
+
+.fleet-editor-device-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.fleet-editor-device-upload > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #f7f0e3;
+  font-size: 1.25rem;
+  background: #181815;
+  border-radius: 50%;
+}
+
+.fleet-editor-device-upload strong {
+  font-size: 0.78rem;
+}
+
+.fleet-editor-device-upload small {
+  color: #777167;
+  font-size: 0.64rem;
+}
+
+.fleet-editor-device-upload:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.52;
+  transform: none;
+}
+
 .fleet-editor-image-list {
   display: grid;
   gap: 10px;

@@ -8,6 +8,8 @@ This runbook is the production release procedure. It does not authorize a releas
 - PostgreSQL, Redis, and private S3-compatible object storage are managed production services. They must not use the local Docker Compose credentials.
 - TLS terminates before both services. `WEB_URL`, the public API route, storage endpoint, scanner endpoint, Redis, and provider callbacks use encrypted transport.
 - All values from `.env.example` are supplied by the hosting secret manager. `API_URL` is read by the web server at runtime. Production secrets are never stored in Git, image layers, CI logs, or browser variables.
+- The web project has a Vercel Blob store connected so `BLOB_READ_WRITE_TOKEN` is injected into
+  production and preview server runtimes. The token is never exposed as a public environment value.
 
 ## Public staging boundary
 

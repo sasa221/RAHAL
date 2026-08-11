@@ -73,6 +73,8 @@ test.describe("authenticated workspace release audit", () => {
     const dialog = page.getByRole("dialog", { name: "جهّز العربية الجديدة" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("صور العربية", { exact: true }).first()).toBeVisible();
+    await expect(dialog.getByText("اختار صور من جهازك", { exact: true })).toBeVisible();
+    await expect(dialog.locator('input[type="file"]')).toHaveCount(1);
     await expect(dialog.getByText("البيانات الأساسية", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("button", { name: "حفظ ونشر العربية" })).toBeVisible();
     expect(

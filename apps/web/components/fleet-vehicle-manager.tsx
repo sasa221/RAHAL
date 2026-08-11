@@ -9,6 +9,9 @@ import { Icon } from "./public-home";
 
 type EditingVehicle = ManagedVehicle | "new";
 type VehicleImageDraft = { url: string; altAr: string; altEn: string };
+type VehicleImageUpload = ApiSuccess<{ url: string }> & {
+  error?: { message?: string };
+};
 
 const presetImages = [
   "/images/black-suv.jpg",
@@ -43,7 +46,11 @@ const copy = {
     photosHint: "أول صورة هي الرئيسية التي ستظهر للعملاء. أضف حتى 6 صور.",
     primary: "الصورة الرئيسية",
     imageUrl: "رابط الصورة",
-    imageUrlHint: "رابط HTTPS مباشر أو صورة من مكتبة رحال",
+    imageUrlHint: "اختار من جهازك، اسحب صورة، أو استخدم رابط HTTPS",
+    uploadFromDevice: "اختار صور من جهازك",
+    dropImages: "أو اسحب الصور هنا",
+    uploadingImages: "بنرفع الصور...",
+    uploadFailed: "مقدرناش نرفع الصورة. جرّب JPG أو PNG أو WebP بحجم أقصى 4 MB.",
     imageAltAr: "وصف الصورة بالعربية",
     imageAltEn: "وصف الصورة بالإنجليزية",
     addImage: "إضافة صورة أخرى",
@@ -114,7 +121,11 @@ const copy = {
     photosHint: "The first image is the primary customer-facing image. Add up to 6 images.",
     primary: "Primary image",
     imageUrl: "Image URL",
-    imageUrlHint: "Direct HTTPS URL or an image from the Rahal library",
+    imageUrlHint: "Choose from your device, drop an image, or use an HTTPS URL",
+    uploadFromDevice: "Choose images from your device",
+    dropImages: "or drop images here",
+    uploadingImages: "Uploading images...",
+    uploadFailed: "The image could not be uploaded. Use JPG, PNG, or WebP up to 4 MB.",
     imageAltAr: "Arabic image description",
     imageAltEn: "English image description",
     addImage: "Add another image",
@@ -401,6 +412,8 @@ function VehicleEditor({
       altEn: image.altEn ?? "",
     }));
   });
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const primaryImage = images[0]?.url.trim();
 
   useEffect(() => {
@@ -443,6 +456,39 @@ function VehicleEditor({
     });
   }
 
+  async function uploadFiles(selectedFiles: FileList | File[]) {
+    const availableSlots = 6 - images.filter((image) => image.url.trim()).length;
+    const files = Array.from(selectedFiles).slice(0, Math.max(0, availableSlots));
+    if (!files.length) return;
+    setUploadingImages(true);
+    setUploadError("");
+    const uploaded: VehicleImageDraft[] = [];
+    try {
+      for (const file of files) {
+        const form = new FormData();
+        form.set("file", file);
+        const response = await fetch("/api/admin/vehicle-images", {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+        const payload = (await response.json()) as VehicleImageUpload;
+        if (!response.ok || !payload.data?.url) {
+          throw new Error(payload.error?.message || text.uploadFailed);
+        }
+        uploaded.push({ url: payload.data.url, altAr: "", altEn: "" });
+      }
+      setImages((current) => {
+        const existing = current.filter((image) => image.url.trim());
+        return [...existing, ...uploaded].slice(0, 6);
+      });
+    } catch (caught) {
+      setUploadError(caught instanceof Error ? caught.message : text.uploadFailed);
+    } finally {
+      setUploadingImages(false);
+    }
+  }
+
   return (
     <div
       className="fleet-editor-overlay"
@@ -474,6 +520,11 @@ function VehicleEditor({
           <aside className="fleet-editor-media">
             <div
               className={primaryImage ? "fleet-editor-preview" : "fleet-editor-preview is-empty"}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                void uploadFiles(event.dataTransfer.files);
+              }}
             >
               {primaryImage ? (
                 <>
@@ -496,6 +547,22 @@ function VehicleEditor({
               <strong>{text.photos}</strong>
               <small>{text.photosHint}</small>
             </div>
+            <label className="fleet-editor-device-upload">
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploadingImages || images.filter((image) => image.url.trim()).length >= 6}
+                multiple
+                onChange={(event) => {
+                  if (event.target.files) void uploadFiles(event.target.files);
+                  event.target.value = "";
+                }}
+                type="file"
+              />
+              <span>↑</span>
+              <strong>{uploadingImages ? text.uploadingImages : text.uploadFromDevice}</strong>
+              <small>{text.dropImages}</small>
+            </label>
+            {uploadError ? <div className="fleet-admin-error">{uploadError}</div> : null}
             <div className="fleet-editor-image-list">
               {images.map((image, index) => (
                 <fieldset key={index}>
@@ -801,11 +868,11 @@ function VehicleEditor({
           </main>
 
           <footer className="fleet-editor-actions">
-            <button disabled={busy} type="submit">
+            <button disabled={busy || uploadingImages} type="submit">
               {busy ? text.saving : text.save}
               <Icon name="arrow" size={17} />
             </button>
-            <button disabled={busy} onClick={onClose} type="button">
+            <button disabled={busy || uploadingImages} onClick={onClose} type="button">
               {text.cancel}
             </button>
           </footer>
