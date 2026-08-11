@@ -198,6 +198,7 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
         });
         let smokeCursor = 0;
         let lastProgress = 0;
+        let lastOverlayOpacity = -1;
 
         const resize = () => {
           const width = Math.max(host.clientWidth, 1);
@@ -229,6 +230,17 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
           const mobile = host.clientWidth < 720;
           const moving = progress > 0.006;
           const journey = Math.max((progress - 0.006) / 0.994, 0);
+          const heroToContentBlend = Math.min(Math.max((progress - 0.008) / 0.055, 0), 1);
+          const easedOverlayBlend =
+            heroToContentBlend * heroToContentBlend * (3 - 2 * heroToContentBlend);
+          const arrivalOpacity = mobile ? 0.54 : 0.84;
+          const contentOpacity = mobile ? 0.26 : 0.38;
+          const overlayOpacity =
+            arrivalOpacity + (contentOpacity - arrivalOpacity) * easedOverlayBlend;
+          if (Math.abs(overlayOpacity - lastOverlayOpacity) > 0.004) {
+            host.style.setProperty("--drive-overlay-opacity", overlayOpacity.toFixed(3));
+            lastOverlayOpacity = overlayOpacity;
+          }
           const phase = journey * Math.PI * 4.1 + (locale === "ar" ? -Math.PI / 2 : Math.PI / 2);
           const driveDirection = moving && Math.cos(phase) >= 0 ? 1 : -1;
           const depthWave = (1 - Math.cos(journey * Math.PI * 4)) / 2;
