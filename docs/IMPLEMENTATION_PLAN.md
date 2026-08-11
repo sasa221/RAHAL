@@ -1494,7 +1494,7 @@ Status: implemented and production-verified on 2026-08-11.
 Goal: replace the buried fleet form with an immediate, image-led vehicle workspace that feels like
 an intentional operating product on desktop and mobile.
 
-Status: implemented locally on 2026-08-11; production verification follows the release gate.
+Status: implemented and production-verified on 2026-08-11 in release `0983068`.
 
 ### Completed scope
 
