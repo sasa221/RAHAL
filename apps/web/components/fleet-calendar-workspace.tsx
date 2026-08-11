@@ -39,6 +39,7 @@ const copy = {
     requests: "طلبات للمراجعة",
     utilization: "الإشغال",
     manage: "إدارة التوفر",
+    addVehicle: "إضافة عربية جديدة",
     manageCopy: "أنشئ فترة صيانة أو حظر إداري. لن يقبل النظام تعارضًا مع حجز مؤكد.",
     vehicle: "السيارة",
     type: "نوع الفترة",
@@ -77,6 +78,7 @@ const copy = {
     requests: "Requests to review",
     utilization: "Utilization",
     manage: "Manage availability",
+    addVehicle: "Add a new vehicle",
     manageCopy:
       "Add maintenance or an administrative hold. Confirmed booking conflicts are rejected.",
     vehicle: "Vehicle",
@@ -95,7 +97,13 @@ const copy = {
   },
 } as const;
 
-export function FleetCalendarWorkspace({ locale }: { locale: PublicLocale }) {
+export function FleetCalendarWorkspace({
+  locale,
+  kind = "sales",
+}: {
+  locale: PublicLocale;
+  kind?: "admin" | "sales";
+}) {
   const text = copy[locale];
   const [anchor, setAnchor] = useState(() => startOfUtcDay(new Date()));
   const [calendar, setCalendar] = useState<FleetCalendar | null>(null);
@@ -208,7 +216,7 @@ export function FleetCalendarWorkspace({ locale }: { locale: PublicLocale }) {
   };
 
   return (
-    <WorkspaceShell activePage="fleet" kind="sales" locale={locale}>
+    <WorkspaceShell activePage="fleet" kind={kind} locale={locale}>
       <div className="fleet-workspace" lang={locale}>
         <section className="portal-overview fleet-hero">
           <div>
@@ -217,6 +225,11 @@ export function FleetCalendarWorkspace({ locale }: { locale: PublicLocale }) {
             <p>{text.intro}</p>
           </div>
           <div className="fleet-range-controls">
+            {kind === "admin" ? (
+              <a className="fleet-add-vehicle-action" href="#vehicle-registry">
+                <span>+</span> {text.addVehicle}
+              </a>
+            ) : null}
             <button
               onClick={() => setAnchor(new Date(anchor.getTime() - 14 * dayMs))}
               type="button"
@@ -234,6 +247,10 @@ export function FleetCalendarWorkspace({ locale }: { locale: PublicLocale }) {
             </button>
           </div>
         </section>
+
+        {kind === "admin" && calendar?.canManageBlocks ? (
+          <FleetVehicleManager locale={locale} onChanged={load} />
+        ) : null}
 
         <section className="portal-metrics fleet-metrics">
           <article>
@@ -441,7 +458,6 @@ export function FleetCalendarWorkspace({ locale }: { locale: PublicLocale }) {
                     </button>
                   </form>
                 </section>
-                <FleetVehicleManager locale={locale} onChanged={load} />
               </>
             ) : null}
           </>

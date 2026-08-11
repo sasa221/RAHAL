@@ -1443,3 +1443,48 @@ and commercial-use licence confirmation.
   vertical scrolling, reduced motion, and horizontal overflow.
 - Bundle and network inspection confirming that the 3D failure path still leaves the complete raster
   hero available.
+
+## Milestone 34: Direct recipient communications and administrator fleet command path
+
+Goal: let authorized staff reach one intended user without broadening a campaign, and make vehicle
+creation an obvious administrator task instead of an action buried below the operations calendar.
+
+Status: implemented locally on 2026-08-11; production verification pending.
+
+### Completed scope
+
+- Preserved the existing once-per-customer first-login marketing decision for new-vehicle and offer
+  updates; an explicit decline remains respected and editable later from account preferences.
+- Added a permission-protected recipient search that returns localized name, role, masked contact,
+  and marketing eligibility only.
+- Allowed administrators to select an active customer or sales employee and sales staff to select
+  active customers only.
+- Routed one-recipient sends through the existing campaign, notification, outbox, preference,
+  quiet-hour, and delivery pipeline with an `INDIVIDUAL` aggregate audience.
+- Kept offers and new-vehicle notifications blocked unless the selected customer explicitly opted
+  in to marketing.
+- Added dedicated localized administrator fleet routes, a primary add-vehicle action, dashboard
+  quick actions, and a shorter vehicle form with optional rules grouped under progressive detail.
+- Corrected administrator fleet navigation so it retains the administrator shell instead of
+  presenting the sales workspace.
+
+### Acceptance criteria
+
+- Recipient lookup and send both require `notifications.send` on the server.
+- Sales cannot discover or target staff accounts; administrators cannot target inactive accounts.
+- Search never returns an unmasked email, phone, identity number, document, or provider destination.
+- A targeted marketing send fails closed when the customer has not opted in.
+- Campaign audit/history exposes only finite classification and recipient count.
+- Every undecided customer receives one explicit marketing choice after sign-in; declining does not
+  cause repeated prompts.
+- Administrator fleet management is reachable directly from the dashboard and sidebar in Arabic
+  and English, and remains usable at mobile and desktop widths.
+
+### Tests
+
+- Service and repository coverage for role boundaries, masking, individual resolution, marketing
+  filtering, and `INDIVIDUAL` campaign creation.
+- Static coverage for the recipient picker, dedicated administrator fleet routes, progressive
+  vehicle form, and first-login marketing decision.
+- Full format, lint, unit/integration, typecheck, production build, authenticated route audit, and
+  deployed desktop/mobile visual verification.

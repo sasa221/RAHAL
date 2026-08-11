@@ -60,8 +60,14 @@ describe("administrator vehicle management", () => {
     expect(manager).toContain('"/api/vehicles/admin/catalog"');
     expect(manager).toContain('method: id ? "PATCH" : "POST"');
     expect(calendar).toContain("<FleetVehicleManager");
+    expect(calendar).toContain('kind === "admin"');
+    expect(calendar).toContain('href="#vehicle-registry"');
+    expect(manager).toContain('className="fleet-editor-advanced"');
+    expect(read("apps/web/app/admin/fleet/page.tsx")).toContain('kind="admin"');
+    expect(read("apps/web/app/en/admin/fleet/page.tsx")).toContain('kind="admin"');
     expect(styles).toContain(".fleet-vehicle-registry");
     expect(styles).toContain(".fleet-vehicle-editor");
+    expect(styles).toContain(".fleet-editor-advanced");
     expect(styles).toContain("@media (max-width: 760px)");
   });
 });

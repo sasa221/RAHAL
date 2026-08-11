@@ -122,12 +122,17 @@ export function WorkspaceShell({
     kind === "admin" ? "/admin" : isStaff ? "/sales" : "/account/requests",
   );
   const requestsHref = localizedPath(locale, isStaff ? "/sales" : "/account/requests");
-  const fleetHref = localizedPath(locale, isStaff ? "/fleet" : "/cars");
+  const fleetHref = localizedPath(
+    locale,
+    kind === "admin" ? "/admin/fleet" : isStaff ? "/fleet" : "/cars",
+  );
   const languageHref =
     locale === "ar"
       ? isStaff
         ? activePage === "fleet"
-          ? "/en/fleet"
+          ? kind === "admin"
+            ? "/en/admin/fleet"
+            : "/en/fleet"
           : activePage === "branches"
             ? "/en/admin/branches"
             : activePage === "documents"
@@ -162,7 +167,9 @@ export function WorkspaceShell({
             : "/en/account/requests"
       : isStaff
         ? activePage === "fleet"
-          ? "/fleet"
+          ? kind === "admin"
+            ? "/admin/fleet"
+            : "/fleet"
           : activePage === "branches"
             ? "/admin/branches"
             : activePage === "documents"

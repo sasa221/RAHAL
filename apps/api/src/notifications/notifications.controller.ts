@@ -4,6 +4,7 @@ import type {
   NotificationInbox,
   NotificationCampaignCreateResult,
   NotificationCampaignPage,
+  NotificationCampaignRecipientPage,
   NotificationReadResult,
   PushSubscriptionResult,
 } from "@rahal/contracts";
@@ -14,6 +15,7 @@ import {
   CreateNotificationCampaignDto,
   RemovePushSubscriptionDto,
   SavePushSubscriptionDto,
+  SearchNotificationRecipientsDto,
 } from "./notifications.dto";
 
 @Controller("notifications")
@@ -48,6 +50,16 @@ export class NotificationsController {
   ): Promise<ApiSuccess<NotificationCampaignCreateResult>> {
     return {
       data: await this.notifications.createCampaign(readAuthCookie(request), input),
+    };
+  }
+
+  @Get("campaign-recipients")
+  async campaignRecipients(
+    @Query() input: SearchNotificationRecipientsDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<NotificationCampaignRecipientPage>> {
+    return {
+      data: await this.notifications.campaignRecipients(readAuthCookie(request), input),
     };
   }
 

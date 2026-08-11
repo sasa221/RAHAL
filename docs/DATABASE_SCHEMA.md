@@ -165,6 +165,10 @@ Recipient rows remain normal `Notification` records through the nullable `campai
 read ownership and channel delivery guarantees are unchanged. Delivery history is calculated from
 the related `NotificationDelivery` rows; customer email addresses and phone numbers are not copied
 into the campaign.
+`NotificationCampaign.audience` may also contain the bounded `INDIVIDUAL` value for a one-recipient
+send. The recipient identity remains represented only by the related owner-scoped `Notification`
+row; campaign history and audit reason record the finite audience and recipient count, not an email,
+phone number, or copied user identifier.
 
 Draft recovery requires no new table. Live rows are existing `Reservation` records with `status = DRAFT` and `pickupAt` in the future. Owner abandonment or pickup-time expiry conditionally moves the row to `EXPIRED`, appends a `ReservationEvent`, and sets `deletedAt` on active `ReservationDocument` metadata in the same transaction. Private object keys are selected only for post-transaction storage deletion and never enter the browser response, event note, audit payload, or notification payload.
 

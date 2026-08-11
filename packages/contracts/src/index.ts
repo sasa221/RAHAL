@@ -1079,7 +1079,8 @@ export type AdminCommunicationRunResult = {
   generatedAt: string;
 };
 
-export type NotificationCampaignAudience = "CUSTOMERS" | "SALES" | "CUSTOMERS_AND_SALES";
+export type NotificationCampaignAudience =
+  "CUSTOMERS" | "SALES" | "CUSTOMERS_AND_SALES" | "INDIVIDUAL";
 export type NotificationCampaignCategory =
   "GENERAL_UPDATE" | "NEW_VEHICLE" | "OFFER" | "SERVICE_UPDATE" | "URGENT";
 
@@ -1112,6 +1113,18 @@ export type NotificationCampaignCreateResult = {
   recipientCount: number;
   queuedDeliveries: number;
   createdAt: string;
+};
+
+export type NotificationCampaignRecipientOption = {
+  id: string;
+  name: string;
+  role: "CUSTOMER" | "SALES";
+  maskedContact: string;
+  marketingEnabled: boolean;
+};
+
+export type NotificationCampaignRecipientPage = {
+  items: NotificationCampaignRecipientOption[];
 };
 
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";

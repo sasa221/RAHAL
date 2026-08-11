@@ -11,6 +11,7 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  IsUUID,
 } from "class-validator";
 
 export class SavePushSubscriptionDto {
@@ -77,4 +78,19 @@ export class CreateNotificationCampaignDto {
   @MaxLength(180)
   @Matches(/^\/(?!\/)[A-Za-z0-9\-._~!$&'()*+,;=:@/%?]*$/)
   targetPath?: string;
+
+  @IsOptional()
+  @IsUUID()
+  recipientId?: string;
+}
+
+export class SearchNotificationRecipientsDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  query?: string;
+
+  @IsOptional()
+  @IsIn(["ar", "en"])
+  locale?: "ar" | "en";
 }

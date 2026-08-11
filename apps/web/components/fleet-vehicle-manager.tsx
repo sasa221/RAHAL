@@ -54,6 +54,8 @@ const copy = {
     mandatory: "السائق إلزامي",
     unavailable: "قيادة ذاتية فقط",
     operational: "الحالة التشغيلية",
+    advanced: "تفاصيل إضافية وسياسات التشغيل",
+    advancedHint: "اختياري — افتحها لو محتاج سعر أسبوعي أو عربون أو إعدادات سائق ومسافة.",
   },
   en: {
     eyebrow: "Vehicle registry",
@@ -102,6 +104,8 @@ const copy = {
     mandatory: "Driver mandatory",
     unavailable: "Self-drive only",
     operational: "Operational status",
+    advanced: "Additional details and operating rules",
+    advancedHint: "Optional — open for weekly pricing, deposit, driver charges and mileage.",
   },
 } as const;
 
@@ -196,7 +200,7 @@ export function FleetVehicleManager({
   }
 
   return (
-    <section className="fleet-vehicle-admin">
+    <section className="fleet-vehicle-admin" id="vehicle-registry">
       <header>
         <div>
           <span>{text.eyebrow}</span>
@@ -369,39 +373,12 @@ export function FleetVehicleManager({
                 type="number"
               />
             </Field>
-            <Field label={text.luggage}>
-              <input
-                defaultValue={numberValueFor(editing, "luggage", 2)}
-                max={20}
-                min={0}
-                name="luggage"
-                type="number"
-              />
-            </Field>
-            <Field label={text.doors}>
-              <input
-                defaultValue={numberValueFor(editing, "doors", 4)}
-                max={8}
-                min={2}
-                name="doors"
-                type="number"
-              />
-            </Field>
             <Field label={text.daily}>
               <input
                 defaultValue={numberValueFor(editing, "dailyRateEgp")}
                 min={1}
                 name="dailyRateEgp"
                 required
-                step="0.01"
-                type="number"
-              />
-            </Field>
-            <Field label={text.weekly}>
-              <input
-                defaultValue={numberValueFor(editing, "weeklyRateEgp")}
-                min={1}
-                name="weeklyRateEgp"
                 step="0.01"
                 type="number"
               />
@@ -423,32 +400,67 @@ export function FleetVehicleManager({
                 <option value="UNAVAILABLE">{text.unavailable}</option>
               </select>
             </Field>
-            <Field label={text.driverCharge}>
-              <input
-                defaultValue={numberValueFor(editing, "driverChargeEgp")}
-                min={0}
-                name="driverChargeEgp"
-                step="0.01"
-                type="number"
-              />
-            </Field>
-            <Field label={text.mileage}>
-              <input
-                defaultValue={numberValueFor(editing, "mileageAllowancePerDay")}
-                min={0}
-                name="mileageAllowancePerDay"
-                type="number"
-              />
-            </Field>
-            <Field label={text.deposit}>
-              <input
-                defaultValue={numberValueFor(editing, "depositAmountEgp")}
-                min={0}
-                name="depositAmountEgp"
-                step="0.01"
-                type="number"
-              />
-            </Field>
+            <details className="fleet-editor-advanced">
+              <summary>
+                <span>{text.advanced}</span>
+                <small>{text.advancedHint}</small>
+              </summary>
+              <div>
+                <Field label={text.luggage}>
+                  <input
+                    defaultValue={numberValueFor(editing, "luggage", 2)}
+                    max={20}
+                    min={0}
+                    name="luggage"
+                    type="number"
+                  />
+                </Field>
+                <Field label={text.doors}>
+                  <input
+                    defaultValue={numberValueFor(editing, "doors", 4)}
+                    max={8}
+                    min={2}
+                    name="doors"
+                    type="number"
+                  />
+                </Field>
+                <Field label={text.weekly}>
+                  <input
+                    defaultValue={numberValueFor(editing, "weeklyRateEgp")}
+                    min={1}
+                    name="weeklyRateEgp"
+                    step="0.01"
+                    type="number"
+                  />
+                </Field>
+                <Field label={text.driverCharge}>
+                  <input
+                    defaultValue={numberValueFor(editing, "driverChargeEgp")}
+                    min={0}
+                    name="driverChargeEgp"
+                    step="0.01"
+                    type="number"
+                  />
+                </Field>
+                <Field label={text.mileage}>
+                  <input
+                    defaultValue={numberValueFor(editing, "mileageAllowancePerDay")}
+                    min={0}
+                    name="mileageAllowancePerDay"
+                    type="number"
+                  />
+                </Field>
+                <Field label={text.deposit}>
+                  <input
+                    defaultValue={numberValueFor(editing, "depositAmountEgp")}
+                    min={0}
+                    name="depositAmountEgp"
+                    step="0.01"
+                    type="number"
+                  />
+                </Field>
+              </div>
+            </details>
             <label className="fleet-editor-toggle">
               <input
                 defaultChecked={editing === "new" ? true : editing.active}

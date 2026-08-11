@@ -35,6 +35,18 @@ function setup(locale: "ar" | "en" = "en") {
     }),
     campaigns: vi.fn().mockResolvedValue([]),
     campaignRecipients: vi.fn().mockResolvedValue([{ id: "customer-1" }]),
+    campaignRecipientOptions: vi.fn().mockResolvedValue([
+      {
+        id: "customer-1",
+        fullNameAr: "عميل رحال",
+        fullNameEn: "Rahal Customer",
+        systemRole: "CUSTOMER",
+        email: "customer@example.com",
+        phone: "+201000000000",
+        notificationPreference: { marketingEnabled: true },
+      },
+    ]),
+    campaignRecipientById: vi.fn().mockResolvedValue([{ id: "customer-1" }]),
     createCampaign: vi.fn().mockResolvedValue({
       id: "campaign-1",
       recipientCount: 1,
@@ -125,6 +137,51 @@ describe("NotificationsService", () => {
         recipientIds: ["customer-1"],
         targetPath: "/cars",
       }),
+    );
+  });
+
+  it("returns masked customer recipient choices to sales", async () => {
+    const { service, repository } = setup("ar");
+    await expect(
+      service.campaignRecipients("session", { locale: "ar", query: "customer" }),
+    ).resolves.toEqual({
+      items: [
+        {
+          id: "customer-1",
+          name: "عميل رحال",
+          role: "CUSTOMER",
+          maskedContact: "cu***@example.com",
+          marketingEnabled: true,
+        },
+      ],
+    });
+    expect(repository.campaignRecipientOptions).toHaveBeenCalledWith({
+      query: "customer",
+      roles: ["CUSTOMER"],
+    });
+  });
+
+  it("sends to one eligible customer without broadening the sales audience", async () => {
+    const { service, repository } = setup();
+    await service.createCampaign("session", {
+      category: "GENERAL_UPDATE",
+      audience: "CUSTOMERS",
+      recipientId: "customer-1",
+      titleAr: "تحديث الطلب",
+      titleEn: "Request update",
+      bodyAr: "يوجد تحديث جديد بخصوص طلبك داخل رحال.",
+      bodyEn: "There is a new update about your Rahal request.",
+      channels: ["IN_APP"],
+      important: true,
+      marketing: false,
+    });
+    expect(repository.campaignRecipientById).toHaveBeenCalledWith({
+      id: "customer-1",
+      roles: ["CUSTOMER"],
+      marketing: false,
+    });
+    expect(repository.createCampaign).toHaveBeenCalledWith(
+      expect.objectContaining({ audience: "INDIVIDUAL", recipientIds: ["customer-1"] }),
     );
   });
 

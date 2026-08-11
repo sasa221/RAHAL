@@ -187,6 +187,13 @@ administrators can address customers, sales, or both. New-vehicle and offer camp
 the explicit marketing-consent filter. External delivery also continues to respect channel
 preferences, verification state, quiet hours, provider readiness, retries, and per-channel
 idempotency. Campaign history exposes aggregate delivery states and never recipient destinations.
+The same permission boundary now exposes a bounded recipient picker: administrators may resolve an
+active customer or sales employee, while sales may resolve active customers only. Search accepts a
+name, email, or phone fragment inside the API but returns only the localized name, role, masked
+contact, and marketing opt-in state. A targeted campaign stores `INDIVIDUAL` as its aggregate
+audience and still creates the same owner-scoped notification/outbox rows; it never copies the
+selected destination into campaign history or audit metadata. Marketing categories remain blocked
+when the selected customer has not explicitly opted in.
 
 Background execution is hosting-aware. Persistent Node processes use bounded interval workers.
 Vercel uses a post-mutation interceptor to await a small outbox batch before the function returns,

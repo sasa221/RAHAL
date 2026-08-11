@@ -101,4 +101,12 @@ describe("in-app notification center", () => {
     expect(campaignStudio).toContain("localizedCampaignError(");
     expect(campaignStudio).toContain("return text.permissionRequired");
   });
+
+  it("supports a privacy-bounded individual recipient picker for admin and sales", () => {
+    expect(campaignStudio).toContain("campaign-recipients");
+    expect(campaignStudio).toContain('deliveryScope === "INDIVIDUAL"');
+    expect(campaignStudio).toContain("selectedRecipient?.id");
+    expect(campaignStudio).toContain("recipient.marketingEnabled");
+    expect(campaignStudio).toContain("maskedContact");
+  });
 });

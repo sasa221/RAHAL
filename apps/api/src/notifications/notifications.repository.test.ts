@@ -68,4 +68,49 @@ describe("NotificationsRepository campaign recipients", () => {
       }),
     );
   });
+
+  it("searches only active recipient roles and returns privacy-bounded fields", async () => {
+    const { findMany, repository } = setup();
+
+    await repository.campaignRecipientOptions({ query: "saleh", roles: ["CUSTOMER"] });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          systemRole: { in: ["CUSTOMER"] },
+          AND: expect.any(Array),
+        }),
+        take: 12,
+        select: expect.objectContaining({
+          id: true,
+          email: true,
+          phone: true,
+          notificationPreference: { select: { marketingEnabled: true } },
+        }),
+      }),
+    );
+  });
+
+  it("requires marketing opt-in when resolving one campaign recipient", async () => {
+    const findFirst = vi.fn().mockResolvedValue({ id: "customer-1" });
+    const repository = new NotificationsRepository({
+      client: { user: { findFirst } },
+    } as never);
+
+    await repository.campaignRecipientById({
+      id: "customer-1",
+      roles: ["CUSTOMER"],
+      marketing: true,
+    });
+
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "customer-1",
+          systemRole: { in: ["CUSTOMER"] },
+          notificationPreference: { is: { marketingEnabled: true } },
+        }),
+      }),
+    );
+  });
 });

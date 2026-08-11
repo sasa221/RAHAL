@@ -25,6 +25,9 @@ const copy = {
     recent: "Recent system activity",
     fleet: "Fleet state",
     audit: "Open full audit log",
+    quickActions: "Start an action",
+    manageFleet: "Add or edit vehicles",
+    sendNotification: "Notify a user or audience",
     loading: "Preparing the operations center...",
     unavailable: "The operations center is unavailable or this account is not an administrator.",
     alertLabels: {
@@ -46,6 +49,9 @@ const copy = {
     recent: "آخر نشاط في النظام",
     fleet: "حالة الأسطول",
     audit: "فتح سجل العمليات الكامل",
+    quickActions: "ابدأ إجراء مباشر",
+    manageFleet: "أضف أو عدّل السيارات",
+    sendNotification: "ابعت إشعار لمستخدم أو مجموعة",
     loading: "جاري تجهيز مركز العمليات...",
     unavailable: "تعذر تحميل مركز العمليات أو أن هذا الحساب ليس حساب إدارة.",
     alertLabels: {
@@ -126,6 +132,19 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
             <b>R</b>
             <span>LIVE</span>
           </div>
+        </section>
+        <section className="ops-quick-actions" aria-label={text.quickActions}>
+          <strong>{text.quickActions}</strong>
+          <a href={localizedPath(locale, "/admin/fleet#vehicle-registry")}>
+            <span>+</span>
+            {text.manageFleet}
+            <b>↗</b>
+          </a>
+          <a href={localizedPath(locale, "/admin/communications")}>
+            <span>●</span>
+            {text.sendNotification}
+            <b>↗</b>
+          </a>
         </section>
         {loading ? (
           <div className="ops-state">{text.loading}</div>

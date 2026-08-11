@@ -16,6 +16,7 @@ const routes = [
     "/admin/content",
     "/admin/customers",
     "/admin/documents",
+    "/admin/fleet",
     "/admin/policies",
     "/admin/reports",
     "/admin/reviews",

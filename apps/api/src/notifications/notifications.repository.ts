@@ -285,6 +285,70 @@ export class NotificationsRepository {
     });
   }
 
+  async campaignRecipientOptions(input: { query?: string; roles: Array<"CUSTOMER" | "SALES"> }) {
+    const query = input.query?.trim();
+    return this.prisma.client.user.findMany({
+      where: {
+        systemRole: { in: input.roles },
+        OR: [
+          {
+            systemRole: "CUSTOMER",
+            status: { in: ["ACTIVE", "PENDING_VERIFICATION"] },
+          },
+          { systemRole: "SALES", status: "ACTIVE" },
+        ],
+        ...(query
+          ? {
+              AND: [
+                {
+                  OR: [
+                    { fullNameAr: { contains: query, mode: "insensitive" } },
+                    { fullNameEn: { contains: query, mode: "insensitive" } },
+                    { email: { contains: query, mode: "insensitive" } },
+                    { phone: { contains: query } },
+                  ],
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ fullNameEn: "asc" }, { id: "asc" }],
+      take: 12,
+      select: {
+        id: true,
+        fullNameAr: true,
+        fullNameEn: true,
+        systemRole: true,
+        email: true,
+        phone: true,
+        notificationPreference: { select: { marketingEnabled: true } },
+      },
+    });
+  }
+
+  async campaignRecipientById(input: {
+    id: string;
+    roles: Array<"CUSTOMER" | "SALES">;
+    marketing: boolean;
+  }) {
+    const recipient = await this.prisma.client.user.findFirst({
+      where: {
+        id: input.id,
+        systemRole: { in: input.roles },
+        OR: [
+          {
+            systemRole: "CUSTOMER",
+            status: { in: ["ACTIVE", "PENDING_VERIFICATION"] },
+          },
+          { systemRole: "SALES", status: "ACTIVE" },
+        ],
+        ...(input.marketing ? { notificationPreference: { is: { marketingEnabled: true } } } : {}),
+      },
+      select: { id: true },
+    });
+    return recipient ? [recipient] : [];
+  }
+
   async createCampaign(input: {
     actorId: string;
     category: string;

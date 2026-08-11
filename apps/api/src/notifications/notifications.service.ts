@@ -7,6 +7,7 @@ import {
 import type {
   NotificationCampaignCreateResult,
   NotificationCampaignPage,
+  NotificationCampaignRecipientPage,
   NotificationInbox,
   NotificationReadResult,
 } from "@rahal/contracts";
@@ -18,6 +19,7 @@ import type {
   CreateNotificationCampaignDto,
   RemovePushSubscriptionDto,
   SavePushSubscriptionDto,
+  SearchNotificationRecipientsDto,
 } from "./notifications.dto";
 import { NotificationsRepository } from "./notifications.repository";
 import { PushSubscriptionCryptoService } from "./push-subscription-crypto.service";
@@ -148,6 +150,29 @@ export class NotificationsService {
     };
   }
 
+  async campaignRecipients(
+    token: string | undefined,
+    input: SearchNotificationRecipientsDto,
+  ): Promise<NotificationCampaignRecipientPage> {
+    const session = await this.auth.getSession(token);
+    await this.access.require(session, "notifications.send");
+    const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
+    const locale = input.locale === "ar" ? "ar" : "en";
+    const recipients = await this.notifications.campaignRecipientOptions({
+      query: input.query?.trim(),
+      roles: isAdmin ? ["CUSTOMER", "SALES"] : ["CUSTOMER"],
+    });
+    return {
+      items: recipients.map((recipient) => ({
+        id: recipient.id,
+        name: locale === "ar" && recipient.fullNameAr ? recipient.fullNameAr : recipient.fullNameEn,
+        role: recipient.systemRole as "CUSTOMER" | "SALES",
+        maskedContact: maskRecipientContact(recipient.email, recipient.phone),
+        marketingEnabled: Boolean(recipient.notificationPreference?.marketingEnabled),
+      })),
+    };
+  }
+
   async createCampaign(
     token: string | undefined,
     input: CreateNotificationCampaignDto,
@@ -155,15 +180,21 @@ export class NotificationsService {
     const session = await this.auth.getSession(token);
     await this.access.require(session, "notifications.send");
     const isAdmin = ["ADMIN", "SUPER_ADMIN"].includes(session.user.role);
-    if (!isAdmin && input.audience !== "CUSTOMERS") {
+    if (!isAdmin && !input.recipientId && input.audience !== "CUSTOMERS") {
       throw new ForbiddenException("Sales employees may send campaigns to customers only.");
     }
     const marketing =
       input.marketing || input.category === "NEW_VEHICLE" || input.category === "OFFER";
-    const recipients = await this.notifications.campaignRecipients({
-      audience: input.audience,
-      marketing,
-    });
+    const recipients = input.recipientId
+      ? await this.notifications.campaignRecipientById({
+          id: input.recipientId,
+          roles: isAdmin ? ["CUSTOMER", "SALES"] : ["CUSTOMER"],
+          marketing,
+        })
+      : await this.notifications.campaignRecipients({
+          audience: input.audience,
+          marketing,
+        });
     if (!recipients.length) {
       throw new BadRequestException(
         marketing
@@ -175,7 +206,7 @@ export class NotificationsService {
     const result = await this.notifications.createCampaign({
       actorId: session.user.id,
       category: input.category,
-      audience: input.audience,
+      audience: input.recipientId ? "INDIVIDUAL" : input.audience,
       titleAr: input.titleAr.trim(),
       titleEn: input.titleEn.trim(),
       bodyAr: input.bodyAr.trim(),
@@ -196,4 +227,12 @@ export class NotificationsService {
   private pushTokenHash(endpoint: string) {
     return createHmac("sha256", this.config.authSecret).update(endpoint).digest("hex");
   }
+}
+
+function maskRecipientContact(email: string, phone: string) {
+  if (email) {
+    const [local = "", domain = ""] = email.split("@");
+    return `${local.slice(0, 2)}***@${domain}`;
+  }
+  return phone.length > 4 ? `${phone.slice(0, 3)}***${phone.slice(-2)}` : "***";
 }

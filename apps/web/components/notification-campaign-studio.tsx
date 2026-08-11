@@ -6,6 +6,8 @@ import type {
   NotificationCampaignCategory,
   NotificationCampaignCreateResult,
   NotificationCampaignPage,
+  NotificationCampaignRecipientOption,
+  NotificationCampaignRecipientPage,
 } from "@rahal/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiErrorMessage } from "../lib/api-error";
@@ -23,6 +25,17 @@ const copy = {
     history: "آخر الحملات",
     category: "نوع التحديث",
     audience: "الجمهور",
+    deliveryScope: "مين يستقبل الرسالة؟",
+    everyone: "مجموعة كاملة",
+    onePerson: "مستخدم محدد",
+    recipientSearch: "ابحث بالاسم أو البريد أو رقم الهاتف",
+    recipientSearchHint: "الأدمن يقدر يختار عميل أو موظف مبيعات، والسيلز يقدر يختار عميلًا فقط.",
+    recipientEmpty: "لا يوجد مستخدم مطابق للبحث.",
+    recipientRequired: "اختر المستخدم الذي تريد إرسال الإشعار إليه.",
+    recipientMarketingBlocked: "هذا المستخدم لم يوافق على إشعارات العربيات الجديدة والعروض.",
+    customerRole: "عميل",
+    salesRole: "مبيعات",
+    optedIn: "موافق على العروض",
     channels: "قنوات الإرسال",
     titleAr: "العنوان بالعربية",
     titleEn: "العنوان بالإنجليزية",
@@ -61,6 +74,7 @@ const copy = {
       CUSTOMERS: "العملاء",
       SALES: "فريق المبيعات",
       CUSTOMERS_AND_SALES: "العملاء والمبيعات",
+      INDIVIDUAL: "مستخدم محدد",
     },
     channelLabels: {
       IN_APP: "داخل الموقع",
@@ -78,6 +92,18 @@ const copy = {
     history: "Recent campaigns",
     category: "Update type",
     audience: "Audience",
+    deliveryScope: "Who should receive it?",
+    everyone: "Full audience",
+    onePerson: "Specific user",
+    recipientSearch: "Search by name, email or phone",
+    recipientSearchHint:
+      "Admins can select a customer or sales employee. Sales can select customers only.",
+    recipientEmpty: "No matching user was found.",
+    recipientRequired: "Select the user who should receive this notification.",
+    recipientMarketingBlocked: "This user has not opted in to new-vehicle and offer updates.",
+    customerRole: "Customer",
+    salesRole: "Sales",
+    optedIn: "Marketing opt-in",
     channels: "Delivery channels",
     titleAr: "Arabic title",
     titleEn: "English title",
@@ -115,6 +141,7 @@ const copy = {
       CUSTOMERS: "Customers",
       SALES: "Sales team",
       CUSTOMERS_AND_SALES: "Customers and sales",
+      INDIVIDUAL: "Specific user",
     },
     channelLabels: {
       IN_APP: "In-app",
@@ -151,6 +178,7 @@ function localizedCampaignError(message: string, text: (typeof copy)[PublicLocal
 
 export function NotificationCampaignStudio({
   locale,
+  kind,
 }: {
   locale: PublicLocale;
   kind: "admin" | "sales";
@@ -171,6 +199,14 @@ export function NotificationCampaignStudio({
   const [targetPath, setTargetPath] = useState("");
   const [important, setImportant] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [deliveryScope, setDeliveryScope] = useState<"AUDIENCE" | "INDIVIDUAL">("AUDIENCE");
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const [recipientOptions, setRecipientOptions] = useState<NotificationCampaignRecipientOption[]>(
+    [],
+  );
+  const [recipientLoading, setRecipientLoading] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] =
+    useState<NotificationCampaignRecipientOption | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/notifications/campaigns?locale=${locale}`, {
@@ -196,6 +232,41 @@ export function NotificationCampaignStudio({
       )
       .finally(() => setLoading(false));
   }, [load, text.unavailable]);
+
+  useEffect(() => {
+    if (deliveryScope !== "INDIVIDUAL") return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setRecipientLoading(true);
+      const params = new URLSearchParams({ locale });
+      if (recipientQuery.trim()) params.set("query", recipientQuery.trim());
+      fetch(`/api/notifications/campaign-recipients?${params}`, {
+        credentials: "include",
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          const payload = (await response.json()) as
+            ApiSuccess<NotificationCampaignRecipientPage> | unknown;
+          if (!response.ok || !isApiSuccess<NotificationCampaignRecipientPage>(payload)) {
+            throw new Error(apiErrorMessage(payload, text.unavailable));
+          }
+          setRecipientOptions(payload.data.items);
+        })
+        .catch((reason) => {
+          if (controller.signal.aborted) return;
+          setRecipientOptions([]);
+          setError(reason instanceof Error ? reason.message : text.unavailable);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setRecipientLoading(false);
+        });
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [deliveryScope, locale, recipientQuery, text.unavailable]);
 
   const isMarketingCategory = category === "NEW_VEHICLE" || category === "OFFER";
   const preview = useMemo(
@@ -227,6 +298,19 @@ export function NotificationCampaignStudio({
       setError(text.required);
       return;
     }
+    if (deliveryScope === "INDIVIDUAL" && !selectedRecipient) {
+      setError(text.recipientRequired);
+      return;
+    }
+    if (
+      deliveryScope === "INDIVIDUAL" &&
+      selectedRecipient &&
+      isMarketingCategory &&
+      !selectedRecipient.marketingEnabled
+    ) {
+      setError(text.recipientMarketingBlocked);
+      return;
+    }
     setSending(true);
     try {
       const response = await fetch("/api/notifications/campaigns", {
@@ -244,6 +328,7 @@ export function NotificationCampaignStudio({
           channels,
           important,
           marketing: marketing || isMarketingCategory,
+          recipientId: deliveryScope === "INDIVIDUAL" ? selectedRecipient?.id : undefined,
         }),
       });
       const payload = (await response.json()) as
@@ -257,6 +342,8 @@ export function NotificationCampaignStudio({
       setBodyAr("");
       setBodyEn("");
       setTargetPath("");
+      setSelectedRecipient(null);
+      setRecipientQuery("");
       await load();
     } catch (reason) {
       setError(
@@ -268,7 +355,7 @@ export function NotificationCampaignStudio({
   }
 
   return (
-    <section className="campaign-studio">
+    <section className="campaign-studio" data-workspace={kind}>
       <header className="campaign-studio__heading">
         <div>
           <span>{text.eyebrow}</span>
@@ -301,22 +388,88 @@ export function NotificationCampaignStudio({
                 ))}
               </select>
             </label>
-            <label>
-              <span>{text.audience}</span>
-              <select
-                value={audience}
-                onChange={(event) =>
-                  setAudience(event.target.value as NotificationCampaignAudience)
-                }
-              >
-                {(page?.capabilities.audiences ?? ["CUSTOMERS"]).map((item) => (
-                  <option key={item} value={item}>
-                    {text.audiences[item]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {deliveryScope === "AUDIENCE" ? (
+              <label>
+                <span>{text.audience}</span>
+                <select
+                  value={audience}
+                  onChange={(event) =>
+                    setAudience(event.target.value as NotificationCampaignAudience)
+                  }
+                >
+                  {(page?.capabilities.audiences ?? ["CUSTOMERS"]).map((item) => (
+                    <option key={item} value={item}>
+                      {text.audiences[item]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </div>
+
+          <fieldset className="campaign-recipient-scope">
+            <legend>{text.deliveryScope}</legend>
+            <div className="campaign-recipient-scope__switch">
+              <button
+                aria-pressed={deliveryScope === "AUDIENCE"}
+                onClick={() => {
+                  setDeliveryScope("AUDIENCE");
+                  setSelectedRecipient(null);
+                }}
+                type="button"
+              >
+                {text.everyone}
+              </button>
+              <button
+                aria-pressed={deliveryScope === "INDIVIDUAL"}
+                onClick={() => setDeliveryScope("INDIVIDUAL")}
+                type="button"
+              >
+                {text.onePerson}
+              </button>
+            </div>
+            {deliveryScope === "INDIVIDUAL" ? (
+              <div className="campaign-recipient-picker">
+                <label>
+                  <span>{text.recipientSearch}</span>
+                  <input
+                    autoComplete="off"
+                    onChange={(event) => {
+                      setRecipientQuery(event.target.value);
+                      setSelectedRecipient(null);
+                    }}
+                    placeholder={text.recipientSearch}
+                    type="search"
+                    value={recipientQuery}
+                  />
+                </label>
+                <p>{text.recipientSearchHint}</p>
+                <div className="campaign-recipient-results" role="listbox">
+                  {recipientOptions.map((recipient) => (
+                    <button
+                      aria-selected={selectedRecipient?.id === recipient.id}
+                      className={selectedRecipient?.id === recipient.id ? "is-selected" : ""}
+                      key={recipient.id}
+                      onClick={() => setSelectedRecipient(recipient)}
+                      role="option"
+                      type="button"
+                    >
+                      <span>{recipient.name}</span>
+                      <small>
+                        {recipient.role === "CUSTOMER" ? text.customerRole : text.salesRole} ·{" "}
+                        {recipient.maskedContact}
+                      </small>
+                      {recipient.marketingEnabled ? <b>{text.optedIn}</b> : null}
+                    </button>
+                  ))}
+                  {!recipientLoading && !recipientOptions.length ? (
+                    <span>{text.recipientEmpty}</span>
+                  ) : null}
+                  {recipientLoading ? <span>…</span> : null}
+                </div>
+              </div>
+            ) : null}
+          </fieldset>
 
           <fieldset className="campaign-channels">
             <legend>{text.channels}</legend>
@@ -419,7 +572,9 @@ export function NotificationCampaignStudio({
           ) : null}
           <button
             className="campaign-send"
-            disabled={sending || loading || !page}
+            disabled={
+              sending || loading || !page || (deliveryScope === "INDIVIDUAL" && !selectedRecipient)
+            }
             onClick={() => void sendCampaign()}
             type="button"
           >
