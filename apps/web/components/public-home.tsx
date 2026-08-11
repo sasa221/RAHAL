@@ -11,6 +11,7 @@ import { getPublishedSiteContent, getPublicVehicles } from "../lib/public-api";
 import { homeContent } from "../lib/site-content";
 import { AvailabilitySearch } from "./availability-search";
 import { AccountEntryLink } from "./account-entry-link";
+import { CinematicDriveCar } from "./cinematic-car-3d";
 import { ExperienceMotion } from "./experience-motion";
 import { PublicBranchSurface } from "./public-branch-surface";
 import { PublicNotificationEntry } from "./public-notification-entry";
@@ -37,7 +38,7 @@ const categoryImages = [
   "/images/white-sedan.jpg",
   "/images/silver-sedan.jpg",
   "/images/black-suv.jpg",
-  "/images/rahal-hero-gem.png",
+  "/images/rahal-hero-gem-clean.png",
 ] as const;
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -359,17 +360,29 @@ export async function PublicHome({ locale }: PublicHomeProps) {
       <Header locale={locale} />
 
       <main id="main-content">
-        <section className="hero" id="top">
+        <CinematicDriveCar locale={locale} />
+        <section className="hero" data-scroll-scene id="top">
           <Image
             alt=""
             className="hero__image"
             fill
             priority
             sizes="100vw"
-            src="/images/rahal-hero-gem.png"
+            src="/images/rahal-hero-gem-clean.png"
           />
           <div className="hero__overlay" />
           <div className="hero__grain" aria-hidden="true" />
+          <div className="hero__motion-grid" aria-hidden="true" />
+          <div className="hero__light-trails" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="hero__road-signal" aria-hidden="true">
+            <span />
+          </div>
+          <span className="hero__orb hero__orb--one" aria-hidden="true" />
+          <span className="hero__orb hero__orb--two" aria-hidden="true" />
           <div className="hero__edition" aria-hidden="true">
             <span>01</span>
             <span>{locale === "ar" ? "رحال · مصر" : "RAHAL · EGYPT"}</span>
@@ -390,6 +403,13 @@ export async function PublicHome({ locale }: PublicHomeProps) {
             <div className="hero__badge">
               <Icon name="shield" size={18} />
               {content.heroBadge}
+            </div>
+            <div className="hero__telemetry" aria-hidden="true">
+              <span className="hero__telemetry-ring">R</span>
+              <div>
+                <strong>{locale === "ar" ? "المشهد يتحرك معاك" : "DRIVE THE EXPERIENCE"}</strong>
+                <span>{locale === "ar" ? "رحال · القاهرة · 01" : "RAHAL · CAIRO · 01"}</span>
+              </div>
             </div>
           </div>
         </section>
@@ -461,7 +481,7 @@ export async function PublicHome({ locale }: PublicHomeProps) {
           </div>
         </section>
 
-        <section className="section process-section" id="process" data-reveal>
+        <section className="section process-section" data-scroll-scene id="process" data-reveal>
           <div className="container process-layout">
             <div className="process-intro">
               <SectionHeading

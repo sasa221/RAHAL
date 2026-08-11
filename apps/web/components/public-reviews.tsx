@@ -3,6 +3,7 @@
 import type { ApiSuccess, PublicReview } from "@rahal/contracts";
 import { useEffect, useState } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
+import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
 
 const copy = {
@@ -51,6 +52,7 @@ export function PublicReviews({ locale }: { locale: PublicLocale }) {
 
   return (
     <div className="public-site public-reviews-page" dir={locale === "ar" ? "rtl" : "ltr"}>
+      <ExperienceMotion />
       <Header languageHref={locale === "ar" ? "/en/reviews" : "/reviews"} locale={locale} />
       <main>
         <section className="public-reviews-hero">

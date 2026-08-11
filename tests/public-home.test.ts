@@ -109,6 +109,7 @@ describe("Milestone 2 public home", () => {
     for (const image of [
       "rahal-logo.png",
       "rahal-hero-gem.png",
+      "rahal-hero-gem-clean.png",
       "silver-sedan.jpg",
       "black-suv.jpg",
       "white-sedan.jpg",
@@ -138,5 +139,27 @@ describe("Milestone 2 public home", () => {
     expect(motion).toContain('matchMedia("(pointer: fine)")');
     expect(styles).toContain("@keyframes rahal-hero-enter");
     expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  it("keeps the optimized 3D drive scene decorative, adaptive, and idle-safe", () => {
+    const driveScene = read("apps/web/components/cinematic-car-3d.tsx");
+    const modelPath = join(root, "apps/web/public/models/rahal-drive-scene.rahal3d");
+
+    expect(component).toContain("<CinematicDriveCar locale={locale} />");
+    expect(component).toContain('src="/images/rahal-hero-gem-clean.png"');
+    expect(driveScene).toContain('aria-hidden="true"');
+    expect(driveScene).toContain('powerPreference: "high-performance"');
+    expect(driveScene).toContain("smokeParticles");
+    expect(driveScene).toContain("activeUntil");
+    expect(driveScene).toContain("animationFrame = undefined");
+    expect(driveScene).toContain("renderer.shadowMap.enabled = window.innerWidth >= 720");
+    expect(driveScene).toContain("requestIdleCallback");
+    expect(driveScene).toContain("RHL3D1");
+    expect(styles).toContain(".hero__drive-car--ready");
+    expect(styles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.hero__drive-car[\s\S]*?display: none/,
+    );
+    expect(existsSync(modelPath)).toBe(true);
+    expect(statSync(modelPath).size).toBeLessThan(8_000_000);
   });
 });

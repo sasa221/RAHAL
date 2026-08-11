@@ -11,6 +11,7 @@ import {
   type PublicVehicle,
 } from "../lib/public-content";
 import { Footer, Header, Icon } from "./public-home";
+import { ExperienceMotion } from "./experience-motion";
 
 type PublicFleetProps = {
   locale: PublicLocale;
@@ -132,7 +133,7 @@ function FleetListingCard({
   }`;
 
   return (
-    <article className="fleet-listing-card">
+    <article className="fleet-listing-card" data-reveal data-tilt>
       <a className="fleet-listing-card__visual" href={detailsHref} tabIndex={-1}>
         <Image
           alt={vehicle.imageAlt[locale]}
@@ -290,6 +291,7 @@ export function PublicFleet({
       dir={content.dir}
       lang={content.htmlLang}
     >
+      <ExperienceMotion />
       <a className="skip-link" href="#fleet-results">
         {content.skip}
       </a>
@@ -299,7 +301,7 @@ export function PublicFleet({
       />
 
       <main>
-        <section className="fleet-page-hero">
+        <section className="fleet-page-hero" data-scroll-scene>
           <div className="container fleet-page-hero__grid">
             <div className="fleet-page-hero__content">
               <span className="eyebrow">{copy.eyebrow}</span>
@@ -335,7 +337,7 @@ export function PublicFleet({
           </div>
         </section>
 
-        <section className="fleet-browser" id="fleet-results">
+        <section className="fleet-browser" data-scroll-scene id="fleet-results">
           <div className="container">
             <div className="fleet-category-chips" aria-label={copy.category}>
               {categories.map(([value, label]) => (

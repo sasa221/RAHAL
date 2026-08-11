@@ -8,6 +8,7 @@ import { Icon } from "./public-home";
 import { NotificationCenter } from "./notification-center";
 import { WorkspaceAccessBoundary } from "./workspace-access-boundary";
 import { WorkspaceInstallAction } from "./workspace-install-action";
+import { ExperienceMotion } from "./experience-motion";
 
 type WorkspaceKind = "customer" | "sales" | "admin";
 
@@ -318,6 +319,7 @@ export function WorkspaceShell({
   return (
     <WorkspaceAccessBoundary kind={kind} locale={locale}>
       <div className={`portal-shell portal-shell--${kind}`} dir={locale === "ar" ? "rtl" : "ltr"}>
+        <ExperienceMotion />
         <aside className="portal-sidebar">
           <a className="portal-brand" href={localizedPath(locale)}>
             <Image alt="" height={58} src="/images/rahal-logo.png" width={58} />

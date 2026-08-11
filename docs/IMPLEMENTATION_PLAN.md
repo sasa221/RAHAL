@@ -1325,3 +1325,121 @@ Status: implemented and verified against the production web deployment on 2026-0
 
 - The deployed public suite runs 64 browser checks: 63 pass and the desktop copy of the
   mobile-navigation-only interaction is intentionally skipped.
+
+## Milestone 32: Cinematic automotive experience system
+
+Goal: make Rahal feel alive and recognizably automotive through one coherent motion language,
+without turning operational workflows into decoration or weakening mobile performance.
+
+Status: implemented and verified locally on 2026-08-09.
+
+### Completed scope
+
+- Added one dependency-free scene coordinator for bounded page progress, active-scroll state,
+  viewport reveals, pointer depth, touch-safe ambient behavior, and fast internal route transitions.
+- Rebuilt the home arrival as one coordinated Cairo/car camera shot with scroll-linked road signals,
+  momentary light trails, restrained telemetry, and layered depth.
+- Added composed reflection and perspective behavior to vehicle cards while preserving stable
+  filtering and link targets.
+- Added a slow vehicle-detail camera dolly and restored the primary reservation action to the first
+  mobile viewport instead of hiding it.
+- Extended the same motion language to reservation, authentication, public information, customer,
+  sales, and administrator shells with deliberately lower intensity in operational workspaces.
+- Kept mobile free of pointer tilt and removed every decorative continuous effect under reduced
+  motion.
+- Documented the decision to defer Three.js and GSAP until approved assets or a reviewed timeline
+  materially justify their runtime cost.
+
+### Experience map
+
+- Home: one coordinated Cairo/car camera arrival, active-scroll light trails, road telemetry,
+  layered depth, progressive section reveals, and a strong handoff into fleet search.
+- Fleet: purposeful filter feedback, reflected vehicle media, composed card depth, and stable
+  reordering without fake vehicle rotation.
+- Vehicle detail: slow camera dolly, responsive gallery focus, sticky visual hierarchy, animated
+  specifications, and an unmistakable reservation-request action.
+- Reservation and authentication: restrained transitions that communicate step, readiness, error,
+  and success while leaving forms immediately usable.
+- Public information and reviews: editorial camera depth and paced chapter reveals rather than the
+  same card animation repeated everywhere.
+- Customer workspace: status and next-action motion only; no decorative movement that competes
+  with requests, documents, or security controls.
+- Sales and administrator workspaces: calm live-surface cues, state transitions, and lightweight
+  metric depth while preserving scanning speed and data density.
+
+### Technology allocation
+
+- CSS: compositing, camera depth, reflection, light trails, hover/touch feedback, and reduced-motion
+  fallbacks.
+- Browser platform APIs: IntersectionObserver for reveals and one request-animation-frame scroll
+  coordinator for page/scene progress.
+- Three.js/WebGL: deferred until Rahal owns an approved 3D model or 360-degree image sequence.
+- GSAP/ScrollTrigger: deferred while the required scenes remain maintainable without another
+  runtime dependency; reconsider for a reviewed pinned multi-scene narrative.
+
+### Acceptance criteria
+
+- Motion supports hierarchy and driving identity; repeated or distracting effects are removed.
+- Search, filtering, gallery selection, authentication, reservation, and staff actions remain fully
+  operable before, during, and after animation.
+- Arabic RTL and English LTR receive equivalent motion direction and content hierarchy.
+- Touch devices do not inherit pointer tilt or magnetic hover behavior.
+- Reduced-motion mode removes continuous movement, route veils, parallax, and depth while retaining
+  all content and controls.
+- No covered page has horizontal overflow at 390px, 768px, or 1440px.
+- The milestone adds no WebGL scene or large animation dependency without a measured visual need.
+
+### Tests
+
+- Static coverage for motion mounting, scene attributes, touch/reduced-motion branches, route
+  transitions, and absence of business-logic changes.
+- Browser checks for home, fleet, vehicle detail, reservation, authentication, customer, sales, and
+  administrator routes at mobile and desktop widths.
+- Existing format, lint, unit/integration, typecheck, build, and authenticated lifecycle gates.
+- Full browser result: 145 passed and the desktop copy of the mobile-navigation-only check was
+  skipped intentionally.
+
+## Milestone 33: Licensed 3D drive scene
+
+Goal: add a genuine scroll-directed vehicle layer to the home arrival without delaying the first
+screen, weakening mobile scrolling, or presenting the decorative model as part of the fleet.
+
+Status: local prototype implemented on 2026-08-09; production release blocked on model provenance
+and commercial-use licence confirmation.
+
+### Completed local scope
+
+- Optimized the supplied GLB from 14.04 MB to 7.10 MB and reduced expected render vertices from
+  about 639k to 397k while preserving its embedded visual textures. Geometry uses native
+  quantization rather than a WebAssembly decoder so the model respects the production CSP.
+- Removed the supplied vehicle from all fleet and vehicle-detail surfaces; it is never presented as
+  reservable inventory.
+- Added it only as a pointer-free cinematic home layer with a stationary black-painted arrival,
+  scroll-directed lateral and depth travel, neutral/gold lighting, grounded shadow, tire-surface
+  movement, and short-lived 3D smoke particles.
+- Produced a non-destructive clean version of the existing Grand Egyptian Museum hero background so
+  the original raster vehicle does not duplicate the 3D scene.
+- Paused rendering while offscreen, capped render density on lower-memory/mobile devices, and
+  removed continuous rotation for reduced-motion users.
+- Stopped the render loop after scroll smoothing and smoke decay complete; desktop retains
+  antialiasing and shadows while lower-memory/mobile devices use cheaper render settings.
+- Labelled the scene as a visual preview and kept approved imagery and written vehicle
+  specifications authoritative.
+
+### Acceptance criteria
+
+- The initial public page remains usable before Three.js or the GLB loads.
+- The 3D layer never intercepts pointer or touch input and preserves normal page scrolling.
+- WebGL failure leaves an understandable static preview instead of an empty block.
+- The render loop stops offscreen and all renderer, geometry, material, and texture resources are
+  disposed on unmount.
+- Arabic RTL and English LTR use mirrored travel direction while keeping content hierarchy intact.
+- The branded prototype asset is not committed, pushed, or deployed without documented permission.
+
+### Tests
+
+- Format, lint, unit/integration, typecheck, and production-build gates.
+- Desktop and mobile browser inspection for loading, ready/fallback state, scroll-directed travel,
+  vertical scrolling, reduced motion, and horizontal overflow.
+- Bundle and network inspection confirming that the 3D failure path still leaves the complete raster
+  hero available.

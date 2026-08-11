@@ -174,7 +174,11 @@ export function VehicleDetails({
       <Header locale={locale} languageHref={alternateHref} />
 
       <main className="vehicle-details" id="vehicle-main">
-        <section className="vehicle-cinematic vehicle-gallery__main">
+        <section
+          className="vehicle-cinematic vehicle-gallery__main"
+          data-cinematic-vehicle
+          data-scroll-scene
+        >
           <Image
             alt={selectedImage.imageAlt[locale]}
             className="vehicle-cinematic__image"
@@ -248,7 +252,7 @@ export function VehicleDetails({
           </div>
         </section>
 
-        <section className="vehicle-story" id="vehicle-story" data-reveal>
+        <section className="vehicle-story" data-scroll-scene id="vehicle-story" data-reveal>
           <div className="container vehicle-gallery__assurances">
             <span>
               <Icon name="pin" size={18} />
