@@ -14925,6 +14925,44 @@ body::before {
   background: linear-gradient(115deg, rgba(189, 138, 37, 0.12), transparent 38%), #f4f0e8;
 }
 
+.workspace-loading {
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1rem;
+  background: #f4f0e8;
+  color: var(--color-ink);
+}
+
+.workspace-loading > span {
+  width: 72px;
+  height: 2px;
+  overflow: hidden;
+  background: rgb(197 160 89 / 22%);
+}
+
+.workspace-loading > span::after {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 100%;
+  background: var(--color-gold);
+  animation: workspace-loading-progress 900ms ease-in-out infinite alternate;
+}
+
+.workspace-loading p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+@keyframes workspace-loading-progress {
+  to {
+    transform: translateX(36px);
+  }
+}
+
 .workspace-access::before,
 .workspace-access::after {
   position: absolute;

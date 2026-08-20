@@ -134,7 +134,7 @@ describe("Milestone 2 public home", () => {
     expect(component).toContain("hero__edition");
     expect(motion).toContain("IntersectionObserver");
     expect(motion).toContain("MutationObserver");
-    expect(motion).toContain("requestAnimationFrame(updateAmbientMotion)");
+    expect(motion).not.toContain("requestAnimationFrame(updateAmbientMotion)");
     expect(motion).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
     expect(motion).toContain('matchMedia("(pointer: fine)")');
     expect(styles).toContain("@keyframes rahal-hero-enter");
@@ -156,7 +156,8 @@ describe("Milestone 2 public home", () => {
     expect(driveScene).toContain("width < 720 ? 0.85 : 1.05");
     expect(driveScene).toContain('host.style.setProperty("--drive-overlay-opacity"');
     expect(driveScene).toContain("const contentOpacity = mobile ? 0.26 : 0.38");
-    expect(driveScene).toContain("requestIdleCallback");
+    expect(driveScene).toContain('window.addEventListener("pointermove", startImmediately');
+    expect(driveScene).not.toContain("requestIdleCallback");
     expect(driveScene).toContain("RHL3D1");
     expect(styles).toContain(".hero__drive-car--ready");
     expect(styles).toMatch(/\.hero__drive-car \{[\s\S]*?z-index: 8/);

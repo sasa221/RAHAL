@@ -16,7 +16,8 @@ const manrope = localFont({
 
 const cormorant = localFont({
   src: "./fonts/cormorant-garamond-latin.woff2",
-  display: "swap",
+  display: "optional",
+  preload: false,
   weight: "300 700",
   variable: "--font-cormorant",
 });
@@ -24,11 +25,10 @@ const cormorant = localFont({
 const arabicInterface = localFont({
   src: [
     { path: "./fonts/ibm-plex-sans-arabic-400.woff2", weight: "400" },
-    { path: "./fonts/ibm-plex-sans-arabic-500.woff2", weight: "500" },
     { path: "./fonts/ibm-plex-sans-arabic-600.woff2", weight: "600" },
-    { path: "./fonts/ibm-plex-sans-arabic-700.woff2", weight: "700" },
   ],
-  display: "swap",
+  display: "optional",
+  preload: false,
   variable: "--font-ibm-plex-arabic",
 });
 

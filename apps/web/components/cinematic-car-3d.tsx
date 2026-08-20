@@ -45,12 +45,6 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
     let started = false;
     let visible = true;
     let animationFrame: number | undefined;
-    let idleHandle: number | undefined;
-    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
-    const idleWindow = window as Window & {
-      cancelIdleCallback?: (handle: number) => void;
-      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
-    };
     let activeUntil = 0;
     let cleanupScene: (() => void) | undefined;
     let resumeScene: (() => void) | undefined;
@@ -358,39 +352,25 @@ export function CinematicDriveCar({ locale }: { locale: PublicLocale }) {
     observer.observe(sceneElement);
 
     const startImmediately = () => {
-      if (idleHandle !== undefined) {
-        idleWindow.cancelIdleCallback?.(idleHandle);
-      }
-      if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
       void start();
     };
-    const scheduleStart = () => {
-      if (idleWindow.requestIdleCallback) {
-        idleHandle = idleWindow.requestIdleCallback(() => void start(), { timeout: 1800 });
-      } else {
-        fallbackTimer = setTimeout(() => void start(), 900);
-      }
-    };
-    const scheduleAfterPageLoad = () => {
-      if (document.readyState === "complete") scheduleStart();
-      else window.addEventListener("load", scheduleStart, { once: true });
-    };
+
+    // Three.js, the decoder and the protected model are deliberately excluded from
+    // initial page work. A real visitor starts the cinematic layer with their first
+    // intent signal; crawlers, performance audits and visitors who never interact
+    // receive the complete, fast photographic hero without paying the WebGL cost.
     window.addEventListener("scroll", startImmediately, { once: true, passive: true });
     window.addEventListener("pointerdown", startImmediately, { once: true, passive: true });
+    window.addEventListener("pointermove", startImmediately, { once: true, passive: true });
     window.addEventListener("touchstart", startImmediately, { once: true, passive: true });
-    scheduleAfterPageLoad();
 
     return () => {
       disposed = true;
       observer.disconnect();
-      window.removeEventListener("load", scheduleStart);
       window.removeEventListener("scroll", startImmediately);
       window.removeEventListener("pointerdown", startImmediately);
+      window.removeEventListener("pointermove", startImmediately);
       window.removeEventListener("touchstart", startImmediately);
-      if (idleHandle !== undefined) {
-        idleWindow.cancelIdleCallback?.(idleHandle);
-      }
-      if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
       if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
       cleanupScene?.();
     };

@@ -100,6 +100,20 @@ export function WorkspaceAccessBoundary({
   }, [kind, locale]);
 
   if (access.status === "allowed") return children;
+  if (access.status === "loading") {
+    return (
+      <main
+        aria-busy="true"
+        aria-live="polite"
+        className="workspace-loading"
+        dir={locale === "ar" ? "rtl" : "ltr"}
+      >
+        <Image alt="RAHAL" height={64} priority src="/images/rahal-logo.png" width={64} />
+        <span aria-hidden="true" />
+        <p>{copy[locale].loading}</p>
+      </main>
+    );
+  }
 
   return <WorkspaceAccessScreen access={access} locale={locale} />;
 }

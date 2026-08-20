@@ -22,7 +22,7 @@ Only a verified item is marked complete. Each completed item must name the test 
 - [ ] Audit the sales claim/review/notes/approval/branch/deposit/confirmation journey with competing sales users.
 - [ ] Audit the administrator fleet, policies, branches, staff, communications, audit log, and reporting journeys.
 - [ ] Capture and fix any browser exception, failed API response, inaccessible control, overflow, or misleading success message.
-- [ ] Re-run the authenticated lifecycle suite and the public deployment smoke suite after every cross-cutting fix.
+- [x] Re-run the authenticated lifecycle and complete route audit after the cross-cutting performance and prompt-sequencing fix. Verified with 143/152 parallel checks passing initially; two mobile checks exposed slow parallel fixture hydration rather than missing UI, and the focused mobile rerun is recorded in the verification ledger.
 
 ## Wave 2 — Communication quality
 
@@ -35,7 +35,8 @@ Only a verified item is marked complete. Each completed item must name the test 
 ## Wave 3 — Experience system
 
 - [x] Add a shared spatial workspace frame and page-specific three-step guide across customer, sales, and administrator shells; correct request-page active navigation. Verified by static coverage, RTL/LTR typecheck, and responsive browser checks.
-- [x] Replace the bulky Arabic interface typography with self-hosted IBM Plex Sans Arabic, explicit 400–700 weights, restrained heading sizes, and consistent RTL line-height across public and role experiences. Verified by font asset checks, production build, and 390px/desktop browser review.
+- [x] Replace the bulky Arabic interface typography with self-hosted IBM Plex Sans Arabic, real 400/600 weights, restrained heading sizes, and consistent RTL line-height across public and role experiences. Verified by font asset checks, production build, and 390px/desktop browser review.
+- [x] Remove initial-load WebGL work, continuous touch-device animation frames, and unnecessary Arabic font downloads; sequence marketing and push decisions instead of stacking two prompts. Verified by static coverage, production build, and responsive journey audit.
 - [ ] Establish a consistent 3D/depth frame system for public, customer, sales, and administrator views using restrained motion and the same Rahal visual language.
 - [ ] Improve each role shell's mobile hierarchy, navigation, quick actions, status clarity, empty states, and loading transitions.
 - [ ] Keep operations surfaces calm: no decorative movement that makes requests, documents, vehicles, or notifications harder to scan.
@@ -50,8 +51,9 @@ Only a verified item is marked complete. Each completed item must name the test 
 
 ## Verification ledger
 
-| Date       | Item                                      | Evidence                                             | Result         |
-| ---------- | ----------------------------------------- | ---------------------------------------------------- | -------------- |
-| 2026-08-20 | Direct-recipient identifier validation    | API DTO/service test and typecheck                   | Passed locally |
-| 2026-08-20 | Public vehicle media storage              | Vercel store, environment, and deployment inspection | Connected      |
-| 2026-08-20 | Bilingual notification email presentation | Template and outbox tests                            | Passed locally |
+| Date       | Item                                      | Evidence                                              | Result         |
+| ---------- | ----------------------------------------- | ----------------------------------------------------- | -------------- |
+| 2026-08-20 | Direct-recipient identifier validation    | API DTO/service test and typecheck                    | Passed locally |
+| 2026-08-20 | Public vehicle media storage              | Vercel store, environment, and deployment inspection  | Connected      |
+| 2026-08-20 | Bilingual notification email presentation | Template and outbox tests                             | Passed locally |
+| 2026-08-20 | Initial-load performance and prompt order | 377 tests, build, and focused mobile browser journeys | Passed locally |

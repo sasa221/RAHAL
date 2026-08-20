@@ -123,16 +123,25 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
   }, []);
 
   useEffect(() => {
-    void checkSession();
-    const sessionChanged = () => void checkSession(true);
+    const sessionChanged = () => setState("HIDDEN");
+    const marketingChanged = () => void checkSession(true);
+    const marketingReady = (event: Event) => {
+      const ready = event as CustomEvent<{ allowPushPrompt: boolean }>;
+      if (ready.detail.allowPushPrompt) void checkSession(true);
+      else setState("HIDDEN");
+    };
     const pushChanged = () => setState("HIDDEN");
     const guideRequested = () =>
       setState(requiresIosInstallation() ? "INSTALL_REQUIRED" : "PROMPT");
     window.addEventListener("rahal:session-changed", sessionChanged);
+    window.addEventListener("rahal:marketing-gate-ready", marketingReady);
+    window.addEventListener("rahal:marketing-consent-changed", marketingChanged);
     window.addEventListener("rahal:push-state-changed", pushChanged);
     window.addEventListener("rahal:push-guide-requested", guideRequested);
     return () => {
       window.removeEventListener("rahal:session-changed", sessionChanged);
+      window.removeEventListener("rahal:marketing-gate-ready", marketingReady);
+      window.removeEventListener("rahal:marketing-consent-changed", marketingChanged);
       window.removeEventListener("rahal:push-state-changed", pushChanged);
       window.removeEventListener("rahal:push-guide-requested", guideRequested);
     };

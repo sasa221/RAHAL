@@ -51,14 +51,17 @@ describe("customer profile and communication preferences", () => {
 
   it("asks customers for an explicit marketing choice once and preserves account controls", () => {
     const gate = read("apps/web/components/marketing-consent-gate.tsx");
+    const pushGate = read("apps/web/components/push-permission-gate.tsx");
     const repository = read("apps/api/src/account/account.repository.ts");
     const layout = read("apps/web/app/layout.tsx");
     expect(gate).toContain('sessionPayload.data.user.role !== "CUSTOMER"');
-    expect(gate).toContain('marketingConsentDecided ? "HIDDEN" : "PROMPT"');
+    expect(gate).toContain('setState(decided ? "HIDDEN" : "PROMPT")');
     expect(gate).toContain("void decide(true)");
     expect(gate).toContain("void decide(false)");
     expect(gate).toContain("pendingDecision ?? true");
     expect(gate).toContain("No thanks");
+    expect(pushGate).toContain("rahal:marketing-gate-ready");
+    expect(pushGate).toContain('"rahal:marketing-consent-changed"');
     expect(repository).toContain("marketingConsentDecidedAt = new Date()");
     expect(layout).toContain("<MarketingConsentGate");
   });

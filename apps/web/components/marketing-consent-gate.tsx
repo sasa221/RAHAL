@@ -46,6 +46,12 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
   const [accepted, setAccepted] = useState(false);
   const [pendingDecision, setPendingDecision] = useState<boolean | null>(null);
 
+  const releasePushGate = useCallback((allowPushPrompt: boolean) => {
+    window.dispatchEvent(
+      new CustomEvent("rahal:marketing-gate-ready", { detail: { allowPushPrompt } }),
+    );
+  }, []);
+
   const check = useCallback(async () => {
     setState("LOADING");
     try {
@@ -55,11 +61,13 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
       });
       if (!sessionResponse.ok) {
         setState("HIDDEN");
+        releasePushGate(false);
         return;
       }
       const sessionPayload = (await sessionResponse.json()) as ApiSuccess<AuthSession>;
       if (sessionPayload.data.user.role !== "CUSTOMER") {
         setState("HIDDEN");
+        releasePushGate(true);
         return;
       }
       const accountResponse = await fetch("/api/account", {
@@ -69,11 +77,14 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
       if (!accountResponse.ok) throw new Error("ACCOUNT_UNAVAILABLE");
       const accountPayload = (await accountResponse.json()) as ApiSuccess<CustomerAccountOverview>;
       setOverview(accountPayload.data);
-      setState(accountPayload.data.notifications.marketingConsentDecided ? "HIDDEN" : "PROMPT");
+      const decided = accountPayload.data.notifications.marketingConsentDecided;
+      setState(decided ? "HIDDEN" : "PROMPT");
+      releasePushGate(decided);
     } catch {
       setState("HIDDEN");
+      releasePushGate(false);
     }
-  }, []);
+  }, [releasePushGate]);
 
   useEffect(() => {
     void check();

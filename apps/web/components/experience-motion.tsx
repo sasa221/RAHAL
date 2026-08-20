@@ -213,19 +213,6 @@ export function ExperienceMotion() {
       window.setTimeout(() => window.location.assign(destination.href), 190);
     };
 
-    let ambientFrame: number | undefined;
-    const updateAmbientMotion = (time: number) => {
-      const horizontal = Math.sin(time / 2200);
-      const vertical = Math.cos(time / 2800);
-      root.style.setProperty("--pointer-rx", (horizontal * 0.42).toFixed(3));
-      root.style.setProperty("--pointer-ry", (vertical * 0.34).toFixed(3));
-      ambientFrame = window.requestAnimationFrame(updateAmbientMotion);
-    };
-
-    if (!finePointer.matches && !reducedMotion.matches) {
-      ambientFrame = window.requestAnimationFrame(updateAmbientMotion);
-    }
-
     renderScrollState();
     window.addEventListener("scroll", updateScrollProgress, { passive: true });
     window.addEventListener("pointermove", updatePointer, { passive: true });
@@ -239,7 +226,6 @@ export function ExperienceMotion() {
       root.classList.remove("motion-ready");
       revealObserver.disconnect();
       mutationObserver.disconnect();
-      if (ambientFrame !== undefined) window.cancelAnimationFrame(ambientFrame);
       if (scrollFrame !== undefined) window.cancelAnimationFrame(scrollFrame);
       if (scrollSettledTimer !== undefined) window.clearTimeout(scrollSettledTimer);
       window.removeEventListener("scroll", updateScrollProgress);

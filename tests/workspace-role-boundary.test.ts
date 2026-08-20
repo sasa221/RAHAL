@@ -15,6 +15,8 @@ describe("workspace role boundary", () => {
     expect(boundary).toContain("response.status === 401");
     expect(boundary).toContain("This workspace is not assigned to your account");
     expect(boundary).toContain("هذه المساحة ليست مخصّصة لحسابك");
+    expect(boundary).toContain('className="workspace-loading"');
+    expect(boundary).toContain('aria-busy="true"');
     expect(shell).toContain("<WorkspaceAccessBoundary");
   });
 
