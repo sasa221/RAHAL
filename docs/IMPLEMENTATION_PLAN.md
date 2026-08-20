@@ -1494,8 +1494,8 @@ Status: implemented and production-verified on 2026-08-11.
 Goal: replace the buried fleet form with an immediate, image-led vehicle workspace that feels like
 an intentional operating product on desktop and mobile.
 
-Status: visual studio production-verified on 2026-08-11 in release `0983068`; device upload is
-implemented and awaiting the production Vercel Blob store connection.
+Status: visual studio and device-upload path are deployed. The public `rahal-eg-blob` store and
+`BLOB_READ_WRITE_TOKEN` are connected to Production and Preview, and release `3478c93` is ready.
 
 ### Completed scope
 

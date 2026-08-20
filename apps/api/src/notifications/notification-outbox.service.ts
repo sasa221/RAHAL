@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/commo
 import * as webPush from "web-push";
 import { loadApiConfig } from "../config";
 import { sendConfiguredEmail } from "../email-delivery";
+import { buildNotificationEmail } from "./notification-email.template";
 import { NotificationsRepository } from "./notifications.repository";
 import { PushSubscriptionCryptoService } from "./push-subscription-crypto.service";
 
@@ -217,16 +218,11 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
       : reservationId
         ? `${this.config.webUrl}${localePrefix}/account/requests?request=${encodeURIComponent(reservationId)}`
         : `${this.config.webUrl}${localePrefix}/account/requests`;
+    const message = buildNotificationEmail({ title, body, locale, target });
     if (this.config.verificationBrevo) {
-      const linkLabel =
-        locale === "ar"
-          ? "\u0641\u062a\u062d \u062d\u0633\u0627\u0628 \u0631\u062d\u0627\u0644"
-          : "Open your Rahal account";
       const result = await sendConfiguredEmail(this.config, {
         to: email,
-        subject: title,
-        text: `${body}\n\n${target}`,
-        html: `<div dir="${locale === "ar" ? "rtl" : "ltr"}" style="font-family:Arial,sans-serif;line-height:1.7"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="${escapeHtml(target)}">${linkLabel}</a></p></div>`,
+        ...message,
         category: "reservation_notification",
       });
       return { providerId: result.providerId };
@@ -241,9 +237,7 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
       body: JSON.stringify({
         from: provider.from,
         to: [email],
-        subject: title,
-        text: `${body}\n\n${target}`,
-        html: `<div dir="${locale === "ar" ? "rtl" : "ltr"}" style="font-family:Arial,sans-serif;line-height:1.7"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p><p><a href="${escapeHtml(target)}">${locale === "ar" ? "فتح حساب رحال" : "Open your Rahal account"}</a></p></div>`,
+        ...message,
       }),
     });
     if (!response.ok) throw new Error(`Email provider returned HTTP ${response.status}.`);
@@ -349,14 +343,6 @@ function channelSet(value: unknown) {
       )
     : [];
   return new Set(requested.length ? requested : [...allowed]);
-}
-
-function escapeHtml(value: string) {
-  return value.replace(
-    /[&<>"']/g,
-    (character) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!,
-  );
 }
 
 export function quietHoursEnd(

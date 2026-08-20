@@ -5,7 +5,7 @@ Only a verified item is marked complete. Each completed item must name the test 
 
 ## Current release blockers
 
-- [ ] Create and connect the public `rahal-eg-blob` Vercel Blob store, then redeploy the web project.
+- [x] Create and connect the public `rahal-eg-blob` Vercel Blob store, then redeploy the web project. Verified in Vercel with `BLOB_READ_WRITE_TOKEN` connected to Production and Preview and release `3478c93` ready.
 - [ ] Upload a real vehicle image from the administrator studio and verify the saved image on the public fleet page.
 - [x] Allow a direct notification recipient to use the project's CUID identifier instead of incorrectly requiring a UUID. Verified by DTO/service tests.
 - [ ] Configure the production WhatsApp Business provider and approved templates; never expose an OTP or customer document in a message.
@@ -25,7 +25,7 @@ Only a verified item is marked complete. Each completed item must name the test 
 ## Wave 2 — Communication quality
 
 - [ ] Redesign the in-app inbox for clear priority, unread state, useful actions, and compact mobile scanning.
-- [ ] Produce responsive bilingual transactional email templates for account, request, review, approval, branch, booking, and reminder events.
+- [x] Produce responsive bilingual transactional email templates for account, request, review, approval, branch, booking, and reminder events. Verified through account-template coverage and the shared notification email template tests.
 - [ ] Add administrator and sales send previews for in-app, email, push, and WhatsApp that accurately show provider availability.
 - [ ] Add recipient selection, consent explanation, delivery state, and human-readable failure recovery to campaign sends.
 - [ ] Verify marketing opt-in, quiet hours, role boundaries, and delivery outbox retries against real fixtures.
@@ -46,6 +46,8 @@ Only a verified item is marked complete. Each completed item must name the test 
 
 ## Verification ledger
 
-| Date       | Item                                   | Evidence                           | Result         |
-| ---------- | -------------------------------------- | ---------------------------------- | -------------- |
-| 2026-08-20 | Direct-recipient identifier validation | API DTO/service test and typecheck | Passed locally |
+| Date       | Item                                      | Evidence                                             | Result         |
+| ---------- | ----------------------------------------- | ---------------------------------------------------- | -------------- |
+| 2026-08-20 | Direct-recipient identifier validation    | API DTO/service test and typecheck                   | Passed locally |
+| 2026-08-20 | Public vehicle media storage              | Vercel store, environment, and deployment inspection | Connected      |
+| 2026-08-20 | Bilingual notification email presentation | Template and outbox tests                            | Passed locally |
