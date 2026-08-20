@@ -540,7 +540,7 @@ export function CustomerRequestsWorkspace({ locale }: { locale: PublicLocale }) 
   const actionCount = requests.filter((request) => request.needsResponse).length;
 
   return (
-    <WorkspaceShell kind="customer" locale={locale}>
+    <WorkspaceShell activePage="requests" kind="customer" locale={locale}>
       <div className="customer-requests-workspace" dir={locale === "ar" ? "rtl" : "ltr"}>
         <section className="portal-overview customer-requests-hero">
           <div>

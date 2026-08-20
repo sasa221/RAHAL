@@ -43,4 +43,19 @@ describe("public site localization", () => {
     expect(styles).toContain('--font-display: var(--font-manrope), "Segoe UI", Arial, sans-serif');
     expect(styles).toContain('.public-site[dir="rtl"]');
   });
+
+  it("gives every role workspace a spatial frame and page-specific action guide", () => {
+    const shell = read("apps/web/components/workspace-shell.tsx");
+    const styles = read("apps/web/app/globals.css");
+    const customerRequests = read("apps/web/components/customer-requests-workspace.tsx");
+    const salesRequests = read("apps/web/components/sales-review-workspace.tsx");
+
+    expect(shell).toContain('className="portal-spatial-frame"');
+    expect(shell).toContain('className="portal-page-guide"');
+    expect(shell).toContain("guideCopy[locale][activePage]");
+    expect(styles).toContain(".portal-spatial-frame");
+    expect(styles).toContain(".portal-page-guide");
+    expect(customerRequests).toContain('activePage="requests"');
+    expect(salesRequests).toContain('activePage="requests"');
+  });
 });

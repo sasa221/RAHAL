@@ -11,6 +11,91 @@ import { WorkspaceInstallAction } from "./workspace-install-action";
 import { ExperienceMotion } from "./experience-motion";
 
 type WorkspaceKind = "customer" | "sales" | "admin";
+type WorkspacePage =
+  | "overview"
+  | "requests"
+  | "fleet"
+  | "branches"
+  | "documents"
+  | "communications"
+  | "policies"
+  | "content"
+  | "reports"
+  | "customers"
+  | "staff"
+  | "reviews"
+  | "audit"
+  | "profile"
+  | "security";
+
+const guideCopy = {
+  ar: {
+    label: "أنت هنا",
+    purpose: "ماذا تفعل هنا؟",
+    overview: ["راجع أهم الأرقام", "افتح ما يحتاج متابعة", "انتقل للأداة المناسبة"],
+    requests: [
+      "اختر الطلب من القائمة",
+      "راجع الحالة والخطوة التالية",
+      "نفّذ الإجراء الواضح وسجّل الملاحظات",
+    ],
+    fleet: ["راجع صور وحالة العربيات", "أضف أو عدّل من المحرر", "حدّث التوفر والصيانة"],
+    branches: ["راجع بيانات الفرع", "صحّح مواعيد التشغيل", "انشر البيانات المعتمدة فقط"],
+    documents: ["حدد المطلوب لكل حالة", "راجع صلاحية السياسة", "انشر النسخة المعتمدة"],
+    communications: ["حدد المستلم بوضوح", "عاين الرسالة والقنوات", "أرسل وتابع حالة التسليم"],
+    policies: ["راجع النص الحالي", "سجّل نسخة جديدة", "انشر بعد الاعتماد"],
+    content: ["اختر جزء الموقع", "راجع العربي والإنجليزي", "عاين ثم انشر"],
+    reports: ["حدد الفترة", "اقرأ مؤشرات التشغيل", "صدّر ما تحتاجه"],
+    customers: ["ابحث عن العميل", "راجع الحالة بدون كشف بيانات حساسة", "نفذ إجراءً بسبب مسجل"],
+    staff: ["اختر الموظف", "راجع الدور والصلاحيات", "احفظ التغيير بسبب واضح"],
+    reviews: ["راجع التقييم", "اخفِ المحتوى المخالف", "انشر التجارب المناسبة"],
+    audit: ["حدد نوع العملية", "راجع المنفذ والسبب", "تتبّع التغيير زمنيًا"],
+    profile: ["حدّث بياناتك", "اختر تفضيلات التواصل", "احفظ التغييرات"],
+    security: ["راجع الجلسات", "ألغِ الأجهزة غير المعروفة", "حدّث كلمة المرور عند الحاجة"],
+  },
+  en: {
+    label: "You are here",
+    purpose: "What can you do here?",
+    overview: ["Review the key numbers", "Open items needing attention", "Move to the right tool"],
+    requests: [
+      "Choose a request from the list",
+      "Review status and next step",
+      "Take the clear action and record notes",
+    ],
+    fleet: [
+      "Review vehicle media and status",
+      "Add or edit in the studio",
+      "Manage availability and maintenance",
+    ],
+    branches: [
+      "Review branch details",
+      "Correct operating hours",
+      "Publish approved information only",
+    ],
+    documents: ["Define each scenario", "Review policy validity", "Publish the approved version"],
+    communications: [
+      "Choose recipients clearly",
+      "Preview message and channels",
+      "Send and track delivery",
+    ],
+    policies: ["Review current copy", "Create a new version", "Publish after approval"],
+    content: ["Choose a site section", "Review Arabic and English", "Preview then publish"],
+    reports: ["Choose the period", "Read operating signals", "Export what you need"],
+    customers: [
+      "Find the customer",
+      "Review status without exposing sensitive data",
+      "Record a reason for every action",
+    ],
+    staff: ["Select the employee", "Review role and access", "Save with a clear audit reason"],
+    reviews: ["Review the submission", "Hide policy violations", "Publish suitable experiences"],
+    audit: ["Choose an operation type", "Review actor and reason", "Trace the timeline"],
+    profile: ["Update your details", "Choose communication preferences", "Save changes"],
+    security: [
+      "Review active sessions",
+      "Revoke unknown devices",
+      "Update the password when needed",
+    ],
+  },
+} as const;
 
 const shellCopy = {
   ar: {
@@ -96,21 +181,7 @@ export function WorkspaceShell({
   children: ReactNode;
   kind: WorkspaceKind;
   locale: PublicLocale;
-  activePage?:
-    | "overview"
-    | "fleet"
-    | "branches"
-    | "documents"
-    | "communications"
-    | "policies"
-    | "content"
-    | "reports"
-    | "customers"
-    | "staff"
-    | "reviews"
-    | "audit"
-    | "profile"
-    | "security";
+  activePage?: WorkspacePage;
 }) {
   const text = shellCopy[locale];
   const isStaff = kind !== "customer";
@@ -235,36 +306,38 @@ export function WorkspaceShell({
         [text.security, localizedPath(locale, "/account/security"), "document"],
       ];
   const activeTarget =
-    activePage === "fleet"
-      ? fleetHref
-      : activePage === "branches"
-        ? localizedPath(locale, "/admin/branches")
-        : activePage === "documents"
-          ? localizedPath(locale, "/admin/documents")
-          : activePage === "communications"
-            ? localizedPath(
-                locale,
-                kind === "admin" ? "/admin/communications" : "/sales/communications",
-              )
-            : activePage === "policies"
-              ? localizedPath(locale, "/admin/policies")
-              : activePage === "content"
-                ? localizedPath(locale, "/admin/content")
-                : activePage === "reports"
-                  ? localizedPath(locale, "/admin/reports")
-                  : activePage === "customers"
-                    ? localizedPath(locale, "/admin/customers")
-                    : activePage === "staff"
-                      ? localizedPath(locale, "/admin/staff")
-                      : activePage === "reviews"
-                        ? localizedPath(locale, "/admin/reviews")
-                        : activePage === "audit"
-                          ? localizedPath(locale, "/admin/audit")
-                          : activePage === "profile"
-                            ? localizedPath(locale, "/account/profile")
-                            : activePage === "security"
-                              ? localizedPath(locale, "/account/security")
-                              : currentHref;
+    activePage === "requests"
+      ? `${requestsHref}#requests`
+      : activePage === "fleet"
+        ? fleetHref
+        : activePage === "branches"
+          ? localizedPath(locale, "/admin/branches")
+          : activePage === "documents"
+            ? localizedPath(locale, "/admin/documents")
+            : activePage === "communications"
+              ? localizedPath(
+                  locale,
+                  kind === "admin" ? "/admin/communications" : "/sales/communications",
+                )
+              : activePage === "policies"
+                ? localizedPath(locale, "/admin/policies")
+                : activePage === "content"
+                  ? localizedPath(locale, "/admin/content")
+                  : activePage === "reports"
+                    ? localizedPath(locale, "/admin/reports")
+                    : activePage === "customers"
+                      ? localizedPath(locale, "/admin/customers")
+                      : activePage === "staff"
+                        ? localizedPath(locale, "/admin/staff")
+                        : activePage === "reviews"
+                          ? localizedPath(locale, "/admin/reviews")
+                          : activePage === "audit"
+                            ? localizedPath(locale, "/admin/audit")
+                            : activePage === "profile"
+                              ? localizedPath(locale, "/account/profile")
+                              : activePage === "security"
+                                ? localizedPath(locale, "/account/security")
+                                : currentHref;
   const preferredMobileNavigation =
     activePage === "reviews"
       ? navigation.filter((_, index) => index !== 3).slice(0, 4)
@@ -421,7 +494,29 @@ export function WorkspaceShell({
               </button>
             </nav>
           </header>
-          <main>{children}</main>
+          <main>
+            <div aria-hidden="true" className="portal-spatial-frame">
+              <i />
+              <i />
+              <i />
+              <span>RAHAL / {kind.toUpperCase()}</span>
+            </div>
+            <section className="portal-page-guide" aria-label={guideCopy[locale].purpose}>
+              <div>
+                <small>{guideCopy[locale].label}</small>
+                <strong>{activeNavigationItem?.[0] ?? text.overview}</strong>
+              </div>
+              <ol>
+                {guideCopy[locale][activePage].map((step, index) => (
+                  <li key={step}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </section>
+            <div className="portal-page-content">{children}</div>
+          </main>
         </div>
 
         {mobileMenuOpen ? (

@@ -991,7 +991,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   }
 
   return (
-    <WorkspaceShell kind="sales" locale={locale}>
+    <WorkspaceShell activePage="requests" kind="sales" locale={locale}>
       <div className="sales-workspace" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
         <section className="portal-overview sales-hero">
           <div>

@@ -16,7 +16,9 @@ describe("customer request follow-up", () => {
     expect(read("apps/web/app/account/requests/page.tsx")).toContain('locale="ar"');
     expect(read("apps/web/app/en/account/requests/page.tsx")).toContain('locale="en"');
     expect(workspace).toContain('dir={locale === "ar" ? "rtl" : "ltr"}');
-    expect(workspace).toContain('<WorkspaceShell kind="customer" locale={locale}>');
+    expect(workspace).toContain(
+      '<WorkspaceShell activePage="requests" kind="customer" locale={locale}>',
+    );
     expect(workspace).toContain('className="customer-status-track"');
     expect(shell).toContain('className="portal-bottom-nav"');
     expect(shell).toContain('src="/images/rahal-logo.png"');

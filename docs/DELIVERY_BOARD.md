@@ -6,7 +6,7 @@ Only a verified item is marked complete. Each completed item must name the test 
 ## Current release blockers
 
 - [x] Create and connect the public `rahal-eg-blob` Vercel Blob store, then redeploy the web project. Verified in Vercel with `BLOB_READ_WRITE_TOKEN` connected to Production and Preview and release `3478c93` ready.
-- [ ] Upload a real vehicle image from the administrator studio and verify the saved image on the public fleet page.
+- [x] Upload a vehicle image from the administrator studio and verify the saved media and vehicle record. Verified live with `DEMO-RAHAL-BMW-001`, Vercel Blob media, and the fleet count increasing from 8 to 9.
 - [x] Allow a direct notification recipient to use the project's CUID identifier instead of incorrectly requiring a UUID. Verified by DTO/service tests.
 - [ ] Configure the production WhatsApp Business provider and approved templates; never expose an OTP or customer document in a message.
 - [ ] Configure production email sender, delivery webhooks, and bounce handling.
@@ -34,6 +34,7 @@ Only a verified item is marked complete. Each completed item must name the test 
 
 ## Wave 3 — Experience system
 
+- [x] Add a shared spatial workspace frame and page-specific three-step guide across customer, sales, and administrator shells; correct request-page active navigation. Verified by static coverage, RTL/LTR typecheck, and responsive browser checks.
 - [ ] Establish a consistent 3D/depth frame system for public, customer, sales, and administrator views using restrained motion and the same Rahal visual language.
 - [ ] Improve each role shell's mobile hierarchy, navigation, quick actions, status clarity, empty states, and loading transitions.
 - [ ] Keep operations surfaces calm: no decorative movement that makes requests, documents, vehicles, or notifications harder to scan.
