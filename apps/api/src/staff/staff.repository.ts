@@ -126,7 +126,7 @@ export class StaffRepository {
         data: {
           ...data,
           status: "ACTIVE",
-          emailVerifiedAt: new Date(),
+          emailVerifiedAt: data.systemRole === "SALES" ? new Date() : null,
           phoneVerifiedAt: new Date(),
           mustChangePassword: true,
           temporaryPasswordIssuedAt: new Date(),
@@ -151,9 +151,40 @@ export class StaffRepository {
     });
   }
 
+  resetAccess(id: string, passwordHash: string, audit: { actorId: string; reason: string }) {
+    return this.prisma.client.$transaction(async (transaction) => {
+      const user = await transaction.user.update({
+        where: { id },
+        data: {
+          passwordHash,
+          mustChangePassword: true,
+          temporaryPasswordIssuedAt: new Date(),
+        },
+        select: staffSelect,
+      });
+      await transaction.session.updateMany({
+        where: { userId: id, status: "ACTIVE" },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      });
+      await transaction.staffLoginChallenge.deleteMany({ where: { userId: id } });
+      await transaction.auditLog.create({
+        data: {
+          actorId: audit.actorId,
+          action: "STAFF_ACCESS_RESET",
+          entityType: "USER",
+          entityId: id,
+          reason: audit.reason,
+          newData: { sessionsRevoked: true, temporaryPasswordRequired: true },
+        },
+      });
+      return user;
+    });
+  }
+
   updateStaff(
     id: string,
     data: {
+      email?: string;
       fullNameAr?: string | null;
       fullNameEn?: string;
       preferredLocale?: "ar" | "en";
@@ -165,7 +196,7 @@ export class StaffRepository {
   ) {
     return this.prisma.client.$transaction(async (transaction) => {
       const user = await transaction.user.update({ where: { id }, data, select: staffSelect });
-      if (data.status || data.systemRole || data.staffRoleId !== undefined) {
+      if (data.email || data.status || data.systemRole || data.staffRoleId !== undefined) {
         await transaction.session.updateMany({
           where: { userId: id, status: "ACTIVE" },
           data: { status: "REVOKED", revokedAt: new Date() },

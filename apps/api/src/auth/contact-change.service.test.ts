@@ -18,13 +18,19 @@ const user = {
   staffMfaCredential: null,
 };
 
-function setup(role: "CUSTOMER" | "SALES" = "CUSTOMER") {
+function setup(role: "CUSTOMER" | "SALES" | "ADMIN" = "CUSTOMER") {
   const repository = {
     findSession: vi.fn().mockResolvedValue({
       id: "session-current",
       expiresAt: new Date(Date.now() + 60_000),
-      mfaVerifiedAt: null,
-      user: { ...user, systemRole: role },
+      mfaVerifiedAt: role === "ADMIN" ? new Date() : null,
+      user: {
+        ...user,
+        systemRole: role,
+        emailVerifiedAt: role === "ADMIN" ? null : user.emailVerifiedAt,
+        mustChangePassword: role === "ADMIN",
+        staffMfaCredential: role === "ADMIN" ? { id: "mfa-1" } : null,
+      },
     }),
     touchSession: vi.fn(),
     findByIdentifier: vi.fn().mockResolvedValue(null),
@@ -71,6 +77,14 @@ describe("verified contact changes", () => {
         {},
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("allows an MFA-verified temporary administrator to claim a real email", async () => {
+    const { service, repository } = setup("ADMIN");
+    await expect(
+      service.requestContactChange("session", { channel: "email", value: "owner@example.com" }, {}),
+    ).resolves.toMatchObject({ channel: "email", destination: "ow***@example.com" });
+    expect(repository.createContactChangeChallenge).toHaveBeenCalledOnce();
   });
 
   it("normalizes the destination but persists only value and code hashes in the challenge", async () => {

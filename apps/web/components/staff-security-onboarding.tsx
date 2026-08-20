@@ -12,7 +12,7 @@ import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
 
-type Stage = "loading" | "mfa" | "recovery" | "password" | "complete" | "expired";
+type Stage = "loading" | "mfa" | "recovery" | "email" | "password" | "complete" | "expired";
 
 const copy = {
   ar: {
@@ -52,6 +52,15 @@ const copy = {
     download: "تنزيل ملف آمن",
     savedCheck: "أكد أنني حفظت الأكواد في مكان آمن",
     continue: "متابعة",
+    emailKicker: "هوية المسؤول",
+    emailTitle: "اربط بريدك الحقيقي بالحساب.",
+    emailCopy:
+      "سنرسل رمزًا إلى بريدك للتأكد أنه ملكك. بعد التأكيد سيصبح هذا البريد هو اسم دخولك الدائم.",
+    primaryEmail: "البريد الإلكتروني الحقيقي",
+    sendEmailCode: "إرسال رمز التحقق",
+    emailCode: "رمز البريد المكوّن من 6 أرقام",
+    confirmEmail: "تأكيد البريد والمتابعة",
+    changeEmail: "استخدام بريد آخر",
     passwordKicker: "آخر خطوة",
     passwordTitle: "غيّر كلمة المرور المؤقتة.",
     passwordCopy:
@@ -110,6 +119,15 @@ const copy = {
     download: "Download secure file",
     savedCheck: "I confirm these codes are stored safely",
     continue: "Continue",
+    emailKicker: "ADMIN IDENTITY",
+    emailTitle: "Connect your real email address.",
+    emailCopy:
+      "We will send a code to confirm you own it. Once verified, it becomes your permanent sign-in email.",
+    primaryEmail: "Real email address",
+    sendEmailCode: "Send verification code",
+    emailCode: "Six-digit email code",
+    confirmEmail: "Verify email and continue",
+    changeEmail: "Use another email",
     passwordKicker: "FINAL STEP",
     passwordTitle: "Replace the temporary password.",
     passwordCopy:
@@ -141,6 +159,8 @@ export function StaffSecurityOnboarding({ locale }: { locale: PublicLocale }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [primaryEmail, setPrimaryEmail] = useState("");
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
 
   const workspaceHref = useMemo(() => {
     const path = session?.user.role === "SALES" ? "/sales" : "/admin";
@@ -177,9 +197,11 @@ export function StaffSecurityOnboarding({ locale }: { locale: PublicLocale }) {
           }
           setSession(sessionPayload);
           setStage(
-            sessionPayload.user.securityAction === "CHANGE_TEMPORARY_PASSWORD"
-              ? "password"
-              : "complete",
+            sessionPayload.user.securityAction === "SET_PRIMARY_EMAIL"
+              ? "email"
+              : sessionPayload.user.securityAction === "CHANGE_TEMPORARY_PASSWORD"
+                ? "password"
+                : "complete",
           );
           return;
         }
@@ -255,6 +277,8 @@ export function StaffSecurityOnboarding({ locale }: { locale: PublicLocale }) {
         setStage("recovery");
       } else if (payload.data.session.user.securityAction === "CHANGE_TEMPORARY_PASSWORD") {
         setStage("password");
+      } else if (payload.data.session.user.securityAction === "SET_PRIMARY_EMAIL") {
+        setStage("email");
       } else {
         setStage("complete");
       }
@@ -288,7 +312,58 @@ export function StaffSecurityOnboarding({ locale }: { locale: PublicLocale }) {
 
   function continueAfterRecovery() {
     if (!session || !saved) return;
-    setStage(session.user.securityAction === "CHANGE_TEMPORARY_PASSWORD" ? "password" : "complete");
+    setStage(
+      session.user.securityAction === "SET_PRIMARY_EMAIL"
+        ? "email"
+        : session.user.securityAction === "CHANGE_TEMPORARY_PASSWORD"
+          ? "password"
+          : "complete",
+    );
+  }
+
+  async function submitPrimaryEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const value = primaryEmail.trim().toLowerCase();
+    const verificationCode = String(form.get("emailCode") ?? "").trim();
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        emailCodeSent ? "/api/auth/contact-change/confirm" : "/api/auth/contact-change/request",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(
+            emailCodeSent
+              ? { channel: "email", value, code: verificationCode }
+              : { channel: "email", value },
+          ),
+        },
+      );
+      const payload = (await response.json()) as {
+        data?: { user?: AuthSession["user"] };
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        setError(payload.error?.message || text.genericError);
+        return;
+      }
+      if (!emailCodeSent) {
+        setEmailCodeSent(true);
+        return;
+      }
+      if (payload.data?.user) {
+        setSession((current) => (current ? { ...current, user: payload.data!.user! } : current));
+      }
+      window.dispatchEvent(new Event("rahal:session-changed"));
+      setStage("password");
+    } catch {
+      setError(text.genericError);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function changePassword(event: FormEvent<HTMLFormElement>) {
@@ -531,6 +606,65 @@ export function StaffSecurityOnboarding({ locale }: { locale: PublicLocale }) {
                 {busy ? text.saving : text.savePassword}
                 <Icon name="arrow" size={18} />
               </button>
+            </form>
+          ) : null}
+
+          {stage === "email" ? (
+            <form className="staff-security__panel" onSubmit={submitPrimaryEmail}>
+              <header>
+                <span className="eyebrow">{text.emailKicker}</span>
+                <h2>{text.emailTitle}</h2>
+                <p>{text.emailCopy}</p>
+              </header>
+              <div className="staff-security__password-grid">
+                <label>
+                  <span>{text.primaryEmail}</span>
+                  <input
+                    autoComplete="email"
+                    dir="ltr"
+                    disabled={emailCodeSent}
+                    maxLength={254}
+                    onChange={(event) => setPrimaryEmail(event.target.value)}
+                    required
+                    type="email"
+                    value={primaryEmail}
+                  />
+                </label>
+                {emailCodeSent ? (
+                  <label>
+                    <span>{text.emailCode}</span>
+                    <input
+                      autoComplete="one-time-code"
+                      dir="ltr"
+                      inputMode="numeric"
+                      maxLength={6}
+                      name="emailCode"
+                      required
+                    />
+                  </label>
+                ) : null}
+              </div>
+              {error ? (
+                <p className="staff-security__error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              <button className="staff-security__primary" disabled={busy} type="submit">
+                {emailCodeSent ? text.confirmEmail : text.sendEmailCode}
+                <Icon name="arrow" size={18} />
+              </button>
+              {emailCodeSent ? (
+                <button
+                  className="staff-security__saved"
+                  onClick={() => {
+                    setEmailCodeSent(false);
+                    setError("");
+                  }}
+                  type="button"
+                >
+                  {text.changeEmail}
+                </button>
+              ) : null}
             </form>
           ) : null}
 

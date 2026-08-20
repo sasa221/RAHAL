@@ -36,6 +36,10 @@ const copy = {
     reason: "سبب التغيير",
     reasonHint: "سبب واضح من 10 أحرف على الأقل — سيظهر في سجل التدقيق",
     saveAccount: "حفظ بيانات الحساب",
+    managedEmail: "البريد الثابت الذي تديره الإدارة",
+    resetPassword: "إصدار كلمة مرور مؤقتة جديدة",
+    resetAccess: "إلغاء الجلسات وإصدار الدخول المؤقت",
+    resetHint: "لن تظهر كلمة المرور القديمة. سيُجبر الموظف على تغيير الجديدة بعد الدخول.",
     savePermissions: "حفظ الاستثناءات",
     inherited: "موروثة من الدور",
     allow: "سماح استثنائي",
@@ -99,6 +103,11 @@ const copy = {
     reason: "Change reason",
     reasonHint: "At least 10 clear characters — recorded in the audit log",
     saveAccount: "Save account",
+    managedEmail: "Admin-managed fixed email",
+    resetPassword: "Issue a new temporary password",
+    resetAccess: "Revoke sessions and issue temporary access",
+    resetHint:
+      "The old password is never shown. The employee must replace the new one after sign-in.",
     savePermissions: "Save overrides",
     inherited: "Inherited from role",
     allow: "Explicit allow",
@@ -381,6 +390,8 @@ function StaffEditor({
   const [systemRole, setSystemRole] = useState(member.systemRole);
   const [roleId, setRoleId] = useState(member.staffRoleId ?? "");
   const [reason, setReason] = useState("");
+  const [email, setEmail] = useState(member.email);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
   const [choices, setChoices] = useState<Record<string, OverrideChoice>>(() =>
     Object.fromEntries(
       overview.permissions.map((permission) => {
@@ -415,6 +426,18 @@ function StaffEditor({
         </span>
       </div>
       <div className="staff-editor__form">
+        {member.systemRole === "SALES" ? (
+          <label>
+            <span>{text.managedEmail}</span>
+            <input
+              dir="ltr"
+              maxLength={254}
+              onChange={(event) => setEmail(event.target.value)}
+              type="email"
+              value={email}
+            />
+          </label>
+        ) : null}
         <label>
           <span>{text.systemRole}</span>
           <select
@@ -469,6 +492,7 @@ function StaffEditor({
         disabled={saving || reason.trim().length < 10 || member.systemRole === "SUPER_ADMIN"}
         onClick={() =>
           void mutate(`/api/staff/${member.id}`, "PATCH", {
+            ...(member.systemRole === "SALES" ? { email } : {}),
             systemRole,
             staffRoleId: roleId || null,
             status,
@@ -480,6 +504,41 @@ function StaffEditor({
         {saving ? text.saving : text.saveAccount}
       </button>
       <p className="staff-session-warning">{text.signedOut}</p>
+
+      {member.systemRole === "SALES" ? (
+        <section className="staff-permissions">
+          <header>
+            <span>{text.resetPassword}</span>
+          </header>
+          <p className="staff-session-warning">{text.resetHint}</p>
+          <label className="staff-reason">
+            <span>{text.password}</span>
+            <input
+              autoComplete="new-password"
+              maxLength={128}
+              minLength={8}
+              onChange={(event) => setTemporaryPassword(event.target.value)}
+              type="password"
+              value={temporaryPassword}
+            />
+          </label>
+          <button
+            className="staff-primary-action"
+            disabled={saving || reason.trim().length < 10 || temporaryPassword.length < 8}
+            onClick={() =>
+              void mutate(`/api/staff/${member.id}/reset-access`, "POST", {
+                temporaryPassword,
+                reason,
+              }).then((ok) => {
+                if (ok) setTemporaryPassword("");
+              })
+            }
+            type="button"
+          >
+            {saving ? text.saving : text.resetAccess}
+          </button>
+        </section>
+      ) : null}
 
       {member.systemRole === "SALES" ? (
         <section className="staff-permissions">

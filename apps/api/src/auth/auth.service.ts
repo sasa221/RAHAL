@@ -99,9 +99,11 @@ function toAuthUser(user: AuthUserRecord): AuthUser {
     securityAction:
       staffAccount && !user.staffMfaCredential
         ? "ENROLL_MFA"
-        : staffAccount && user.mustChangePassword
-          ? "CHANGE_TEMPORARY_PASSWORD"
-          : null,
+        : user.systemRole === "ADMIN" && !user.emailVerifiedAt
+          ? "SET_PRIMARY_EMAIL"
+          : staffAccount && user.mustChangePassword
+            ? "CHANGE_TEMPORARY_PASSWORD"
+            : null,
   };
 }
 
@@ -672,9 +674,18 @@ export class AuthService {
     input: RequestContactChangeDto,
     context: AuthRequestContext,
   ): Promise<ContactChangeRequestResult> {
-    const { session } = await this.requireSessionRecord(token);
-    if (session.user.systemRole !== "CUSTOMER") {
-      throw new ForbiddenException("A customer account is required.");
+    const { session } = await this.requireSessionRecord(token, false);
+    const initialAdminEmailSetup =
+      session.user.systemRole === "ADMIN" &&
+      !session.user.emailVerifiedAt &&
+      session.user.mustChangePassword &&
+      Boolean(session.user.staffMfaCredential) &&
+      Boolean(session.mfaVerifiedAt);
+    if (session.user.systemRole !== "CUSTOMER" && !initialAdminEmailSetup) {
+      throw new ForbiddenException("Staff contact details are managed by an administrator.");
+    }
+    if (initialAdminEmailSetup && input.channel !== "email") {
+      throw new ForbiddenException("Only the primary email can be set during administrator setup.");
     }
     const value = normalizeContactChange(input.channel, input.value);
     const current = input.channel === "email" ? session.user.email : session.user.phone;
@@ -759,9 +770,18 @@ export class AuthService {
     input: ConfirmContactChangeDto,
     context: AuthRequestContext,
   ): Promise<ContactChangeResult> {
-    const { session } = await this.requireSessionRecord(token);
-    if (session.user.systemRole !== "CUSTOMER") {
-      throw new ForbiddenException("A customer account is required.");
+    const { session } = await this.requireSessionRecord(token, false);
+    const initialAdminEmailSetup =
+      session.user.systemRole === "ADMIN" &&
+      !session.user.emailVerifiedAt &&
+      session.user.mustChangePassword &&
+      Boolean(session.user.staffMfaCredential) &&
+      Boolean(session.mfaVerifiedAt);
+    if (session.user.systemRole !== "CUSTOMER" && !initialAdminEmailSetup) {
+      throw new ForbiddenException("Staff contact details are managed by an administrator.");
+    }
+    if (initialAdminEmailSetup && input.channel !== "email") {
+      throw new ForbiddenException("Only the primary email can be set during administrator setup.");
     }
     const value = normalizeContactChange(input.channel, input.value);
     const kind = input.channel === "email" ? "EMAIL" : "PHONE";

@@ -621,7 +621,7 @@ export type AuthUser = {
   emailVerified: boolean;
   phoneVerified: boolean;
   mfaEnabled: boolean;
-  securityAction: "ENROLL_MFA" | "CHANGE_TEMPORARY_PASSWORD" | null;
+  securityAction: "ENROLL_MFA" | "SET_PRIMARY_EMAIL" | "CHANGE_TEMPORARY_PASSWORD" | null;
 };
 
 export type AuthSession = {

@@ -67,6 +67,10 @@ export class CreateStaffDto {
 
 export class UpdateStaffDto {
   @IsOptional()
+  @IsEmail()
+  @MaxLength(254)
+  email?: string;
+  @IsOptional()
   @IsString()
   @Length(2, 120)
   fullNameEn?: string;
@@ -91,6 +95,17 @@ export class UpdateStaffDto {
   @IsOptional()
   @IsString()
   staffRoleId?: string | null;
+
+  @IsString()
+  @Length(10, 300)
+  reason!: string;
+}
+
+export class ResetStaffAccessDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  temporaryPassword!: string;
 
   @IsString()
   @Length(10, 300)

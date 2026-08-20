@@ -15,6 +15,8 @@ Only a verified item is marked complete. Each completed item must name the test 
 
 ## Wave 1 — Correctness and complete user journeys
 
+- [x] Enforce role-specific staff onboarding: admins enroll Authenticator, verify their real email, and replace the temporary password; sales recovery stays admin-controlled and audited.
+
 - [ ] Audit every public button, form, and error state in Arabic and English at mobile and desktop widths.
 - [ ] Audit the customer account, verification, reservation, document, offer, cancellation, and feedback journeys.
 - [ ] Audit the sales claim/review/notes/approval/branch/deposit/confirmation journey with competing sales users.

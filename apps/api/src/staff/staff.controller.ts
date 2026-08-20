@@ -4,6 +4,7 @@ import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
 import {
   CreateStaffDto,
+  ResetStaffAccessDto,
   UpdateRolePermissionsDto,
   UpdateStaffDto,
   UpdateStaffPermissionsDto,
@@ -43,6 +44,15 @@ export class StaffController {
     @Body() input: UpdateStaffPermissionsDto,
   ): Promise<ApiSuccess<StaffMember>> {
     return { data: await this.staff.replaceOverrides(readAuthCookie(request), id, input) };
+  }
+
+  @Post(":id/reset-access")
+  async resetAccess(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Body() input: ResetStaffAccessDto,
+  ): Promise<ApiSuccess<StaffMember>> {
+    return { data: await this.staff.resetAccess(readAuthCookie(request), id, input) };
   }
 
   @Put("roles/:id/permissions")

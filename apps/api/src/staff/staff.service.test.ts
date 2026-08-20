@@ -42,6 +42,7 @@ function setup(role: "SALES" | "ADMIN" | "SUPER_ADMIN" = "ADMIN") {
     findPermissions: vi.fn().mockResolvedValue([]),
     createStaff: vi.fn().mockResolvedValue(staffRecord),
     updateStaff: vi.fn().mockResolvedValue(staffRecord),
+    resetAccess: vi.fn().mockResolvedValue(staffRecord),
     replaceOverrides: vi.fn().mockResolvedValue(staffRecord),
     replaceRolePermissions: vi.fn(),
     permissionAccess: vi.fn(),
@@ -98,6 +99,22 @@ describe("StaffService", () => {
         reason: "Temporary document review duty",
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("lets an administrator issue audited temporary access for sales", async () => {
+    const { service, repository, passwords } = setup("ADMIN");
+    await expect(
+      service.resetAccess("session", "staff-2", {
+        temporaryPassword: "Temporary-456",
+        reason: "Sales employee requested recovery",
+      }),
+    ).resolves.toMatchObject({ id: "staff-2" });
+    expect(passwords.hash).toHaveBeenCalledWith("Temporary-456");
+    expect(repository.resetAccess).toHaveBeenCalledWith(
+      "staff-2",
+      "safe-hash",
+      expect.objectContaining({ actorId: "actor-1" }),
+    );
   });
 });
 

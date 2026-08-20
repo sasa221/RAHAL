@@ -9,6 +9,7 @@ import { AuthService } from "../auth/auth.service";
 import { PasswordService } from "../auth/password.service";
 import type {
   CreateStaffDto,
+  ResetStaffAccessDto,
   UpdateRolePermissionsDto,
   UpdateStaffDto,
   UpdateStaffPermissionsDto,
@@ -103,25 +104,51 @@ export class StaffService {
     if (input.staffRoleId && !(await this.staff.findRole(input.staffRoleId))) {
       throw new NotFoundException("The staff role was not found.");
     }
+    try {
+      return toStaffMember(
+        await this.staff.updateStaff(
+          id,
+          {
+            ...(input.email ? { email: input.email.trim().toLowerCase() } : {}),
+            ...(input.fullNameAr !== undefined
+              ? { fullNameAr: input.fullNameAr.trim() || null }
+              : {}),
+            ...(input.fullNameEn ? { fullNameEn: input.fullNameEn.trim() } : {}),
+            ...(input.preferredLocale ? { preferredLocale: input.preferredLocale } : {}),
+            ...(input.systemRole ? { systemRole: input.systemRole } : {}),
+            ...(input.status ? { status: input.status } : {}),
+            ...(input.staffRoleId !== undefined ? { staffRoleId: input.staffRoleId || null } : {}),
+          },
+          {
+            actorId: session.user.id,
+            reason: input.reason.trim(),
+            previousData: staffAuditSnapshot(target),
+          },
+        ),
+      );
+    } catch (error) {
+      if (isUniqueConflict(error)) {
+        throw new ConflictException("A user already uses that email or phone number.");
+      }
+      throw error;
+    }
+  }
+
+  async resetAccess(
+    token: string | undefined,
+    id: string,
+    input: ResetStaffAccessDto,
+  ): Promise<StaffMember> {
+    const session = await this.requireManager(token);
+    const target = await this.requireManageableTarget(session.user.id, session.user.role, id);
+    if (target.systemRole === "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+      throw new ForbiddenException("Only a super administrator can reset administrator access.");
+    }
     return toStaffMember(
-      await this.staff.updateStaff(
-        id,
-        {
-          ...(input.fullNameAr !== undefined
-            ? { fullNameAr: input.fullNameAr.trim() || null }
-            : {}),
-          ...(input.fullNameEn ? { fullNameEn: input.fullNameEn.trim() } : {}),
-          ...(input.preferredLocale ? { preferredLocale: input.preferredLocale } : {}),
-          ...(input.systemRole ? { systemRole: input.systemRole } : {}),
-          ...(input.status ? { status: input.status } : {}),
-          ...(input.staffRoleId !== undefined ? { staffRoleId: input.staffRoleId || null } : {}),
-        },
-        {
-          actorId: session.user.id,
-          reason: input.reason.trim(),
-          previousData: staffAuditSnapshot(target),
-        },
-      ),
+      await this.staff.resetAccess(id, await this.passwords.hash(input.temporaryPassword), {
+        actorId: session.user.id,
+        reason: input.reason.trim(),
+      }),
     );
   }
 
