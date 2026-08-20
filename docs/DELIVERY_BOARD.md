@@ -35,6 +35,7 @@ Only a verified item is marked complete. Each completed item must name the test 
 ## Wave 3 — Experience system
 
 - [x] Add a shared spatial workspace frame and page-specific three-step guide across customer, sales, and administrator shells; correct request-page active navigation. Verified by static coverage, RTL/LTR typecheck, and responsive browser checks.
+- [x] Replace the bulky Arabic interface typography with self-hosted IBM Plex Sans Arabic, explicit 400–700 weights, restrained heading sizes, and consistent RTL line-height across public and role experiences. Verified by font asset checks, production build, and 390px/desktop browser review.
 - [ ] Establish a consistent 3D/depth frame system for public, customer, sales, and administrator views using restrained motion and the same Rahal visual language.
 - [ ] Improve each role shell's mobile hierarchy, navigation, quick actions, status clarity, empty states, and loading transitions.
 - [ ] Keep operations surfaces calm: no decorative movement that makes requests, documents, vehicles, or notifications harder to scan.

@@ -21,11 +21,15 @@ const cormorant = localFont({
   variable: "--font-cormorant",
 });
 
-const alexandria = localFont({
-  src: "./fonts/alexandria-arabic.woff2",
+const arabicInterface = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-sans-arabic-400.woff2", weight: "400" },
+    { path: "./fonts/ibm-plex-sans-arabic-500.woff2", weight: "500" },
+    { path: "./fonts/ibm-plex-sans-arabic-600.woff2", weight: "600" },
+    { path: "./fonts/ibm-plex-sans-arabic-700.woff2", weight: "700" },
+  ],
   display: "swap",
-  weight: "100 900",
-  variable: "--font-alexandria",
+  variable: "--font-ibm-plex-arabic",
 });
 
 export const metadata: Metadata = {
@@ -54,7 +58,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang={locale === "en" ? "en-EG" : "ar-EG"} dir={locale === "en" ? "ltr" : "rtl"}>
       <body
-        className={`${manrope.className} ${manrope.variable} ${cormorant.variable} ${alexandria.variable}`}
+        className={`${manrope.className} ${manrope.variable} ${cormorant.variable} ${arabicInterface.variable}`}
       >
         <PushPermissionGate locale={locale} />
         <MarketingConsentGate locale={locale} />

@@ -33,13 +33,15 @@ describe("public site localization", () => {
     const layout = read("apps/web/app/layout.tsx");
     const styles = read("apps/web/app/globals.css");
 
-    expect(layout).toContain('src: "./fonts/alexandria-arabic.woff2"');
+    expect(layout).toContain('path: "./fonts/ibm-plex-sans-arabic-400.woff2"');
+    expect(layout).toContain('path: "./fonts/ibm-plex-sans-arabic-700.woff2"');
     expect(layout).toContain('src: "./fonts/cormorant-garamond-latin.woff2"');
     expect(layout).toContain('src: "./fonts/manrope-latin.woff2"');
     expect(layout).toContain('from "next/font/local"');
     expect(layout).not.toContain('from "next/font/google"');
     expect(layout.match(/display: "swap"/g)).toHaveLength(3);
-    expect(styles).toContain("--font-arabic: var(--font-alexandria)");
+    expect(styles).toContain("--font-arabic: var(--font-ibm-plex-arabic)");
+    expect(styles).toContain('html[dir="rtl"] :where(h1, h2, h3, h4)');
     expect(styles).toContain('--font-display: var(--font-manrope), "Segoe UI", Arial, sans-serif');
     expect(styles).toContain('.public-site[dir="rtl"]');
   });

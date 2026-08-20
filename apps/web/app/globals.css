@@ -173,6 +173,118 @@
   }
 }
 
+/* ========================================================================== */
+/* Arabic typography system                                                   */
+/* IBM Plex Sans Arabic keeps interfaces crisp without Alexandria's bulky     */
+/* display forms. Explicit weights prevent synthetic 800/850 rendering.       */
+/* ========================================================================== */
+
+html[dir="rtl"] body {
+  font-family: var(--font-arabic);
+  font-synthesis: none;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+html[dir="rtl"]
+  :where(
+    .public-site,
+    .auth-experience,
+    .reservation-experience-page,
+    .portal-shell,
+    .staff-security,
+    .password-recovery
+  ) {
+  font-family: var(--font-arabic);
+}
+
+html[dir="rtl"] :where(h1, h2, h3, h4) {
+  font-family: var(--font-arabic) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-wrap: balance;
+}
+
+html[dir="rtl"] h1 {
+  line-height: 1.2 !important;
+}
+
+html[dir="rtl"] :where(h2, h3, h4) {
+  line-height: 1.32 !important;
+}
+
+html[dir="rtl"] :where(button, a, label, input, select, textarea, strong, b, dt, th, .eyebrow) {
+  font-family: var(--font-arabic) !important;
+}
+
+html[dir="rtl"] :where(button, a, label, strong, b, th) {
+  font-weight: 600;
+}
+
+html[dir="rtl"] :where(p, li, dd, input, select, textarea, small) {
+  font-weight: 400;
+  letter-spacing: 0 !important;
+}
+
+html[dir="rtl"] :where(.eyebrow, [class*="kicker"], [class*="overline"]) {
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+html[dir="rtl"]
+  :where(.hero h1, .information-hero h1, .vehicle-hero h1, .auth-stage h1, .password-recovery h1) {
+  font-size: clamp(2.7rem, 5.5vw, 5.2rem);
+  max-width: 16ch;
+}
+
+html[dir="rtl"]
+  :where(
+    .portal-overview h1,
+    .sales-hero h1,
+    .customer-requests-hero h1,
+    .fleet-calendar-hero h1,
+    .communications-hero h1,
+    .staff-management-hero h1
+  ) {
+  font-size: clamp(2.25rem, 4.25vw, 4.3rem);
+  max-width: 18ch;
+}
+
+html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
+  font-size: 0.96rem;
+}
+
+@media (max-width: 680px) {
+  html[dir="rtl"] body {
+    line-height: 1.6;
+  }
+
+  html[dir="rtl"]
+    :where(
+      .hero h1,
+      .information-hero h1,
+      .vehicle-hero h1,
+      .auth-stage h1,
+      .password-recovery h1
+    ) {
+    font-size: clamp(2.25rem, 10.5vw, 3.25rem);
+    line-height: 1.22 !important;
+  }
+
+  html[dir="rtl"]
+    :where(
+      .portal-overview h1,
+      .sales-hero h1,
+      .customer-requests-hero h1,
+      .fleet-calendar-hero h1,
+      .communications-hero h1,
+      .staff-management-hero h1
+    ) {
+    font-size: clamp(2rem, 9.4vw, 2.85rem);
+    line-height: 1.24 !important;
+  }
+}
+
 /* Communications command center */
 .communications-workspace {
   min-height: 100vh;
@@ -7080,7 +7192,7 @@ html {
 body {
   --font-body: var(--font-manrope), "Segoe UI", Arial, sans-serif;
   --font-display: var(--font-manrope), "Segoe UI", Arial, sans-serif;
-  --font-arabic: var(--font-alexandria), var(--font-manrope), "Segoe UI", Tahoma, Arial, sans-serif;
+  --font-arabic: var(--font-ibm-plex-arabic), "Segoe UI", Tahoma, Arial, sans-serif;
   margin: 0;
   background: var(--color-off-white);
   color: var(--color-ink);
@@ -15118,7 +15230,7 @@ body::before {
 }
 
 .staff-security[dir="rtl"] .staff-security__story h1 {
-  font-family: var(--font-alexandria), sans-serif;
+  font-family: var(--font-arabic), sans-serif;
   font-size: clamp(3rem, 4.8vw, 5.6rem);
   font-weight: 440;
   line-height: 1.12;
@@ -15190,7 +15302,7 @@ body::before {
 }
 
 .staff-security[dir="rtl"] .staff-security__panel h2 {
-  font-family: var(--font-alexandria), sans-serif;
+  font-family: var(--font-arabic), sans-serif;
   font-size: clamp(2.6rem, 4.4vw, 4.8rem);
   font-weight: 480;
   line-height: 1.18;
@@ -19373,7 +19485,7 @@ body::before {
 }
 
 .public-information-page[dir="rtl"] .information-hero h1 {
-  font-family: var(--font-alexandria), var(--font-arabic);
+  font-family: var(--font-arabic);
   font-weight: 540;
   letter-spacing: 0;
   line-height: 1.18;
@@ -19508,7 +19620,7 @@ body::before {
 }
 
 .public-information-page[dir="rtl"] .information-chapters__heading strong {
-  font-family: var(--font-alexandria), var(--font-arabic);
+  font-family: var(--font-arabic);
   font-weight: 520;
   letter-spacing: 0;
   line-height: 1.2;
@@ -19737,7 +19849,7 @@ body::before {
 }
 
 .public-information-page[dir="rtl"] .information-cta h2 {
-  font-family: var(--font-alexandria), var(--font-arabic);
+  font-family: var(--font-arabic);
   font-weight: 540;
   letter-spacing: 0;
   line-height: 1.2;
@@ -21100,14 +21212,14 @@ body::before {
 .account-contact-change h2 {
   max-width: 470px;
   margin: 10px 0 0;
-  font-family: var(--font-cormorant), var(--font-alexandria), serif;
+  font-family: var(--font-cormorant), var(--font-arabic), serif;
   font-size: clamp(38px, 5vw, 58px);
   font-weight: 560;
   line-height: 0.98;
 }
 
 [dir="rtl"] .account-contact-change h2 {
-  font-family: var(--font-alexandria), sans-serif;
+  font-family: var(--font-arabic), sans-serif;
   font-size: clamp(32px, 4.5vw, 48px);
   font-weight: 630;
   line-height: 1.25;
@@ -24607,5 +24719,87 @@ body::before {
     transform: none !important;
     translate: none !important;
     filter: none !important;
+  }
+}
+
+/* Final Arabic type authority: this block intentionally follows every legacy screen rule. */
+html[dir="rtl"] body,
+html[dir="rtl"]
+  :where(
+    .public-site,
+    .auth-experience,
+    .reservation-experience-page,
+    .portal-shell,
+    .staff-security,
+    .password-recovery
+  ) {
+  font-family: var(--font-arabic);
+  font-synthesis: none;
+}
+
+html[dir="rtl"] :where(h1, h2, h3, h4) {
+  font-family: var(--font-arabic) !important;
+  font-weight: 600 !important;
+  line-height: 1.28 !important;
+  letter-spacing: 0 !important;
+  text-wrap: balance;
+}
+
+html[dir="rtl"]
+  :where(button, a, label, input, select, textarea, strong, b, dt, th, p, li, dd, small) {
+  font-family: var(--font-arabic) !important;
+  letter-spacing: 0 !important;
+}
+
+html[dir="rtl"] :where(button, a, label, strong, b, th, .eyebrow) {
+  font-weight: 600 !important;
+}
+
+html[dir="rtl"] :where(p, li, dd, input, select, textarea, small) {
+  font-weight: 400;
+}
+
+html[dir="rtl"]
+  :where(.hero h1, .information-hero h1, .vehicle-hero h1, .auth-stage h1, .password-recovery h1) {
+  max-width: 16ch;
+  font-size: clamp(2.7rem, 5.5vw, 5.2rem);
+  line-height: 1.2 !important;
+}
+
+html[dir="rtl"]
+  :where(
+    .portal-overview h1,
+    .sales-hero h1,
+    .customer-requests-hero h1,
+    .fleet-calendar-hero h1,
+    .communications-hero h1,
+    .staff-management-hero h1
+  ) {
+  max-width: 18ch;
+  font-size: clamp(2.25rem, 4.25vw, 4.3rem);
+}
+
+@media (max-width: 680px) {
+  html[dir="rtl"]
+    :where(
+      .hero h1,
+      .information-hero h1,
+      .vehicle-hero h1,
+      .auth-stage h1,
+      .password-recovery h1
+    ) {
+    font-size: clamp(2.25rem, 10.5vw, 3.25rem);
+  }
+
+  html[dir="rtl"]
+    :where(
+      .portal-overview h1,
+      .sales-hero h1,
+      .customer-requests-hero h1,
+      .fleet-calendar-hero h1,
+      .communications-hero h1,
+      .staff-management-hero h1
+    ) {
+    font-size: clamp(2rem, 9.4vw, 2.85rem);
   }
 }
