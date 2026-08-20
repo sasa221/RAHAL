@@ -11,7 +11,6 @@ import {
   Matches,
   MaxLength,
   MinLength,
-  IsUUID,
 } from "class-validator";
 
 export class SavePushSubscriptionDto {
@@ -80,7 +79,8 @@ export class CreateNotificationCampaignDto {
   targetPath?: string;
 
   @IsOptional()
-  @IsUUID()
+  @MinLength(8)
+  @MaxLength(64)
   recipientId?: string;
 }
 

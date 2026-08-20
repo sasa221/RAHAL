@@ -1533,3 +1533,20 @@ implemented and awaiting the production Vercel Blob store connection.
 - Authenticated browser checks open the studio from the administrator fleet at desktop and mobile
   widths and assert visible media, core-detail, and save controls without horizontal overflow.
 - Full format, lint, unit/integration, typecheck, production build, and post-deployment visual gates.
+
+## Milestone 36: Production journey audit and experience completion
+
+Goal: replace isolated UI changes with one measured completion programme covering functional user journeys, communication quality, responsive visual coherence, and production integrations.
+
+Status: in progress on 2026-08-20. The durable item-by-item checklist is maintained in `docs/DELIVERY_BOARD.md`.
+
+### Immediate correction
+
+- Direct notification recipients use Prisma CUID identifiers. The campaign DTO previously required a UUID and rejected a correctly selected user before the notification pipeline ran. Validation now accepts bounded string identifiers while the service continues to resolve the recipient server-side with role and active-account restrictions.
+
+### Acceptance criteria
+
+- A correctly selected individual customer or sales employee can receive an authorized campaign without identifier-format rejection.
+- Each documented release blocker has an accountable, verified resolution before the project is called production-ready.
+- Every role flow and its responsive interface is checked in a real browser, not inferred from code alone.
+- Motion, depth, and 3D framing improve hierarchy without impairing operations, accessibility, performance, RTL/LTR equivalence, or reduced-motion behavior.
