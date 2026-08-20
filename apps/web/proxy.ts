@@ -6,6 +6,7 @@ export function proxy(request: NextRequest) {
   const locale = pathname === "/en" || pathname.startsWith("/en/") ? "en" : "ar";
 
   requestHeaders.set("x-rahal-locale", locale);
+  requestHeaders.set("x-rahal-path", pathname);
 
   return NextResponse.next({
     request: {

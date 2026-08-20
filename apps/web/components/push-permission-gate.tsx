@@ -101,6 +101,12 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
       setState("HIDDEN");
       return;
     }
+    const pathname = window.location.pathname.replace(/^\/en(?=\/|$)/, "") || "/";
+    const canOpenModal = pathname === "/auth";
+    if (!canOpenModal) {
+      setState("REMINDER");
+      return;
+    }
     if (requiresIosInstallation()) {
       setState("INSTALL_REQUIRED");
       return;

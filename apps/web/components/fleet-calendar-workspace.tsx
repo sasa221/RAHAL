@@ -225,7 +225,7 @@ export function FleetCalendarWorkspace({
             <p>{text.intro}</p>
           </div>
           <div className="fleet-range-controls">
-            {kind === "admin" ? (
+            {kind === "admin" && calendar?.canManageBlocks ? (
               <button
                 className="fleet-add-vehicle-action"
                 onClick={() => window.dispatchEvent(new Event("rahal:fleet-editor-open"))}

@@ -32,20 +32,38 @@ const arabicInterface = localFont({
   variable: "--font-ibm-plex-arabic",
 });
 
-export const metadata: Metadata = {
-  title: "RAHAL | رحال لتأجير السيارات",
-  description: "استعرض سيارات رحال، تحقق من المواعيد، وأرسل طلب الحجز.",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "RAHAL",
-  },
-  icons: {
-    icon: "/images/rahal-logo.png",
-    apple: "/images/rahal-logo.png",
-  },
-};
+const publicWebUrl = process.env.NEXT_PUBLIC_WEB_URL ?? "https://rahal-eg.vercel.app";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const path = requestHeaders.get("x-rahal-path") ?? "/";
+  const arabicPath = path === "/en" ? "/" : path.replace(/^\/en(?=\/)/, "") || "/";
+  const englishPath = arabicPath === "/" ? "/en" : `/en${arabicPath}`;
+
+  return {
+    metadataBase: new URL(publicWebUrl),
+    title: "RAHAL | رحال لتأجير السيارات",
+    description: "استعرض سيارات رحال، تحقق من المواعيد، وأرسل طلب الحجز.",
+    alternates: {
+      canonical: path,
+      languages: {
+        "ar-EG": arabicPath,
+        "en-EG": englishPath,
+        "x-default": arabicPath,
+      },
+    },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "RAHAL",
+    },
+    icons: {
+      icon: "/images/rahal-logo.png",
+      apple: "/images/rahal-logo.png",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#1c1d1a",

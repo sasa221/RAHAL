@@ -95,6 +95,29 @@ test.describe("authenticated workspace release audit", () => {
     }
     await context.close();
   });
+
+  test("administrator can confirm one campaign recipient by name or phone search", async ({
+    browser,
+  }, testInfo) => {
+    const context = await roleContext(browser, testInfo, "admin");
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      sessionStorage.setItem("rahal:push-consent-decision", "deferred");
+    });
+    await page.goto("/admin/communications", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "مستخدم محدد" }).click();
+
+    const search = page.getByRole("combobox", {
+      name: "ابحث بالاسم أو البريد أو رقم الهاتف",
+    });
+    await search.fill("E2E customer");
+    await page.locator("#campaign-recipient-results").getByRole("option").first().click();
+
+    await expect(page.getByText("تم تحديد المستلم", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "تغيير المستلم" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "إرسال الحملة" })).toBeEnabled();
+    await context.close();
+  });
 });
 
 function localizedRoutes(role: WorkspaceRole, paths: string[]) {

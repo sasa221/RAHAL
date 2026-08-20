@@ -40,6 +40,8 @@ describe("external notification delivery", () => {
     expect(gate).toContain("rahal:session-changed");
     expect(gate).toContain("rahal:push-guide-requested");
     expect(gate).toContain('setState("REMINDER")');
+    expect(gate).toContain("const canOpenModal");
+    expect(gate).toContain('const canOpenModal = pathname === "/auth"');
     expect(gate).toContain("onClick={() => void enable()}");
     expect(layout).toContain("<PushPermissionGate");
     expect(worker).toContain('globalThis.addEventListener("push"');

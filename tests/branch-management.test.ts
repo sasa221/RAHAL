@@ -48,6 +48,8 @@ describe("branch management", () => {
     expect(contracts).toContain("workingHours: Record<string, unknown>");
     expect(surface).toContain('fetch("/api/branches"');
     expect(surface).toContain("No unconfirmed address or number is shown.");
+    expect(surface).toContain('useState<"READY" | "UNAVAILABLE">("UNAVAILABLE")');
+    expect(surface).not.toContain("Loading the approved branch details");
     expect(home).toContain("<PublicBranchSurface locale={locale} />");
     expect(home).not.toContain("01011105159");
     expect(information).not.toContain("010 111 05159");

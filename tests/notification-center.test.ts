@@ -108,5 +108,11 @@ describe("in-app notification center", () => {
     expect(campaignStudio).toContain("selectedRecipient?.id");
     expect(campaignStudio).toContain("recipient.marketingEnabled");
     expect(campaignStudio).toContain("maskedContact");
+    expect(campaignStudio).toContain("campaign-recipient-confirmation");
+    expect(campaignStudio).toContain("الكتابة وحدها لا تحدد المستلم");
+    expect(campaignStudio).toContain('event.key === "Enter" && recipientOptions.length === 1');
+    expect(campaignStudio).not.toContain(
+      'sending || loading || !page || (deliveryScope === "INDIVIDUAL" && !selectedRecipient)',
+    );
   });
 });

@@ -9,7 +9,6 @@ const copy = {
   ar: {
     eyebrow: "فرع رحال",
     title: "كل الإجراءات في مكان واحد",
-    loading: "جارٍ تحميل بيانات الفرع المعتمدة...",
     unavailable: "بيانات الفرع قيد الاعتماد. لن نعرض عنوانًا أو رقمًا غير مؤكد.",
     pickup: "الاستلام والإرجاع من الفرع",
     egp: "الدفع بالجنيه المصري",
@@ -24,7 +23,6 @@ const copy = {
   en: {
     eyebrow: "Rahal branch",
     title: "Every procedure in one place",
-    loading: "Loading the approved branch details...",
     unavailable: "Branch details are awaiting approval. No unconfirmed address or number is shown.",
     pickup: "Branch pickup and return",
     egp: "EGP only",
@@ -47,7 +45,7 @@ export function PublicBranchSurface({
 }) {
   const text = copy[locale];
   const [branches, setBranches] = useState<BranchSummary[]>([]);
-  const [state, setState] = useState<"LOADING" | "READY" | "UNAVAILABLE">("LOADING");
+  const [state, setState] = useState<"READY" | "UNAVAILABLE">("UNAVAILABLE");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,11 +65,11 @@ export function PublicBranchSurface({
   if (variant === "footer") {
     const branch = branches[0];
     return (
-      <div className="footer-links footer-links--contact" aria-busy={state === "LOADING"}>
+      <div className="footer-links footer-links--contact">
         {branch ? (
           <BranchActions branch={branch} locale={locale} />
         ) : (
-          <span role="status">{state === "LOADING" ? text.loading : text.unavailable}</span>
+          <span role="status">{text.unavailable}</span>
         )}
       </div>
     );
@@ -79,14 +77,14 @@ export function PublicBranchSurface({
 
   if (variant === "directory") {
     return (
-      <section className="public-branch-directory" aria-busy={state === "LOADING"}>
+      <section className="public-branch-directory">
         <header>
           <span>{text.directory}</span>
           <h2>{text.title}</h2>
         </header>
         {state !== "READY" ? (
           <p className="public-branch-directory__state" role="status">
-            {state === "LOADING" ? text.loading : text.unavailable}
+            {text.unavailable}
           </p>
         ) : (
           <div className="public-branch-directory__grid">
@@ -102,7 +100,7 @@ export function PublicBranchSurface({
   const branch = branches[0];
   return (
     <section className="section branch-section" id="branch" data-reveal>
-      <div className="container branch-card" aria-busy={state === "LOADING"}>
+      <div className="container branch-card">
         <BranchMap branch={branch} locale={locale} />
         <div className="branch-card__content">
           <span className="eyebrow">{text.eyebrow}</span>
@@ -117,7 +115,7 @@ export function PublicBranchSurface({
             </>
           ) : (
             <p className="branch-card__safe-state" role="status">
-              {state === "LOADING" ? text.loading : text.unavailable}
+              {text.unavailable}
             </p>
           )}
           <div className="branch-facts">

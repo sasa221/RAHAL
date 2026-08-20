@@ -1775,6 +1775,62 @@ html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
   line-height: 1.6;
 }
 
+.campaign-recipient-confirmation {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid rgb(38 115 75 / 34%);
+  background: rgb(235 246 239 / 92%);
+}
+
+.campaign-recipient-confirmation > i {
+  display: grid;
+  width: 38px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: #26734b;
+  color: #fff;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.campaign-recipient-confirmation > div,
+.campaign-recipient-confirmation strong,
+.campaign-recipient-confirmation span,
+.campaign-recipient-confirmation small {
+  display: block;
+  min-width: 0;
+}
+
+.campaign-recipient-confirmation small,
+.campaign-recipient-confirmation span {
+  color: #5f6e63;
+  font-size: 0.72rem;
+}
+
+.campaign-recipient-confirmation strong {
+  margin: 3px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-recipient-confirmation > button {
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid rgb(38 115 75 / 45%);
+  background: transparent;
+  color: #1c5e3d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .campaign-recipient-results {
   display: grid;
   max-height: 250px;

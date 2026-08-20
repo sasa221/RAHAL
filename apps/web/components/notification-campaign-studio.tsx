@@ -29,7 +29,12 @@ const copy = {
     everyone: "مجموعة كاملة",
     onePerson: "مستخدم محدد",
     recipientSearch: "ابحث بالاسم أو البريد أو رقم الهاتف",
-    recipientSearchHint: "الأدمن يقدر يختار عميل أو موظف مبيعات، والسيلز يقدر يختار عميلًا فقط.",
+    recipientSearchHint:
+      "اكتب الاسم أو البريد أو الرقم، ثم اختر الشخص من النتائج. الكتابة وحدها لا تحدد المستلم.",
+    recipientChosen: "تم تحديد المستلم",
+    changeRecipient: "تغيير المستلم",
+    chooseRecipient: "اختر هذا المستخدم",
+    recipientLoading: "جاري البحث عن المستخدمين...",
     recipientEmpty: "لا يوجد مستخدم مطابق للبحث.",
     recipientRequired: "اختر المستخدم الذي تريد إرسال الإشعار إليه.",
     recipientMarketingBlocked: "هذا المستخدم لم يوافق على إشعارات العربيات الجديدة والعروض.",
@@ -97,7 +102,11 @@ const copy = {
     onePerson: "Specific user",
     recipientSearch: "Search by name, email or phone",
     recipientSearchHint:
-      "Admins can select a customer or sales employee. Sales can select customers only.",
+      "Type a name, email or number, then choose the person from the results. Typing alone does not select a recipient.",
+    recipientChosen: "Recipient selected",
+    changeRecipient: "Change recipient",
+    chooseRecipient: "Choose this user",
+    recipientLoading: "Searching users...",
     recipientEmpty: "No matching user was found.",
     recipientRequired: "Select the user who should receive this notification.",
     recipientMarketingBlocked: "This user has not opted in to new-vehicle and offer updates.",
@@ -234,7 +243,7 @@ export function NotificationCampaignStudio({
   }, [load, text.unavailable]);
 
   useEffect(() => {
-    if (deliveryScope !== "INDIVIDUAL") return;
+    if (deliveryScope !== "INDIVIDUAL" || selectedRecipient) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setRecipientLoading(true);
@@ -266,9 +275,15 @@ export function NotificationCampaignStudio({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [deliveryScope, locale, recipientQuery, text.unavailable]);
+  }, [deliveryScope, locale, recipientQuery, selectedRecipient, text.unavailable]);
 
   const isMarketingCategory = category === "NEW_VEHICLE" || category === "OFFER";
+  const chooseRecipient = useCallback((recipient: NotificationCampaignRecipientOption) => {
+    setSelectedRecipient(recipient);
+    setRecipientQuery(recipient.name);
+    setRecipientOptions([]);
+    setError("");
+  }, []);
   const preview = useMemo(
     () => ({
       title: locale === "ar" ? titleAr : titleEn,
@@ -430,43 +445,80 @@ export function NotificationCampaignStudio({
             </div>
             {deliveryScope === "INDIVIDUAL" ? (
               <div className="campaign-recipient-picker">
-                <label>
-                  <span>{text.recipientSearch}</span>
-                  <input
-                    autoComplete="off"
-                    onChange={(event) => {
-                      setRecipientQuery(event.target.value);
-                      setSelectedRecipient(null);
-                    }}
-                    placeholder={text.recipientSearch}
-                    type="search"
-                    value={recipientQuery}
-                  />
-                </label>
-                <p>{text.recipientSearchHint}</p>
-                <div className="campaign-recipient-results" role="listbox">
-                  {recipientOptions.map((recipient) => (
+                {selectedRecipient ? (
+                  <div className="campaign-recipient-confirmation" role="status">
+                    <i aria-hidden="true">✓</i>
+                    <div>
+                      <small>{text.recipientChosen}</small>
+                      <strong>{selectedRecipient.name}</strong>
+                      <span>
+                        {selectedRecipient.role === "CUSTOMER" ? text.customerRole : text.salesRole}{" "}
+                        {" · "}
+                        {selectedRecipient.maskedContact}
+                      </span>
+                    </div>
                     <button
-                      aria-selected={selectedRecipient?.id === recipient.id}
-                      className={selectedRecipient?.id === recipient.id ? "is-selected" : ""}
-                      key={recipient.id}
-                      onClick={() => setSelectedRecipient(recipient)}
-                      role="option"
+                      onClick={() => {
+                        setSelectedRecipient(null);
+                        setRecipientQuery("");
+                      }}
                       type="button"
                     >
-                      <span>{recipient.name}</span>
-                      <small>
-                        {recipient.role === "CUSTOMER" ? text.customerRole : text.salesRole} ·{" "}
-                        {recipient.maskedContact}
-                      </small>
-                      {recipient.marketingEnabled ? <b>{text.optedIn}</b> : null}
+                      {text.changeRecipient}
                     </button>
-                  ))}
-                  {!recipientLoading && !recipientOptions.length ? (
-                    <span>{text.recipientEmpty}</span>
-                  ) : null}
-                  {recipientLoading ? <span>…</span> : null}
-                </div>
+                  </div>
+                ) : (
+                  <>
+                    <label>
+                      <span>{text.recipientSearch}</span>
+                      <input
+                        aria-autocomplete="list"
+                        aria-controls="campaign-recipient-results"
+                        aria-expanded={recipientOptions.length > 0}
+                        autoComplete="off"
+                        onChange={(event) => setRecipientQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && recipientOptions.length === 1) {
+                            event.preventDefault();
+                            chooseRecipient(recipientOptions[0]!);
+                          }
+                        }}
+                        placeholder={text.recipientSearch}
+                        role="combobox"
+                        type="search"
+                        value={recipientQuery}
+                      />
+                    </label>
+                    <p>{text.recipientSearchHint}</p>
+                    <div
+                      className="campaign-recipient-results"
+                      id="campaign-recipient-results"
+                      role="listbox"
+                    >
+                      {recipientOptions.map((recipient) => (
+                        <button
+                          aria-label={`${text.chooseRecipient}: ${recipient.name}`}
+                          aria-selected="false"
+                          key={recipient.id}
+                          onClick={() => chooseRecipient(recipient)}
+                          role="option"
+                          type="button"
+                        >
+                          <span>{recipient.name}</span>
+                          <small>
+                            {recipient.role === "CUSTOMER" ? text.customerRole : text.salesRole} ·{" "}
+                            {recipient.maskedContact}
+                          </small>
+                          {recipient.marketingEnabled ? <b>{text.optedIn}</b> : null}
+                        </button>
+                      ))}
+                      {!recipientLoading && !recipientOptions.length ? (
+                        <span>{text.recipientEmpty}</span>
+                      ) : null}
+                      {recipientLoading ? <span>{text.recipientLoading}</span> : null}
+                    </div>
+                  </>
+                )}
               </div>
             ) : null}
           </fieldset>
@@ -572,9 +624,7 @@ export function NotificationCampaignStudio({
           ) : null}
           <button
             className="campaign-send"
-            disabled={
-              sending || loading || !page || (deliveryScope === "INDIVIDUAL" && !selectedRecipient)
-            }
+            disabled={sending || loading || !page}
             onClick={() => void sendCampaign()}
             type="button"
           >
