@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { apiErrorMessage } from "../lib/api-error";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 
 const copy = {
@@ -12,6 +13,9 @@ const copy = {
     identifier: "البريد الإلكتروني أو رقم الهاتف",
     send: "إرسال رمز الاستعادة",
     code: "رمز الاستعادة من 6 أرقام",
+    codeHint: "اكتب الكود الذي وصلك على البريد المسجل — ليس كود تطبيق Authenticator.",
+    staffMfaHint:
+      "بعد تغيير كلمة المرور، حسابات الأدمن والمبيعات ستطلب كود Authenticator أو أحد أكواد الاسترجاع عند تسجيل الدخول.",
     password: "كلمة المرور الجديدة",
     confirm: "تأكيد كلمة المرور",
     reset: "تعيين كلمة المرور الجديدة",
@@ -22,6 +26,7 @@ const copy = {
     working: "جارٍ التأمين...",
     mismatch: "تأكيد كلمة المرور غير مطابق.",
     failed: "الرمز غير صحيح أو منتهي، أو تعذر إتمام العملية.",
+    tooManyAttempts: "تم تجاوز عدد المحاولات. اطلب كود بريد جديد وانتظر وصول أحدث رسالة.",
     privacy: "نستخدم نفس الرد سواء كان الحساب موجودًا أم لا لحماية خصوصيتك.",
   },
   en: {
@@ -32,6 +37,9 @@ const copy = {
     identifier: "Email address or phone number",
     send: "Send recovery code",
     code: "Six-digit recovery code",
+    codeHint: "Enter the code sent to the registered email — not an Authenticator app code.",
+    staffMfaHint:
+      "After the password changes, admin and sales accounts will request an Authenticator or Rahal recovery code during sign-in.",
     password: "New password",
     confirm: "Confirm new password",
     reset: "Set new password",
@@ -42,6 +50,7 @@ const copy = {
     working: "Securing...",
     mismatch: "The password confirmation does not match.",
     failed: "The code is invalid or expired, or the action could not be completed.",
+    tooManyAttempts: "Too many attempts. Request a new email code and use the newest message.",
     privacy: "The same response is used whether or not an account exists to protect your privacy.",
   },
 } as const;
@@ -93,11 +102,15 @@ export function PasswordRecovery({ locale }: { locale: PublicLocale }) {
           newPassword,
         }),
       });
-      if (!response.ok) throw new Error("RESET_FAILED");
+      const payload = (await response.json()) as unknown;
+      if (!response.ok) {
+        const message = apiErrorMessage(payload, text.failed);
+        throw new Error(response.status === 429 ? text.tooManyAttempts : message);
+      }
       setStep("DONE");
       setNotice(text.completed);
-    } catch {
-      setNotice(text.failed);
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : text.failed);
     } finally {
       setBusy(false);
     }
@@ -151,6 +164,7 @@ export function PasswordRecovery({ locale }: { locale: PublicLocale }) {
                   pattern="[0-9]{6}"
                   required
                 />
+                <small>{text.codeHint}</small>
               </label>
               <label>
                 <span>{text.password}</span>
@@ -177,6 +191,7 @@ export function PasswordRecovery({ locale }: { locale: PublicLocale }) {
               <button disabled={busy} type="submit">
                 {busy ? text.working : text.reset}
               </button>
+              <p className="password-recovery__mfa-hint">{text.staffMfaHint}</p>
               <button
                 className="is-secondary"
                 onClick={() => {

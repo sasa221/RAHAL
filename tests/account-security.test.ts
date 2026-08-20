@@ -50,6 +50,9 @@ describe("password recovery and session security", () => {
     expect(recovery).toContain('"REQUEST" | "CONFIRM" | "DONE"');
     expect(recovery).toContain("password-reset/request");
     expect(recovery).toContain("password-reset/confirm");
+    expect(recovery).toContain("ليس كود تطبيق Authenticator");
+    expect(recovery).toContain("not an Authenticator app code");
+    expect(recovery).toContain("tooManyAttempts");
     expect(read("apps/web/app/account/security/page.tsx")).toContain('locale="ar"');
     expect(read("apps/web/app/en/account/security/page.tsx")).toContain('locale="en"');
     expect(read("apps/web/app/auth/recover/page.tsx")).toContain('locale="ar"');
