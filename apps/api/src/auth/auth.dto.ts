@@ -16,8 +16,9 @@ export class RegisterDto {
   @MaxLength(254)
   email!: string;
 
+  @IsOptional()
   @Matches(phonePattern, { message: "phone must use a valid international number format" })
-  phone!: string;
+  phone?: string;
 
   @IsString()
   @Length(8, 128)
@@ -38,8 +39,8 @@ export class LoginDto {
 }
 
 export class RequestVerificationDto {
-  @IsIn(["email", "phone"])
-  channel!: "email" | "phone";
+  @IsIn(["email"])
+  channel!: "email";
 }
 
 export class ConfirmVerificationDto extends RequestVerificationDto {
@@ -48,8 +49,8 @@ export class ConfirmVerificationDto extends RequestVerificationDto {
 }
 
 export class RequestContactChangeDto {
-  @IsIn(["email", "phone"])
-  channel!: "email" | "phone";
+  @IsIn(["email"])
+  channel!: "email";
 
   @IsString()
   @MaxLength(254)

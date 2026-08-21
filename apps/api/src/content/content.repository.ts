@@ -4,6 +4,7 @@ import type {
   ManagedSiteContent,
   PublishedSiteContent,
   SiteContentAdminOverview,
+  SiteContentDocument,
   SiteContentKey,
   SiteContentTranslation,
 } from "@rahal/contracts";
@@ -15,6 +16,8 @@ const contentSelect = {
   id: true,
   key: true,
   status: true,
+  schemaVersion: true,
+  publishedSchemaVersion: true,
   publishedAt: true,
   updatedAt: true,
   translations: {
@@ -35,7 +38,7 @@ type ContentRecord = Prisma.ContentEntryGetPayload<{ select: typeof contentSelec
 export class ContentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async overview(): Promise<SiteContentAdminOverview> {
+  async overview(): Promise<Omit<SiteContentAdminOverview, "permissions">> {
     const records = await this.prisma.client.contentEntry.findMany({
       where: { key: { in: [...siteContentKeys] } },
       orderBy: { key: "asc" },
@@ -60,7 +63,14 @@ export class ContentRepository {
           .map((translation) => toTranslation(translation, true))
           .filter((translation): translation is SiteContentTranslation => Boolean(translation));
         return translations.length === 2
-          ? [{ key: record.key, translations, publishedAt: record.publishedAt.toISOString() }]
+          ? [
+              {
+                key: record.key,
+                schemaVersion: record.publishedSchemaVersion ?? 1,
+                translations,
+                publishedAt: record.publishedAt.toISOString(),
+              },
+            ]
           : [];
       }),
     };
@@ -87,8 +97,16 @@ export class ContentRepository {
       });
       const entry = await transaction.contentEntry.upsert({
         where: { key: input.key },
-        create: { key: input.key, type: "SITE_SECTION", status: "DRAFT" },
-        update: { type: "SITE_SECTION" },
+        create: {
+          key: input.key,
+          type: "SITE_SECTION",
+          status: "DRAFT",
+          schemaVersion: input.translations.some((item) => item.document) ? 2 : 1,
+        },
+        update: {
+          type: "SITE_SECTION",
+          schemaVersion: input.translations.some((item) => item.document) ? 2 : 1,
+        },
         select: { id: true },
       });
       for (const translation of input.translations) {
@@ -150,7 +168,11 @@ export class ContentRepository {
       }
       const published = await transaction.contentEntry.update({
         where: { id: previous.id },
-        data: { status: "PUBLISHED", publishedAt },
+        data: {
+          status: "PUBLISHED",
+          publishedAt,
+          publishedSchemaVersion: previous.schemaVersion,
+        },
         select: contentSelect,
       });
       await transaction.auditLog.create({
@@ -178,6 +200,8 @@ function toManagedContent(record: ContentRecord): ManagedSiteContent {
     .filter((translation): translation is SiteContentTranslation => Boolean(translation));
   return {
     key: record.key as SiteContentKey,
+    schemaVersion: record.schemaVersion,
+    publishedSchemaVersion: record.publishedSchemaVersion,
     status: record.status,
     translations,
     publishedTranslations,
@@ -204,6 +228,7 @@ function toTranslation(
     introduction: body.introduction,
     statement: body.statement,
     items: body.items,
+    ...(body.document ? { schemaVersion: 2, document: body.document } : {}),
   };
 }
 
@@ -213,6 +238,9 @@ function toBody(translation: SiteContentTranslation): Prisma.InputJsonObject {
     introduction: translation.introduction,
     statement: translation.statement,
     items: translation.items.map((item) => ({ title: item.title, body: item.body })),
+    ...(translation.document
+      ? { document: translation.document as unknown as Prisma.InputJsonObject }
+      : {}),
   };
 }
 
@@ -222,6 +250,7 @@ function readBody(value: Prisma.JsonValue | null) {
   const introduction = value.introduction;
   const statement = value.statement;
   const rawItems = value.items;
+  const document = value.document;
   if (
     typeof eyebrow !== "string" ||
     typeof introduction !== "string" ||
@@ -237,7 +266,16 @@ function readBody(value: Prisma.JsonValue | null) {
       : [];
   });
   if (items.length !== rawItems.length) return null;
-  return { eyebrow, introduction, statement, items };
+  return {
+    eyebrow,
+    introduction,
+    statement,
+    items,
+    document:
+      document && typeof document === "object" && !Array.isArray(document)
+        ? (document as unknown as SiteContentDocument)
+        : null,
+  };
 }
 
 function auditSnapshot(record: ContentRecord): Prisma.InputJsonObject {

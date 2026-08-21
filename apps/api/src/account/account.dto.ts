@@ -42,9 +42,6 @@ export class UpdateNotificationPreferencesDto {
   emailEnabled!: boolean;
 
   @IsBoolean()
-  whatsappEnabled!: boolean;
-
-  @IsBoolean()
   pushEnabled!: boolean;
 
   @IsBoolean()

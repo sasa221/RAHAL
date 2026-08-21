@@ -1,12 +1,14 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
-import type { SiteContentKey, SiteContentTranslation } from "@rahal/contracts";
+import { BadRequestException, Injectable } from "@nestjs/common";
+import type { SiteContentDocument, SiteContentKey, SiteContentTranslation } from "@rahal/contracts";
 import { AuthService } from "../auth/auth.service";
+import { StaffAccessService } from "../staff/staff-access.service";
 import {
   siteContentKeys,
   type PublishSiteContentDto,
   type SaveSiteContentDto,
 } from "./content.dto";
 import { ContentRepository } from "./content.repository";
+import { parseSiteContentDocument } from "./content-schema";
 
 const forbiddenContent = [
   new RegExp("\\bA" + "ED\\b", "i"),
@@ -30,6 +32,7 @@ export class ContentService {
   constructor(
     private readonly content: ContentRepository,
     private readonly auth: AuthService,
+    private readonly access: StaffAccessService,
   ) {}
 
   published() {
@@ -37,14 +40,21 @@ export class ContentService {
   }
 
   async overview(token: string | undefined) {
-    await this.requireAdmin(token);
-    return this.content.overview();
+    const session = await this.requirePermission(token, "content.edit");
+    const overview = await this.content.overview();
+    return {
+      ...overview,
+      permissions: {
+        edit: true,
+        publish: await this.access.allows(session, "content.publish"),
+      },
+    };
   }
 
   async saveDraft(token: string | undefined, rawKey: string, input: SaveSiteContentDto) {
-    const session = await this.requireAdmin(token);
+    const session = await this.requirePermission(token, "content.edit");
     const key = parseKey(rawKey);
-    const translations = normalizeTranslations(input.translations);
+    const translations = normalizeTranslations(key, input.translations);
     assertSafeContent(translations);
     return this.content.saveDraft({
       actorId: session.user.id,
@@ -55,7 +65,7 @@ export class ContentService {
   }
 
   async publish(token: string | undefined, rawKey: string, input: PublishSiteContentDto) {
-    const session = await this.requireAdmin(token);
+    const session = await this.requirePermission(token, "content.publish");
     const key = parseKey(rawKey);
     const draft = await this.content.findDraft(key);
     if (!draft || draft.translations.length !== 2) {
@@ -69,11 +79,12 @@ export class ContentService {
     });
   }
 
-  private async requireAdmin(token: string | undefined) {
+  private async requirePermission(
+    token: string | undefined,
+    permission: "content.edit" | "content.publish",
+  ) {
     const session = await this.auth.getSession(token);
-    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
-      throw new ForbiddenException("Only administrators can manage public site content.");
-    }
+    await this.access.require(session, permission);
     return session;
   }
 }
@@ -86,23 +97,113 @@ function parseKey(value: string): SiteContentKey {
 }
 
 function normalizeTranslations(
+  key: SiteContentKey,
   translations: SaveSiteContentDto["translations"],
 ): SiteContentTranslation[] {
   const locales = new Set(translations.map((translation) => translation.locale));
   if (translations.length !== 2 || locales.size !== 2 || !locales.has("ar") || !locales.has("en")) {
     throw new BadRequestException("Arabic and English content are both required exactly once.");
   }
-  return translations.map((translation) => ({
-    locale: translation.locale,
-    eyebrow: translation.eyebrow.trim(),
-    title: translation.title.trim(),
-    introduction: translation.introduction.trim(),
-    statement: translation.statement.trim(),
-    items: translation.items.map((item) => ({
-      title: item.title.trim(),
-      body: item.body.trim(),
-    })),
-  }));
+  const typed = translations.every((translation) => Boolean(translation.document));
+  const legacy = translations.every((translation) => !translation.document);
+  if (!typed && !legacy) {
+    throw new BadRequestException("Arabic and English must use the same content schema.");
+  }
+  return translations.map((translation) => {
+    if (translation.document) {
+      const document = parseSiteContentDocument(key, translation.document);
+      return projectTypedTranslation(translation.locale, document);
+    }
+    if (
+      !translation.eyebrow ||
+      !translation.title ||
+      !translation.introduction ||
+      !translation.statement ||
+      !translation.items
+    ) {
+      throw new BadRequestException("The legacy content draft is incomplete.");
+    }
+    return {
+      locale: translation.locale,
+      eyebrow: translation.eyebrow.trim(),
+      title: translation.title.trim(),
+      introduction: translation.introduction.trim(),
+      statement: translation.statement.trim(),
+      items: translation.items.map((item) => ({
+        title: item.title.trim(),
+        body: item.body.trim(),
+      })),
+    };
+  });
+}
+
+function projectTypedTranslation(
+  locale: "ar" | "en",
+  document: SiteContentDocument,
+): SiteContentTranslation {
+  if (document.kind === "HOME_HERO") {
+    return {
+      locale,
+      eyebrow: document.eyebrow,
+      title: document.title,
+      introduction: document.description,
+      statement: document.badge,
+      items: [],
+      schemaVersion: 2,
+      document,
+    };
+  }
+  if (document.kind === "HOME_PROCESS" || document.kind === "HOME_TRUST") {
+    return {
+      locale,
+      eyebrow: document.eyebrow,
+      title: document.title,
+      introduction: document.description,
+      statement: document.kind === "HOME_PROCESS" ? document.notice : document.description,
+      items: document.items.map((item) => ({ title: item.title, body: item.description })),
+      schemaVersion: 2,
+      document,
+    };
+  }
+  if (document.kind === "ABOUT" || document.kind === "HOW_IT_WORKS") {
+    return {
+      locale,
+      eyebrow: document.eyebrow,
+      title: document.title,
+      introduction: document.introduction,
+      statement: document.statement,
+      items: document.sections.map((item) => ({ title: item.title, body: item.body })),
+      schemaVersion: 2,
+      document,
+    };
+  }
+  if (document.kind === "FAQ") {
+    return {
+      locale,
+      eyebrow: document.eyebrow,
+      title: document.title,
+      introduction: document.introduction,
+      statement: document.introduction,
+      items: document.items
+        .filter((item) => item.published)
+        .map((item) => ({ title: item.question, body: item.answer })),
+      schemaVersion: 2,
+      document,
+    };
+  }
+  if (document.kind !== "CONTACT") {
+    throw new BadRequestException("The content document could not be projected.");
+  }
+  return {
+    locale,
+    eyebrow: document.eyebrow,
+    title: document.title,
+    introduction: document.introduction,
+    statement: document.address,
+    items: [],
+    schemaVersion: 2,
+    document,
+  };
 }
 
 function assertSafeContent(translations: SiteContentTranslation[]) {
@@ -112,6 +213,7 @@ function assertSafeContent(translations: SiteContentTranslation[]) {
       translation.title,
       translation.introduction,
       translation.statement,
+      translation.document ? JSON.stringify(translation.document) : "",
       ...translation.items.flatMap((item) => [item.title, item.body]),
     ])
     .join("\n");

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { PublicLocale } from "../lib/public-content";
 
 type GateState = "ERROR" | "HIDDEN" | "LOADING" | "PROMPT" | "SAVING" | "SAVED";
+const deferredDecisionKey = "rahal:marketing-consent-decision";
 
 const copy = {
   ar: {
@@ -54,6 +55,11 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
 
   const check = useCallback(async () => {
     setState("LOADING");
+    if (localStorage.getItem(deferredDecisionKey) === "deferred") {
+      setState("HIDDEN");
+      releasePushGate(false);
+      return;
+    }
     try {
       const sessionResponse = await fetch("/api/auth/session", {
         credentials: "include",
@@ -105,7 +111,6 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           emailEnabled: preferences.emailEnabled,
-          whatsappEnabled: preferences.whatsappEnabled,
           pushEnabled: preferences.pushEnabled,
           marketingEnabled,
           quietHoursStart: preferences.quietHoursStart,
@@ -116,6 +121,7 @@ export function MarketingConsentGate({ locale }: { locale: PublicLocale }) {
       const payload = (await response.json()) as ApiSuccess<CustomerAccountOverview>;
       setOverview(payload.data);
       setAccepted(marketingEnabled);
+      localStorage.removeItem(deferredDecisionKey);
       setState("SAVED");
       window.dispatchEvent(new Event("rahal:marketing-consent-changed"));
       window.setTimeout(() => setState("HIDDEN"), 3_500);

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiErrorMessage } from "../lib/api-error";
 import type { PublicLocale } from "../lib/public-content";
 
-type CampaignChannel = "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP";
+type CampaignChannel = "IN_APP" | "PUSH" | "EMAIL";
 
 const copy = {
   ar: {
@@ -85,7 +85,6 @@ const copy = {
       IN_APP: "داخل الموقع",
       PUSH: "إشعار الجهاز",
       EMAIL: "البريد",
-      WHATSAPP: "واتساب",
     },
   },
   en: {
@@ -156,7 +155,6 @@ const copy = {
       IN_APP: "In-app",
       PUSH: "Device push",
       EMAIL: "Email",
-      WHATSAPP: "WhatsApp",
     },
   },
 } as const;
@@ -168,7 +166,7 @@ const categories: NotificationCampaignCategory[] = [
   "SERVICE_UPDATE",
   "URGENT",
 ];
-const allChannels: CampaignChannel[] = ["IN_APP", "PUSH", "EMAIL", "WHATSAPP"];
+const allChannels: CampaignChannel[] = ["IN_APP", "PUSH", "EMAIL"];
 
 function isApiSuccess<T>(payload: unknown): payload is ApiSuccess<T> {
   return Boolean(payload && typeof payload === "object" && "data" in payload);

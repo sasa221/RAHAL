@@ -26,7 +26,7 @@ enum UserStatus {
 }
 
 enum VerificationPurpose {
-  VERIFY_PHONE
+  VERIFY_PHONE // Legacy value retained for a phased production migration; application rejects it.
   VERIFY_EMAIL
   RESET_PASSWORD
 }
@@ -95,6 +95,12 @@ enum ContentStatus {
   ARCHIVED
 }
 
+enum BranchStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
 enum DriverPolicy {
   OPTIONAL
   MANDATORY
@@ -157,7 +163,7 @@ enum NotificationChannel {
   IN_APP
   PUSH
   EMAIL
-  WHATSAPP
+  WHATSAPP // Legacy delivery rows only; application cannot create or send this channel.
 }
 
 enum DeliveryStatus {
@@ -182,14 +188,14 @@ enum StaffMfaChallengeKind {
 model User {
   id                        String                   @id @default(cuid())
   email                     String                   @unique
-  phone                     String                   @unique
+  phone                     String?                  @unique
   passwordHash              String
   fullNameAr                String?
   fullNameEn                String
   systemRole                SystemRole               @default(CUSTOMER)
   status                    UserStatus               @default(PENDING_VERIFICATION)
   emailVerifiedAt           DateTime?
-  phoneVerifiedAt           DateTime?
+  phoneVerifiedAt           DateTime? // Legacy audit data; never required or exposed as verification.
   dateOfBirth               DateTime?
   nationality               String?
   address                   String?
@@ -218,6 +224,7 @@ model User {
   contractAccesses          ContractAccessLog[]      @relation("ContractAccessActor")
   alternativeOffers         AlternativeOffer[]       @relation("AlternativeOfferCreator")
   contractsRecorded         Contract[]               @relation("ContractRecorder")
+  managedBranches           Branch[]                 @relation("BranchManager")
   bookingOperations         BookingOperation[]       @relation("BookingOperationActor")
   bookings                  Booking[]                @relation("CustomerBookings")
   reviews                   Review[]
@@ -376,23 +383,44 @@ model UserPermissionOverride {
 }
 
 model Branch {
-  id              String          @id @default(cuid())
-  nameAr          String
-  nameEn          String
-  addressAr       String
-  addressEn       String?
-  latitude        Decimal?        @db.Decimal(10, 7)
-  longitude       Decimal?        @db.Decimal(10, 7)
-  phones          Json
-  whatsappNumbers Json
-  workingHours    Json
-  active          Boolean         @default(true)
-  vehicles        Vehicle[]
-  reservations    Reservation[]
-  bookings        Booking[]
-  settings        BranchSetting[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id                String          @id @default(cuid())
+  nameAr            String
+  nameEn            String
+  addressAr         String
+  addressEn         String?
+  latitude          Decimal?        @db.Decimal(10, 7)
+  longitude         Decimal?        @db.Decimal(10, 7)
+  phones            Json
+  whatsappNumbers   Json
+  whatsappVisible   Boolean         @default(true)
+  whatsappMessageAr String?
+  whatsappMessageEn String?
+  workingHours      Json
+  active            Boolean         @default(true)
+  governorateAr     String?
+  governorateEn     String?
+  areaAr            String?
+  areaEn            String?
+  streetAr          String?
+  streetEn          String?
+  landmarkAr        String?
+  landmarkEn        String?
+  email             String?
+  socialLinks       Json?
+  services          Json?
+  managerId         String?
+  manager           User?           @relation("BranchManager", fields: [managerId], references: [id], onDelete: SetNull)
+  status            BranchStatus    @default(ACTIVE)
+  whatsappNumber    String?
+  vehicles          Vehicle[]
+  reservations      Reservation[]
+  bookings          Booking[]
+  settings          BranchSetting[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status, active])
+  @@index([managerId])
 }
 
 model BranchSetting {
@@ -827,7 +855,7 @@ model NotificationPreference {
   inAppEnabled              Boolean   @default(true)
   pushEnabled               Boolean   @default(true)
   emailEnabled              Boolean   @default(true)
-  whatsappEnabled           Boolean   @default(true)
+  whatsappEnabled           Boolean   @default(false) // Legacy preference; automated WhatsApp is disabled.
   marketingEnabled          Boolean   @default(false)
   marketingConsentDecidedAt DateTime?
   quietHoursStart           String?
@@ -992,14 +1020,16 @@ model Review {
 }
 
 model ContentEntry {
-  id           String               @id @default(cuid())
-  key          String               @unique
-  type         String
-  status       ContentStatus        @default(DRAFT)
-  translations ContentTranslation[]
-  publishedAt  DateTime?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  id                     String               @id @default(cuid())
+  key                    String               @unique
+  type                   String
+  status                 ContentStatus        @default(DRAFT)
+  translations           ContentTranslation[]
+  publishedAt            DateTime?
+  schemaVersion          Int                  @default(1)
+  publishedSchemaVersion Int?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 }
 
 model ContentTranslation {

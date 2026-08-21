@@ -278,7 +278,7 @@ function staffAuditSnapshot(staff: {
 function toStaffMember(record: {
   id: string;
   email: string;
-  phone: string;
+  phone: string | null;
   fullNameAr: string | null;
   fullNameEn: string;
   systemRole: "CUSTOMER" | "SALES" | "ADMIN" | "SUPER_ADMIN";

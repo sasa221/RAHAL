@@ -33,7 +33,17 @@ function setup(role = "ADMIN") {
   const auth = {
     getSession: vi.fn().mockResolvedValue({ user: { id: "admin-1", role } }),
   };
-  return { service: new ContentService(repository as never, auth as never), repository };
+  const access = {
+    require: vi.fn().mockImplementation(() => {
+      if (role === "SALES" || role === "CUSTOMER") throw new ForbiddenException();
+    }),
+    allows: vi.fn().mockResolvedValue(role === "SUPER_ADMIN"),
+  };
+  return {
+    service: new ContentService(repository as never, auth as never, access as never),
+    repository,
+    access,
+  };
 }
 
 describe("ContentService", () => {
@@ -41,6 +51,13 @@ describe("ContentService", () => {
     const { service, repository } = setup();
     await expect(service.published()).resolves.toEqual({ entries: [] });
     expect(repository.published).toHaveBeenCalledOnce();
+  });
+
+  it("reports edit and publish capabilities separately", async () => {
+    const { service } = setup("ADMIN");
+    await expect(service.overview("session")).resolves.toMatchObject({
+      permissions: { edit: true, publish: false },
+    });
   });
 
   it("rejects customers and sales from content management", async () => {
@@ -94,5 +111,70 @@ describe("ContentService", () => {
       key: "ABOUT",
       reason: "Approved by Rahal management",
     });
+  });
+
+  it("checks a separate permission when publishing", async () => {
+    const { service, access, repository } = setup();
+    access.require.mockRejectedValueOnce(new ForbiddenException());
+    await expect(
+      service.publish("session", "ABOUT", { reason: "Approved by Rahal management" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(access.require).toHaveBeenCalledWith(expect.anything(), "content.publish");
+    expect(repository.publish).not.toHaveBeenCalled();
+  });
+
+  it("accepts a typed bilingual hero and rejects an unsafe CTA", async () => {
+    const { service, repository } = setup();
+    const document = {
+      kind: "HOME_HERO" as const,
+      eyebrow: "Rahal Egypt",
+      title: "The right car for every journey",
+      description: "Choose your dates and send a request for review by the Rahal sales team.",
+      badge: "Pickup and return at the Rahal branch only.",
+      primaryCta: { label: "Browse cars", destinationType: "INTERNAL" as const, href: "/cars" },
+      secondaryCta: {
+        label: "How it works",
+        destinationType: "SECTION" as const,
+        href: "#process",
+      },
+      media: { type: "IMAGE" as const, url: "/images/rahal-hero-gem-clean.png", alt: "Rahal car" },
+      visible: true,
+    };
+    await service.saveDraft("session", "HOME_HERO", {
+      reason: "Create the typed home hero",
+      translations: [
+        {
+          locale: "ar",
+          document: { ...document, eyebrow: "رحال مصر", title: "السيارة المناسبة لكل رحلة" },
+        },
+        { locale: "en", document },
+      ],
+    });
+    expect(repository.saveDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        translations: expect.arrayContaining([
+          expect.objectContaining({
+            schemaVersion: 2,
+            document: expect.objectContaining({ kind: "HOME_HERO" }),
+          }),
+        ]),
+      }),
+    );
+
+    await expect(
+      service.saveDraft("session", "HOME_HERO", {
+        reason: "Reject unsafe link",
+        translations: [
+          {
+            locale: "ar",
+            document: {
+              ...document,
+              primaryCta: { ...document.primaryCta, href: "javascript:alert(1)" },
+            },
+          },
+          { locale: "en", document },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

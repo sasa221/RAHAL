@@ -10,7 +10,8 @@ describe("external notification delivery", () => {
     const repository = read("apps/api/src/notifications/notifications.repository.ts");
     expect(worker).toContain("claimNextEvent");
     expect(worker).toContain("sendEmail");
-    expect(worker).toContain("sendWhatsApp");
+    expect(worker).not.toContain("sendWhatsApp");
+    expect(worker).not.toContain("graph.facebook.com");
     expect(worker).toContain("sendPush");
     expect(worker).toContain("stringValue(payload.userId)");
     expect(worker).toContain("stringValue(payload.reservationId) ?? event.aggregateId");

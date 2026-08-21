@@ -14,7 +14,6 @@ const staffUser: AuthUserRecord = {
   systemRole: "SALES",
   status: "ACTIVE",
   emailVerifiedAt: new Date(),
-  phoneVerifiedAt: new Date(),
   mustChangePassword: true,
   staffMfaCredential: null,
 };

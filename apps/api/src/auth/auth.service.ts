@@ -49,7 +49,6 @@ import { buildVerificationEmail } from "./verification-email.template";
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 const verificationLifetimeMs = 10 * 60 * 1000;
 const verificationAttemptLimit = 5;
-const twilioVerifyCodeMarker = "TWILIO_VERIFY_WHATSAPP";
 const staffMfaChallengeLifetimeMs = 5 * 60 * 1000;
 const staffMfaAttemptLimit = 5;
 
@@ -64,17 +63,10 @@ function normalizeIdentifier(value: string) {
   return trimmed.includes("@") ? trimmed.toLowerCase() : normalizePhone(trimmed);
 }
 
-function normalizeContactChange(channel: "email" | "phone", rawValue: string) {
-  const value = channel === "email" ? rawValue.trim().toLowerCase() : normalizePhone(rawValue);
-  if (
-    (channel === "email" && (value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) ||
-    (channel === "phone" && !/^\+[1-9]\d{7,14}$/.test(value))
-  ) {
-    throw new BadRequestException(
-      channel === "email"
-        ? "A valid email address is required."
-        : "Phone must use international E.164 format.",
-    );
+function normalizeContactChange(rawValue: string) {
+  const value = rawValue.trim().toLowerCase();
+  if (value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    throw new BadRequestException("A valid email address is required.");
   }
   return value;
 }
@@ -94,7 +86,6 @@ function toAuthUser(user: AuthUserRecord): AuthUser {
     role: user.systemRole,
     status: user.status,
     emailVerified: Boolean(user.emailVerifiedAt),
-    phoneVerified: Boolean(user.phoneVerifiedAt),
     mfaEnabled: Boolean(user.staffMfaCredential),
     securityAction:
       staffAccount && !user.staffMfaCredential
@@ -119,10 +110,10 @@ export class AuthService {
 
   async register(input: RegisterDto, context: AuthRequestContext) {
     const email = input.email.trim().toLowerCase();
-    const phone = normalizePhone(input.phone);
+    const phone = input.phone ? normalizePhone(input.phone) : undefined;
     if (
       (await this.repository.findByIdentifier(email)) ||
-      (await this.repository.findByIdentifier(phone))
+      (phone && (await this.repository.findByIdentifier(phone)))
     ) {
       throw new ConflictException("An account already uses that email or phone number.");
     }
@@ -546,35 +537,27 @@ export class AuthService {
   ) {
     const session = await this.getSession(token);
     const purpose = this.verificationPurpose(input.channel);
-    if (
-      (input.channel === "email" && session.user.emailVerified) ||
-      (input.channel === "phone" && session.user.phoneVerified)
-    ) {
+    if (session.user.emailVerified) {
       throw new ConflictException("This contact method is already verified.");
     }
     if (!this.hasVerificationDelivery(input.channel)) {
       throw new ServiceUnavailableException("Verification delivery provider is not configured.");
     }
 
-    const usesTwilioVerify = this.usesTwilioVerifyWhatsApp(input.channel);
-    const code = usesTwilioVerify ? "" : String(randomInt(100_000, 1_000_000));
+    const code = String(randomInt(100_000, 1_000_000));
     const expiresAt = new Date(Date.now() + verificationLifetimeMs);
     await this.repository.invalidateVerificationCodes(session.user.id, purpose);
     await this.repository.createVerificationCode({
       userId: session.user.id,
       purpose,
-      codeHash: this.hashVerificationCode(
-        session.user.id,
-        purpose,
-        usesTwilioVerify ? twilioVerifyCodeMarker : code,
-      ),
+      codeHash: this.hashVerificationCode(session.user.id, purpose, code),
       expiresAt,
     });
 
     try {
       await this.deliverVerificationCode({
         channel: input.channel,
-        destination: input.channel === "email" ? session.user.email : session.user.phone,
+        destination: session.user.email,
         locale: session.user.preferredLocale,
         code,
         expiresAt,
@@ -605,10 +588,7 @@ export class AuthService {
 
     return {
       channel: input.channel,
-      destination:
-        input.channel === "email"
-          ? this.maskEmail(session.user.email)
-          : this.maskPhone(session.user.phone),
+      destination: this.maskEmail(session.user.email),
       expiresAt: expiresAt.toISOString(),
     };
   }
@@ -625,27 +605,13 @@ export class AuthService {
       throw new BadRequestException("Invalid or expired verification code.");
     }
 
-    const twilioVerifyHash = this.hashVerificationCode(
-      session.user.id,
-      purpose,
-      twilioVerifyCodeMarker,
-    );
-    const providerVerified =
-      input.channel === "phone" &&
-      record.codeHash === twilioVerifyHash &&
-      this.config.verificationTwilioVerifyWhatsApp
-        ? await this.checkTwilioWhatsAppVerification({
-            destination: session.user.phone,
-            code: input.code,
-          })
-        : undefined;
     const expected = Buffer.from(record.codeHash, "hex");
     const actual = Buffer.from(
       this.hashVerificationCode(session.user.id, purpose, input.code),
       "hex",
     );
     const locallyVerified = expected.length === actual.length && timingSafeEqual(expected, actual);
-    if (providerVerified === false || (providerVerified === undefined && !locallyVerified)) {
+    if (!locallyVerified) {
       const attempt = await this.repository.incrementVerificationAttempts(record.id);
       if (attempt.attempts >= verificationAttemptLimit) {
         throw new HttpException(
@@ -684,11 +650,8 @@ export class AuthService {
     if (session.user.systemRole !== "CUSTOMER" && !initialAdminEmailSetup) {
       throw new ForbiddenException("Staff contact details are managed by an administrator.");
     }
-    if (initialAdminEmailSetup && input.channel !== "email") {
-      throw new ForbiddenException("Only the primary email can be set during administrator setup.");
-    }
-    const value = normalizeContactChange(input.channel, input.value);
-    const current = input.channel === "email" ? session.user.email : session.user.phone;
+    const value = normalizeContactChange(input.value);
+    const current = session.user.email;
     if (value === current) {
       throw new ConflictException("The new contact must be different from the current contact.");
     }
@@ -699,22 +662,16 @@ export class AuthService {
       throw new ServiceUnavailableException("Verification delivery provider is not configured.");
     }
 
-    const kind = input.channel === "email" ? "EMAIL" : "PHONE";
+    const kind = "EMAIL" as const;
     const valueHash = this.hashContactChangeValue(input.channel, value);
-    const usesTwilioVerify = this.usesTwilioVerifyWhatsApp(input.channel);
-    const code = usesTwilioVerify ? "" : String(randomInt(100_000, 1_000_000));
+    const code = String(randomInt(100_000, 1_000_000));
     const expiresAt = new Date(Date.now() + verificationLifetimeMs);
     await this.repository.invalidateContactChangeChallenges(session.user.id, kind);
     await this.repository.createContactChangeChallenge({
       userId: session.user.id,
       kind,
       valueHash,
-      codeHash: this.hashContactChangeCode(
-        session.user.id,
-        kind,
-        valueHash,
-        usesTwilioVerify ? twilioVerifyCodeMarker : code,
-      ),
+      codeHash: this.hashContactChangeCode(session.user.id, kind, valueHash, code),
       expiresAt,
     });
 
@@ -725,15 +682,11 @@ export class AuthService {
         locale: session.user.preferredLocale,
         code,
         expiresAt,
-        ...(input.channel === "email"
-          ? {
-              email: buildContactChangeEmail({
-                locale: session.user.preferredLocale,
-                code,
-                expiresAt,
-              }),
-            }
-          : {}),
+        email: buildContactChangeEmail({
+          locale: session.user.preferredLocale,
+          code,
+          expiresAt,
+        }),
       });
     } catch (error) {
       await this.repository.invalidateContactChangeChallenges(session.user.id, kind);
@@ -760,7 +713,7 @@ export class AuthService {
     });
     return {
       channel: input.channel,
-      destination: input.channel === "email" ? this.maskEmail(value) : this.maskPhone(value),
+      destination: this.maskEmail(value),
       expiresAt: expiresAt.toISOString(),
     };
   }
@@ -780,11 +733,8 @@ export class AuthService {
     if (session.user.systemRole !== "CUSTOMER" && !initialAdminEmailSetup) {
       throw new ForbiddenException("Staff contact details are managed by an administrator.");
     }
-    if (initialAdminEmailSetup && input.channel !== "email") {
-      throw new ForbiddenException("Only the primary email can be set during administrator setup.");
-    }
-    const value = normalizeContactChange(input.channel, input.value);
-    const kind = input.channel === "email" ? "EMAIL" : "PHONE";
+    const value = normalizeContactChange(input.value);
+    const kind = "EMAIL" as const;
     const valueHash = this.hashContactChangeValue(input.channel, value);
     const record = await this.repository.findActiveContactChangeChallenge(
       session.user.id,
@@ -795,25 +745,13 @@ export class AuthService {
       throw new BadRequestException("Invalid or expired contact-change code.");
     }
 
-    const providerMarker = this.hashContactChangeCode(
-      session.user.id,
-      kind,
-      valueHash,
-      twilioVerifyCodeMarker,
-    );
-    const providerVerified =
-      input.channel === "phone" &&
-      record.codeHash === providerMarker &&
-      this.config.verificationTwilioVerifyWhatsApp
-        ? await this.checkTwilioWhatsAppVerification({ destination: value, code: input.code })
-        : undefined;
     const expected = Buffer.from(record.codeHash, "hex");
     const actual = Buffer.from(
       this.hashContactChangeCode(session.user.id, kind, valueHash, input.code),
       "hex",
     );
     const locallyVerified = expected.length === actual.length && timingSafeEqual(expected, actual);
-    if (providerVerified === false || (providerVerified === undefined && !locallyVerified)) {
+    if (!locallyVerified) {
       const attempt = await this.repository.incrementContactChangeAttempts(record.id);
       if (attempt.attempts >= verificationAttemptLimit) {
         throw new HttpException(
@@ -841,7 +779,7 @@ export class AuthService {
       return {
         channel: input.channel,
         changed: true,
-        destination: input.channel === "email" ? this.maskEmail(value) : this.maskPhone(value),
+        destination: this.maskEmail(value),
         otherSessionsRevoked: result.revoked,
         user: toAuthUser(result.user),
       };
@@ -858,8 +796,8 @@ export class AuthService {
     }
   }
 
-  private verificationPurpose(channel: "email" | "phone"): VerificationPurpose {
-    return channel === "email" ? "VERIFY_EMAIL" : "VERIFY_PHONE";
+  private verificationPurpose(_channel: "email"): VerificationPurpose {
+    return "VERIFY_EMAIL";
   }
 
   private async requireSessionRecord(token: string | undefined, enforceStaffSecurity = true) {
@@ -936,7 +874,7 @@ export class AuthService {
       .digest("hex");
   }
 
-  private hashContactChangeValue(channel: "email" | "phone", value: string) {
+  private hashContactChangeValue(channel: "email", value: string) {
     return createHmac("sha256", this.config.authSecret)
       .update(`contact-change:${channel}:${value}`)
       .digest("hex");
@@ -954,7 +892,7 @@ export class AuthService {
   }
 
   private async deliverVerificationCode(input: {
-    channel: "email" | "phone";
+    channel: "email";
     destination: string;
     locale: string;
     code: string;
@@ -972,15 +910,6 @@ export class AuthService {
       await this.deliverEmailVerification(input);
       return;
     }
-    if (input.channel === "phone" && this.config.verificationWhatsApp) {
-      await this.deliverWhatsAppVerification(input);
-      return;
-    }
-    if (input.channel === "phone" && this.config.verificationTwilioVerifyWhatsApp) {
-      await this.startTwilioWhatsAppVerification(input);
-      return;
-    }
-
     const delivery = this.config.verificationDelivery;
     if (!delivery) {
       throw new ServiceUnavailableException("Verification delivery provider is not configured.");
@@ -1049,26 +978,12 @@ export class AuthService {
     }
   }
 
-  private hasVerificationDelivery(channel: "email" | "phone") {
-    return channel === "email"
-      ? Boolean(
-          this.config.verificationGmail ||
-          this.config.verificationBrevo ||
-          this.config.verificationEmail ||
-          this.config.verificationDelivery,
-        )
-      : Boolean(
-          this.config.verificationWhatsApp ||
-          this.config.verificationTwilioVerifyWhatsApp ||
-          this.config.verificationDelivery,
-        );
-  }
-
-  private usesTwilioVerifyWhatsApp(channel: "email" | "phone") {
-    return (
-      channel === "phone" &&
-      !this.config.verificationWhatsApp &&
-      Boolean(this.config.verificationTwilioVerifyWhatsApp)
+  private hasVerificationDelivery(_channel: "email") {
+    return Boolean(
+      this.config.verificationGmail ||
+      this.config.verificationBrevo ||
+      this.config.verificationEmail ||
+      this.config.verificationDelivery,
     );
   }
 
@@ -1124,124 +1039,9 @@ export class AuthService {
     }
   }
 
-  private async deliverWhatsAppVerification(input: {
-    destination: string;
-    locale: string;
-    code: string;
-  }) {
-    const delivery = this.config.verificationWhatsApp;
-    if (!delivery) return;
-    const destination = input.destination.replace(/\D/g, "");
-
-    try {
-      const response = await fetch(
-        `https://graph.facebook.com/${delivery.graphApiVersion}/${delivery.phoneNumberId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${delivery.accessToken}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: destination,
-            type: "template",
-            template: {
-              name: delivery.templateName,
-              language: { code: input.locale === "en" ? "en_US" : "ar" },
-              components: [
-                {
-                  type: "body",
-                  parameters: [{ type: "text", text: input.code }],
-                },
-                {
-                  type: "button",
-                  sub_type: "url",
-                  index: "0",
-                  parameters: [{ type: "text", text: input.code }],
-                },
-              ],
-            },
-          }),
-        },
-      );
-      if (!response.ok) throw new Error("WhatsApp provider rejected the request.");
-    } catch {
-      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
-    }
-  }
-
-  private async startTwilioWhatsAppVerification(input: { destination: string; locale: string }) {
-    const delivery = this.config.verificationTwilioVerifyWhatsApp;
-    if (!delivery) return;
-    const body = new URLSearchParams({
-      To: input.destination,
-      Channel: "whatsapp",
-      Locale: input.locale === "ar" ? "ar" : "en",
-    });
-
-    try {
-      const response = await fetch(
-        `https://verify.twilio.com/v2/Services/${delivery.serviceSid}/Verifications`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Basic ${Buffer.from(`${delivery.accountSid}:${delivery.authToken}`).toString("base64")}`,
-            "content-type": "application/x-www-form-urlencoded",
-          },
-          body,
-        },
-      );
-      const result = response.ok ? ((await response.json()) as { status?: string }) : undefined;
-      if (!response.ok || result?.status !== "pending") {
-        throw new Error("Twilio Verify rejected the request.");
-      }
-    } catch {
-      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
-    }
-  }
-
-  private async checkTwilioWhatsAppVerification(input: { destination: string; code: string }) {
-    const delivery = this.config.verificationTwilioVerifyWhatsApp;
-    if (!delivery) return false;
-    const body = new URLSearchParams({ To: input.destination, Code: input.code });
-
-    try {
-      const response = await fetch(
-        `https://verify.twilio.com/v2/Services/${delivery.serviceSid}/VerificationCheck`,
-        {
-          method: "POST",
-          headers: {
-            authorization: `Basic ${Buffer.from(`${delivery.accountSid}:${delivery.authToken}`).toString("base64")}`,
-            "content-type": "application/x-www-form-urlencoded",
-          },
-          body,
-        },
-      );
-      if (!response.ok) {
-        if (response.status === 429 || response.status >= 500) {
-          throw new ServiceUnavailableException(
-            "Verification delivery is temporarily unavailable.",
-          );
-        }
-        return false;
-      }
-      const result = (await response.json()) as { status?: string };
-      return result.status === "approved";
-    } catch (error) {
-      if (error instanceof ServiceUnavailableException) throw error;
-      throw new ServiceUnavailableException("Verification delivery is temporarily unavailable.");
-    }
-  }
-
   private maskEmail(email: string) {
     const [name, domain] = email.split("@");
     return `${name?.slice(0, 2) || "**"}***@${domain ?? "***"}`;
-  }
-
-  private maskPhone(phone: string) {
-    return `${phone.slice(0, 3)}••••${phone.slice(-4)}`;
   }
 
   private async issueSession(

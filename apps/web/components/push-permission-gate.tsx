@@ -86,7 +86,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
   const text = copy[locale];
   const [state, setState] = useState<GateState>("CHECKING");
 
-  const checkSession = useCallback(async (freshLogin = false) => {
+  const checkSession = useCallback(async () => {
     let response: Response;
     try {
       response = await fetch("/api/auth/session", {
@@ -98,6 +98,13 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
       return;
     }
     if (!response.ok) {
+      setState("HIDDEN");
+      return;
+    }
+    if (
+      sessionStorage.getItem(decisionKey) === "deferred" ||
+      localStorage.getItem(decisionKey) === "deferred"
+    ) {
       setState("HIDDEN");
       return;
     }
@@ -121,8 +128,7 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
         setState("HIDDEN");
         return;
       }
-      if (freshLogin) sessionStorage.removeItem(decisionKey);
-      setState(sessionStorage.getItem(decisionKey) === "deferred" ? "REMINDER" : "PROMPT");
+      setState("PROMPT");
     } catch {
       setState("FAILED");
     }
@@ -130,10 +136,10 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
 
   useEffect(() => {
     const sessionChanged = () => setState("HIDDEN");
-    const marketingChanged = () => void checkSession(true);
+    const marketingChanged = () => void checkSession();
     const marketingReady = (event: Event) => {
       const ready = event as CustomEvent<{ allowPushPrompt: boolean }>;
-      if (ready.detail.allowPushPrompt) void checkSession(true);
+      if (ready.detail.allowPushPrompt) void checkSession();
       else setState("HIDDEN");
     };
     const pushChanged = () => setState("HIDDEN");
@@ -162,8 +168,16 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
       return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const dialog = document.querySelector<HTMLElement>(".push-consent-layer [role='dialog']");
+    const firstAction = dialog?.querySelector<HTMLElement>("button:not([disabled])");
+    firstAction?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && state !== "ENABLING") defer();
+    };
+    window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
     };
   }, [state]);
 
@@ -195,7 +209,8 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
 
   function defer() {
     sessionStorage.setItem(decisionKey, "deferred");
-    setState("REMINDER");
+    localStorage.setItem(decisionKey, "deferred");
+    setState("HIDDEN");
   }
 
   if (state === "CHECKING" || state === "HIDDEN") return null;

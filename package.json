@@ -12,12 +12,16 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:interaction": "playwright test tests/e2e/interaction-audit.spec.ts tests/e2e/functional-interactions.spec.ts",
+    "test:e2e:documents": "playwright test tests/e2e/document-security.spec.ts",
+    "test:release": "playwright test tests/e2e/interaction-audit.spec.ts tests/e2e/functional-interactions.spec.ts tests/e2e/document-security.spec.ts tests/e2e/authenticated-release.spec.ts tests/e2e/authenticated-lifecycle.spec.ts",
     "test:e2e:report": "playwright show-report",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @rahal/database generate",
     "db:format": "pnpm --filter @rahal/database format",
     "db:migrate": "pnpm --filter @rahal/database migrate:deploy",
-    "db:seed": "pnpm --filter @rahal/database seed"
+    "db:seed": "pnpm --filter @rahal/database seed",
+    "data:cleanup:preview": "powershell -NoProfile -File scripts/cleanup-demo-data.ps1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

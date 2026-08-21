@@ -172,11 +172,27 @@ export class AdminOperationsService {
       overdueRentals + expiringPreapprovals + failedDeliveries + pendingReviews;
     return {
       metrics: [
-        { key: "OPEN_REQUESTS", value: openRequests },
-        { key: "CONFIRMED_BOOKINGS", value: confirmedBookings },
-        { key: "ACTIVE_RENTALS", value: activeRentals },
-        { key: "AVAILABLE_VEHICLES", value: availableVehicles },
-        { key: "ATTENTION_REQUIRED", value: attentionRequired },
+        { key: "OPEN_REQUESTS", value: openRequests, href: "/admin/requests?filter=OPEN" },
+        {
+          key: "CONFIRMED_BOOKINGS",
+          value: confirmedBookings,
+          href: "/admin/requests?filter=CONFIRMED",
+        },
+        {
+          key: "ACTIVE_RENTALS",
+          value: activeRentals,
+          href: "/admin/requests?filter=ACTIVE",
+        },
+        {
+          key: "AVAILABLE_VEHICLES",
+          value: availableVehicles,
+          href: "/admin/fleet?status=AVAILABLE",
+        },
+        {
+          key: "ATTENTION_REQUIRED",
+          value: attentionRequired,
+          href: "/admin/requests?filter=ATTENTION",
+        },
       ],
       trend,
       fleet: fleetRows.map((item) => ({
@@ -184,24 +200,29 @@ export class AdminOperationsService {
         count: item._count._all,
       })),
       alerts: [
-        { key: "OVERDUE_RENTALS", count: overdueRentals, severity: "CRITICAL", href: "/sales" },
+        {
+          key: "OVERDUE_RENTALS",
+          count: overdueRentals,
+          severity: "CRITICAL",
+          href: "/admin/requests?filter=ACTIVE&attention=overdue",
+        },
         {
           key: "EXPIRING_PREAPPROVALS",
           count: expiringPreapprovals,
           severity: "WARNING",
-          href: "/sales",
+          href: "/admin/requests?filter=PRE_APPROVED&attention=expiring",
         },
         {
           key: "FAILED_DELIVERIES",
           count: failedDeliveries,
           severity: "WARNING",
-          href: "/admin/audit",
+          href: "/admin/audit?result=failed&entityType=NOTIFICATION_DELIVERY",
         },
         {
           key: "PENDING_REVIEWS",
           count: pendingReviews,
           severity: "INFO",
-          href: "/admin/reviews",
+          href: "/admin/reviews?status=PENDING",
         },
       ],
       recentActivity: recentActivity.map((item) => toAuditEntry(item, locale)),
@@ -339,7 +360,7 @@ export class AdminOperationsService {
   async communications(token: string | undefined): Promise<AdminCommunicationsOverview> {
     await this.adminSession(token);
     const stats = await this.repository.communicationStats();
-    const deliveryCount = (channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP", statuses: string[]) =>
+    const deliveryCount = (channel: "IN_APP" | "PUSH" | "EMAIL", statuses: string[]) =>
       stats.deliveries
         .filter((row) => row.channel === channel && statuses.includes(row.status))
         .reduce((total, row) => total + row._count._all, 0);
@@ -350,12 +371,6 @@ export class AdminOperationsService {
       : this.config.verificationEmail
         ? "RESEND"
         : null;
-    const phoneProvider = this.config.verificationWhatsApp
-      ? "META"
-      : this.config.verificationTwilioVerifyWhatsApp
-        ? "TWILIO_VERIFY"
-        : null;
-
     return {
       providers: [
         { key: "IN_APP", status: "READY", provider: "LOCAL" },
@@ -365,24 +380,12 @@ export class AdminOperationsService {
           provider: emailProvider,
         },
         {
-          key: "WHATSAPP_VERIFICATION",
-          status: phoneProvider ? "READY" : "CONFIGURATION_REQUIRED",
-          provider: phoneProvider,
-        },
-        {
-          key: "WHATSAPP_NOTIFICATIONS",
-          status: this.config.verificationWhatsApp?.notificationTemplateName
-            ? "READY"
-            : "CONFIGURATION_REQUIRED",
-          provider: this.config.verificationWhatsApp?.notificationTemplateName ? "META" : null,
-        },
-        {
           key: "WEB_PUSH",
           status: this.config.webPush ? "READY" : "CONFIGURATION_REQUIRED",
           provider: this.config.webPush ? "VAPID" : null,
         },
       ],
-      deliveries: (["IN_APP", "PUSH", "EMAIL", "WHATSAPP"] as const).map((channel) => ({
+      deliveries: (["IN_APP", "PUSH", "EMAIL"] as const).map((channel) => ({
         channel,
         queued: deliveryCount(channel, ["QUEUED"]),
         sent: deliveryCount(channel, ["SENT", "DELIVERED", "READ"]),

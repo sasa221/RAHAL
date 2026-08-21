@@ -10,7 +10,7 @@ export type AdminCustomerListItem = {
   phoneMasked: string;
   status: AdminCustomerStatus;
   preferredLocale: Locale;
-  verification: { email: boolean; phone: boolean };
+  verification: { email: boolean };
   reservationCount: number;
   bookingCount: number;
   lastActivityAt: string | null;
@@ -33,7 +33,6 @@ export type AdminCustomerDetail = AdminCustomerListItem & {
     inApp: boolean;
     push: boolean;
     email: boolean;
-    whatsapp: boolean;
     marketing: boolean;
   };
   recentReservations: Array<{
@@ -228,7 +227,6 @@ export type ReservationDocumentRequirement = {
   document?: {
     id: string;
     type: ReservationDocumentType;
-    originalName: string;
     mimeType: string;
     sizeBytes: number;
     status: "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
@@ -240,13 +238,14 @@ export type ReservationDocumentChecklist = {
   draftId: string;
   reference: string;
   developmentRules: boolean;
+  uploadsEnabled: boolean;
+  uploadUnavailableReason: string | null;
   requirements: ReservationDocumentRequirement[];
   complete: boolean;
 };
 
 export type ReservationSubmissionBlocker =
   | "EMAIL_VERIFICATION_REQUIRED"
-  | "PHONE_VERIFICATION_REQUIRED"
   | "CUSTOMER_DETAILS_REQUIRED"
   | "REQUIRED_CONSENTS_REQUIRED"
   | "APPROVED_POLICY_REQUIRED"
@@ -273,7 +272,7 @@ export type ReservationReview = {
     emergencyContactNameMasked: string | null;
     emergencyContactPhoneMasked: string | null;
   };
-  verification: { email: boolean; phone: boolean };
+  verification: { email: boolean };
   documents: Array<{
     type: ReservationDocumentType;
     label: string;
@@ -319,6 +318,7 @@ export type SalesReservationQueueItem = {
 
 export type SalesReservationReview = SalesReservationQueueItem & {
   canReviewDocuments: boolean;
+  protectedUploadsEnabled: boolean;
   customer: SalesReservationQueueItem["customer"] & {
     nationality: string | null;
     customerCategory: "EGYPTIAN" | "FOREIGN" | null;
@@ -326,7 +326,7 @@ export type SalesReservationReview = SalesReservationQueueItem & {
     emergencyContactNameMasked: string | null;
     emergencyContactPhoneMasked: string | null;
   };
-  verification: { email: boolean; phone: boolean };
+  verification: { email: boolean };
   consents: { policyVersion: string | null; requiredAccepted: boolean };
   documents: Array<{
     id: string;
@@ -552,6 +552,35 @@ export type ReservationConsents = {
   marketingAccepted: boolean;
 };
 
+export type BranchDayHours = {
+  day: "SATURDAY" | "SUNDAY" | "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
+  closed: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+};
+
+export type BranchHoursException = {
+  id: string;
+  date: string;
+  labelAr: string;
+  labelEn: string;
+  closed: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+};
+
+export type BranchWorkingHours = {
+  timezone: "Africa/Cairo";
+  weekly: BranchDayHours[];
+  exceptions: BranchHoursException[];
+};
+
+export type BranchSocialLink = {
+  id: string;
+  platform: string;
+  url: string;
+};
+
 export type BranchSummary = {
   id: string;
   nameAr: string;
@@ -562,12 +591,43 @@ export type BranchSummary = {
   longitude: number | null;
   phones: string[];
   whatsappNumbers: string[];
+  whatsappVisible?: boolean;
+  whatsappMessageAr?: string | null;
+  whatsappMessageEn?: string | null;
   workingHours: Record<string, unknown>;
   active: boolean;
+  governorateAr?: string;
+  governorateEn?: string;
+  areaAr?: string;
+  areaEn?: string;
+  streetAr?: string;
+  streetEn?: string;
+  landmarkAr?: string | null;
+  landmarkEn?: string | null;
+  email?: string | null;
+  socialLinks?: BranchSocialLink[];
+  services?: string[];
+  managerId?: string | null;
+  managerName?: string | null;
+  status?: "DRAFT" | "ACTIVE" | "INACTIVE";
+  whatsappNumber?: string | null;
 };
 
 export type ManagedBranch = BranchSummary & {
   updatedAt: string;
+  dependencyCounts: { vehicles: number; reservations: number; bookings: number };
+};
+
+export type BranchManagementOverview = {
+  branches: ManagedBranch[];
+  managers: Array<{ id: string; name: string }>;
+  permissions: {
+    view: boolean;
+    edit: boolean;
+    create: boolean;
+    disable: boolean;
+    delete: boolean;
+  };
 };
 
 export type SiteContentKey =
@@ -578,6 +638,87 @@ export type SiteContentItem = {
   body: string;
 };
 
+export type SiteContentCta = {
+  label: string;
+  destinationType: "INTERNAL" | "EXTERNAL" | "SECTION";
+  href: string;
+};
+
+export type SiteContentMedia = {
+  type: "IMAGE" | "VIDEO" | "THREE_D";
+  url: string;
+  alt: string;
+};
+
+export type SiteContentOrderedItem = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+};
+
+export type SiteContentDocument =
+  | {
+      kind: "HOME_HERO";
+      eyebrow: string;
+      title: string;
+      description: string;
+      badge: string;
+      primaryCta: SiteContentCta;
+      secondaryCta: SiteContentCta;
+      media: SiteContentMedia;
+      visible: boolean;
+    }
+  | {
+      kind: "HOME_PROCESS";
+      eyebrow: string;
+      title: string;
+      description: string;
+      notice: string;
+      items: SiteContentOrderedItem[];
+    }
+  | {
+      kind: "HOME_TRUST";
+      eyebrow: string;
+      title: string;
+      description: string;
+      items: SiteContentOrderedItem[];
+    }
+  | {
+      kind: "ABOUT" | "HOW_IT_WORKS";
+      eyebrow: string;
+      title: string;
+      introduction: string;
+      statement: string;
+      sections: Array<{ id: string; title: string; body: string; imageUrl: string | null }>;
+      cta: SiteContentCta | null;
+    }
+  | {
+      kind: "FAQ";
+      eyebrow: string;
+      title: string;
+      introduction: string;
+      items: Array<{
+        id: string;
+        question: string;
+        answer: string;
+        category: string;
+        published: boolean;
+      }>;
+    }
+  | {
+      kind: "CONTACT";
+      eyebrow: string;
+      title: string;
+      introduction: string;
+      phones: string[];
+      email: string;
+      address: string;
+      workingHours: string;
+      socialLinks: Array<{ id: string; platform: string; url: string }>;
+      whatsapp: { number: string; message: string; visible: boolean };
+    };
+
 export type SiteContentTranslation = {
   locale: Locale;
   eyebrow: string;
@@ -585,10 +726,14 @@ export type SiteContentTranslation = {
   introduction: string;
   statement: string;
   items: SiteContentItem[];
+  schemaVersion?: number;
+  document?: SiteContentDocument;
 };
 
 export type ManagedSiteContent = {
   key: SiteContentKey;
+  schemaVersion: number;
+  publishedSchemaVersion: number | null;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   translations: SiteContentTranslation[];
   publishedTranslations: SiteContentTranslation[];
@@ -600,11 +745,16 @@ export type ManagedSiteContent = {
 export type SiteContentAdminOverview = {
   entries: ManagedSiteContent[];
   supportedKeys: SiteContentKey[];
+  permissions: {
+    edit: boolean;
+    publish: boolean;
+  };
 };
 
 export type PublishedSiteContent = {
   entries: Array<{
     key: SiteContentKey;
+    schemaVersion: number;
     translations: SiteContentTranslation[];
     publishedAt: string;
   }>;
@@ -613,13 +763,12 @@ export type PublishedSiteContent = {
 export type AuthUser = {
   id: string;
   email: string;
-  phone: string;
+  phone: string | null;
   fullName: string;
   preferredLocale: Locale;
   role: "CUSTOMER" | "SALES" | "ADMIN" | "SUPER_ADMIN";
   status: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "BLOCKED" | "ARCHIVED";
   emailVerified: boolean;
-  phoneVerified: boolean;
   mfaEnabled: boolean;
   securityAction: "ENROLL_MFA" | "SET_PRIMARY_EMAIL" | "CHANGE_TEMPORARY_PASSWORD" | null;
 };
@@ -680,13 +829,13 @@ export type PasswordChangeResult = {
 };
 
 export type ContactChangeRequestResult = {
-  channel: "email" | "phone";
+  channel: "email";
   destination: string;
   expiresAt: string;
 };
 
 export type ContactChangeResult = {
-  channel: "email" | "phone";
+  channel: "email";
   changed: true;
   destination: string;
   otherSessionsRevoked: number;
@@ -827,9 +976,28 @@ export type StaffPermissionKey =
   | "fleet.view"
   | "fleet.manage"
   | "vehicles.manage"
+  | "content.edit"
+  | "content.publish"
+  | "branches.view"
+  | "branches.edit"
+  | "branches.create"
+  | "branches.disable"
+  | "branches.delete"
   | "notifications.send"
   | "staff.manage"
   | "audit.view";
+
+export const WORKSPACE_ROLE_MATRIX = {
+  customer: ["CUSTOMER"],
+  sales: ["SALES"],
+  admin: ["ADMIN", "SUPER_ADMIN"],
+} as const satisfies Record<"customer" | "sales" | "admin", readonly AuthUser["role"][]>;
+
+export type WorkspaceKind = keyof typeof WORKSPACE_ROLE_MATRIX;
+
+export function roleCanOpenWorkspace(kind: WorkspaceKind, role: AuthUser["role"]) {
+  return (WORKSPACE_ROLE_MATRIX[kind] as readonly AuthUser["role"][]).includes(role);
+}
 
 export type StaffPermission = {
   id: string;
@@ -859,7 +1027,7 @@ export type StaffMember = {
   fullNameAr: string | null;
   fullNameEn: string;
   email: string;
-  phone: string;
+  phone: string | null;
   systemRole: "SALES" | "ADMIN" | "SUPER_ADMIN";
   status: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "BLOCKED" | "ARCHIVED";
   preferredLocale: Locale;
@@ -903,6 +1071,7 @@ export type AdminOperationsMetric = {
     | "AVAILABLE_VEHICLES"
     | "ATTENTION_REQUIRED";
   value: number;
+  href: string;
 };
 
 export type AdminOperationsTrendPoint = {
@@ -1059,15 +1228,15 @@ export type AdminDocumentAccessPage = {
 };
 
 export type AdminCommunicationProvider = {
-  key: "IN_APP" | "EMAIL" | "WHATSAPP_VERIFICATION" | "WHATSAPP_NOTIFICATIONS" | "WEB_PUSH";
+  key: "IN_APP" | "EMAIL" | "WEB_PUSH";
   status: "READY" | "CONFIGURATION_REQUIRED";
-  provider: "LOCAL" | "BREVO" | "RESEND" | "META" | "TWILIO_VERIFY" | "VAPID" | null;
+  provider: "LOCAL" | "BREVO" | "RESEND" | "VAPID" | null;
 };
 
 export type AdminCommunicationsOverview = {
   providers: AdminCommunicationProvider[];
   deliveries: Array<{
-    channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP";
+    channel: "IN_APP" | "PUSH" | "EMAIL";
     queued: number;
     sent: number;
     failed: number;
@@ -1099,7 +1268,7 @@ export type NotificationCampaignSummary = {
   title: string;
   body: string;
   targetPath: string | null;
-  channels: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+  channels: Array<"IN_APP" | "PUSH" | "EMAIL">;
   important: boolean;
   marketing: boolean;
   recipientCount: number;
@@ -1112,7 +1281,7 @@ export type NotificationCampaignPage = {
   items: NotificationCampaignSummary[];
   capabilities: {
     audiences: NotificationCampaignAudience[];
-    channels: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+    channels: Array<"IN_APP" | "PUSH" | "EMAIL">;
   };
 };
 
@@ -1208,9 +1377,8 @@ export type CustomerAccountProfile = {
   fullNameAr: string | null;
   fullNameEn: string;
   email: string;
-  phone: string;
+  phone: string | null;
   emailVerified: boolean;
-  phoneVerified: boolean;
   preferredLocale: Locale;
   dateOfBirth: string | null;
   nationality: string | null;
@@ -1223,7 +1391,6 @@ export type CustomerAccountProfile = {
 export type CustomerNotificationPreferences = {
   inAppEnabled: true;
   emailEnabled: boolean;
-  whatsappEnabled: boolean;
   pushEnabled: boolean;
   marketingEnabled: boolean;
   marketingConsentDecided: boolean;

@@ -45,7 +45,10 @@ function setup(role: "SALES" | "ADMIN" | "SUPER_ADMIN" = "ADMIN") {
     resetAccess: vi.fn().mockResolvedValue(staffRecord),
     replaceOverrides: vi.fn().mockResolvedValue(staffRecord),
     replaceRolePermissions: vi.fn(),
-    permissionAccess: vi.fn(),
+    permissionAccess: vi.fn().mockResolvedValue({
+      permissionOverrides: [],
+      staffRole: { permissions: [{ permissionId: "staff-manage" }] },
+    }),
   };
   return {
     auth,
@@ -119,6 +122,22 @@ describe("StaffService", () => {
 });
 
 describe("StaffAccessService", () => {
+  const session = (role: "CUSTOMER" | "SALES" | "ADMIN" | "SUPER_ADMIN") => ({
+    user: {
+      id: "staff-2",
+      role,
+      email: "",
+      phone: "",
+      fullName: "",
+      preferredLocale: "en" as const,
+      status: "ACTIVE" as const,
+      emailVerified: true,
+      mfaEnabled: true,
+      securityAction: null,
+    },
+    expiresAt: new Date().toISOString(),
+  });
+
   it("lets an explicit deny override an inherited role permission", async () => {
     const repository = {
       permissionAccess: vi.fn().mockResolvedValue({
@@ -127,26 +146,31 @@ describe("StaffAccessService", () => {
       }),
     };
     const access = new StaffAccessService(repository as never);
-    await expect(
-      access.require(
-        {
-          user: {
-            id: "staff-2",
-            role: "SALES",
-            email: "",
-            phone: "",
-            fullName: "",
-            preferredLocale: "en",
-            status: "ACTIVE",
-            emailVerified: true,
-            phoneVerified: true,
-            mfaEnabled: true,
-            securityAction: null,
-          },
-          expiresAt: new Date().toISOString(),
-        },
-        "documents.view",
-      ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(access.require(session("SALES"), "documents.view")).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it("lets administrators manage sales staff while super administrators retain critical access", async () => {
+    const repository = {
+      permissionAccess: vi.fn().mockResolvedValue({
+        permissionOverrides: [],
+        staffRole: { permissions: [] },
+      }),
+    };
+    const access = new StaffAccessService(repository as never);
+
+    await expect(access.require(session("ADMIN"), "reservations.review")).resolves.toBeUndefined();
+    await expect(access.require(session("ADMIN"), "staff.manage")).resolves.toBeUndefined();
+    await expect(access.require(session("SUPER_ADMIN"), "staff.manage")).resolves.toBeUndefined();
+  });
+
+  it("never grants a staff API permission to a customer", async () => {
+    const repository = { permissionAccess: vi.fn() };
+    const access = new StaffAccessService(repository as never);
+    await expect(access.require(session("CUSTOMER"), "reservations.view")).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(repository.permissionAccess).not.toHaveBeenCalled();
   });
 });

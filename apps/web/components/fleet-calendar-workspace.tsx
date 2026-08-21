@@ -6,12 +6,14 @@ import type {
   FleetCalendar,
   FleetCalendarEvent,
   FleetCalendarEventKind,
+  VehicleOperationalStatus,
 } from "@rahal/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PublicLocale } from "../lib/public-content";
 import { Icon } from "./public-home";
 import { WorkspaceShell } from "./workspace-shell";
 import { FleetVehicleManager } from "./fleet-vehicle-manager";
+import { WorkspaceState } from "./workspace-state";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -111,6 +113,7 @@ export function FleetCalendarWorkspace({
   const [error, setError] = useState("");
   const [kindFilter, setKindFilter] = useState<"ALL" | FleetCalendarEventKind>("ALL");
   const [busyId, setBusyId] = useState("");
+  const [statusFilter, setStatusFilter] = useState<VehicleOperationalStatus | null>(null);
   const days = useMemo(
     () => Array.from({ length: 14 }, (_, index) => new Date(anchor.getTime() + index * dayMs)),
     [anchor],
@@ -142,6 +145,11 @@ export function FleetCalendarWorkspace({
   }, [from, locale, text.error, to]);
 
   useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("status");
+    if (requested) setStatusFilter(requested as VehicleOperationalStatus);
+  }, []);
+
+  useEffect(() => {
     void load();
   }, [load]);
 
@@ -154,6 +162,16 @@ export function FleetCalendarWorkspace({
   const utilization = calendar?.vehicles.length
     ? Math.round((occupiedVehicles / calendar.vehicles.length) * 100)
     : 0;
+  const visibleVehicles = statusFilter
+    ? (calendar?.vehicles.filter((vehicle) => vehicle.status === statusFilter) ?? [])
+    : (calendar?.vehicles ?? []);
+
+  function clearStatusFilter() {
+    setStatusFilter(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("status");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }
 
   async function submitBlock(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -282,6 +300,18 @@ export function FleetCalendarWorkspace({
         </section>
 
         <div className="fleet-toolbar" role="group" aria-label={text.requests}>
+          {statusFilter ? (
+            <button
+              aria-label={
+                locale === "ar" ? "إلغاء فلتر حالة السيارة" : "Clear vehicle status filter"
+              }
+              className="is-status-filter"
+              onClick={clearStatusFilter}
+              type="button"
+            >
+              {statusFilter} ×
+            </button>
+          ) : null}
           {(["ALL", "PENDING", "CONFIRMED", "ACTIVE", "MAINTENANCE", "MANUAL_BLOCK"] as const).map(
             (kind) => (
               <button
@@ -304,10 +334,23 @@ export function FleetCalendarWorkspace({
         ) : null}
         {loading ? <div className="fleet-state">{text.loading}</div> : null}
         {!loading && calendar && !calendar.vehicles.length ? (
-          <div className="fleet-state">{text.empty}</div>
+          <WorkspaceState kind="empty" title={text.empty} />
+        ) : null}
+        {!loading && calendar?.vehicles.length && !visibleVehicles.length ? (
+          <WorkspaceState
+            action={
+              <button onClick={clearStatusFilter} type="button">
+                {locale === "ar" ? "عرض كل السيارات" : "Show all vehicles"}
+              </button>
+            }
+            kind="no-results"
+            title={
+              locale === "ar" ? "لا توجد سيارات بهذه الحالة." : "No vehicles match this status."
+            }
+          />
         ) : null}
 
-        {!loading && calendar?.vehicles.length ? (
+        {!loading && visibleVehicles.length ? (
           <>
             <section className="fleet-calendar-panel">
               <div className="fleet-calendar-head">
@@ -326,7 +369,7 @@ export function FleetCalendarWorkspace({
                   ))}
                 </div>
               </div>
-              {calendar.vehicles.map((vehicle) => {
+              {visibleVehicles.map((vehicle) => {
                 const events = vehicle.events.filter(
                   (event) => kindFilter === "ALL" || event.kind === kindFilter,
                 );
@@ -377,7 +420,7 @@ export function FleetCalendarWorkspace({
             </section>
 
             <section className="fleet-agenda">
-              {calendar.vehicles.map((vehicle) => {
+              {visibleVehicles.map((vehicle) => {
                 const events = vehicle.events.filter(
                   (event) => kindFilter === "ALL" || event.kind === kindFilter,
                 );
@@ -412,7 +455,7 @@ export function FleetCalendarWorkspace({
               {!allEvents.length ? <p>{text.noEvents}</p> : null}
             </section>
 
-            {calendar.canManageBlocks ? (
+            {calendar?.canManageBlocks ? (
               <>
                 <section className="fleet-manage-panel">
                   <header>
@@ -424,7 +467,7 @@ export function FleetCalendarWorkspace({
                     <label>
                       {text.vehicle}
                       <select name="vehicleId" required>
-                        {calendar.vehicles.map((vehicle) => (
+                        {calendar?.vehicles.map((vehicle) => (
                           <option key={vehicle.id} value={vehicle.id}>
                             {vehicle.name} · {vehicle.registrationNumber}
                           </option>

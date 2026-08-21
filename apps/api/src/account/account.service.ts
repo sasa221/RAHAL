@@ -16,7 +16,6 @@ import { AccountRepository } from "./account.repository";
 const defaultPreferences: CustomerNotificationPreferences = {
   inAppEnabled: true,
   emailEnabled: true,
-  whatsappEnabled: true,
   pushEnabled: true,
   marketingEnabled: false,
   marketingConsentDecided: false,
@@ -34,7 +33,6 @@ function toProfile(record: AccountRecord): CustomerAccountProfile {
     email: record.email,
     phone: record.phone,
     emailVerified: Boolean(record.emailVerifiedAt),
-    phoneVerified: Boolean(record.phoneVerifiedAt),
     preferredLocale: record.preferredLocale === "en" ? "en" : "ar",
     dateOfBirth: record.dateOfBirth?.toISOString().slice(0, 10) ?? null,
     nationality: record.nationality,
@@ -50,7 +48,6 @@ function toPreferences(record: AccountRecord): CustomerNotificationPreferences {
     ? {
         inAppEnabled: true,
         emailEnabled: record.notificationPreference.emailEnabled,
-        whatsappEnabled: record.notificationPreference.whatsappEnabled,
         pushEnabled: record.notificationPreference.pushEnabled,
         marketingEnabled: record.notificationPreference.marketingEnabled,
         marketingConsentDecided: Boolean(record.notificationPreference.marketingConsentDecidedAt),
@@ -134,7 +131,6 @@ export class AccountService {
     }
     const data = {
       emailEnabled: input.emailEnabled,
-      whatsappEnabled: input.whatsappEnabled,
       pushEnabled: input.pushEnabled,
       marketingEnabled: input.marketingEnabled,
       quietHoursStart,

@@ -83,7 +83,6 @@ describe("AdminCustomersService", () => {
       inApp: true,
       push: true,
       email: true,
-      whatsapp: true,
       marketing: false,
     });
     expect(result).not.toHaveProperty("nationality");

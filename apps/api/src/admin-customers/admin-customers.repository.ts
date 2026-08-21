@@ -11,7 +11,6 @@ const customerListSelect = {
   status: true,
   preferredLocale: true,
   emailVerifiedAt: true,
-  phoneVerifiedAt: true,
   createdAt: true,
   _count: { select: { reservations: true, bookings: true } },
   sessions: {
@@ -30,9 +29,9 @@ export class AdminCustomersRepository {
       systemRole: "CUSTOMER",
       ...(input.status && input.status !== "ALL" ? { status: input.status as never } : {}),
       ...(input.verification === "VERIFIED"
-        ? { emailVerifiedAt: { not: null }, phoneVerifiedAt: { not: null } }
+        ? { emailVerifiedAt: { not: null } }
         : input.verification === "PENDING"
-          ? { OR: [{ emailVerifiedAt: null }, { phoneVerifiedAt: null }] }
+          ? { emailVerifiedAt: null }
           : {}),
       ...(input.query
         ? {
@@ -62,7 +61,7 @@ export class AdminCustomersRepository {
       this.prisma.client.user.count({
         where: {
           systemRole: "CUSTOMER",
-          OR: [{ emailVerifiedAt: null }, { phoneVerifiedAt: null }],
+          emailVerifiedAt: null,
         },
       }),
       this.prisma.client.user.count({
@@ -82,7 +81,6 @@ export class AdminCustomersRepository {
             inAppEnabled: true,
             pushEnabled: true,
             emailEnabled: true,
-            whatsappEnabled: true,
             marketingEnabled: true,
           },
         },

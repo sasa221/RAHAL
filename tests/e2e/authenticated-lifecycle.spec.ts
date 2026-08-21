@@ -131,6 +131,10 @@ test.describe("authenticated reservation lifecycle", () => {
     expect(adminReview.status()).toBe(200);
     expect((await adminReview.json()).data.status).toBe("PRE_APPROVED");
 
+    await adminPage.goto(`/en/admin/requests?request=${ids.reservationId}`);
+    await expect(adminPage.locator("main.workspace-access")).toHaveCount(0);
+    await expect(adminPage.getByText(ids.reference).first()).toBeVisible();
+
     await adminPage.goto("/en/account/requests");
     await expect(pageHeading(adminPage)).toContainText(
       "This workspace is not assigned to your account",
@@ -140,6 +144,32 @@ test.describe("authenticated reservation lifecycle", () => {
       "This workspace is not assigned to your account",
     );
     await admin.close();
+  });
+
+  test("admin and super admin can open admin requests while sales and customer are rejected", async ({
+    browser,
+  }, testInfo) => {
+    const ids = fixtureIds(testInfo.project.name);
+    for (const role of ["admin", "super-admin"] as const) {
+      const context = await roleContext(browser, testInfo, role);
+      const page = await context.newPage();
+      await page.goto(`/en/admin/requests?request=${ids.reservationId}`);
+      await expect(page.locator("main.workspace-access")).toHaveCount(0);
+      await expect(page.getByText(ids.reference).first()).toBeVisible();
+      await context.close();
+    }
+
+    for (const role of ["sales", "customer"] as const) {
+      const context = await roleContext(browser, testInfo, role);
+      const page = await context.newPage();
+      await page.goto(`/en/admin/requests?request=${ids.reservationId}`);
+      await expect(
+        page.getByRole("heading", { name: "This workspace is not assigned to your account" }),
+      ).toBeVisible();
+      const api = await page.request.get(`/api/reservations/sales/${ids.reservationId}?locale=en`);
+      expect(api.status()).toBe(role === "sales" ? 200 : 403);
+      await context.close();
+    }
   });
 
   test("branch contract, attendance, and deposit unlock final confirmation", async ({
@@ -197,6 +227,11 @@ test.describe("authenticated reservation lifecycle", () => {
       status: "CONFIRMED",
       branchProgress: { bookingReference: `BKG-${ids.reference}` },
     });
+    const earlyReview = await customerPage.request.post(
+      `/api/reviews/customer/${ids.reservationId}`,
+      { data: { rating: 5, comment: "This review must wait until the rental is completed." } },
+    );
+    expect(earlyReview.status()).toBe(409);
     await customer.close();
   });
 
@@ -248,6 +283,14 @@ test.describe("authenticated reservation lifecycle", () => {
         completedAt: expect.any(String),
       },
     });
+    const review = await customerPage.request.post(`/api/reviews/customer/${ids.reservationId}`, {
+      data: {
+        rating: 5,
+        comment: "The completed Rahal rental workflow was clear and professionally handled.",
+      },
+    });
+    expect([200, 201]).toContain(review.status());
+    expect((await review.json()).data.status).toBe("PENDING");
     await customer.close();
   });
 

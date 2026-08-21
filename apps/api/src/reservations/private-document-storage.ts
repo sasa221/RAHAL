@@ -48,11 +48,13 @@ export class PrivateDocumentStorage {
     this.assertStorageKey(storageKey);
     if (this.config.privateDocumentStorageS3) {
       try {
-        await this.client().send(
-          new DeleteObjectCommand({
-            Bucket: this.config.privateDocumentStorageS3.bucket,
-            Key: storageKey,
-          }),
+        await this.withRetry(() =>
+          this.client().send(
+            new DeleteObjectCommand({
+              Bucket: this.config.privateDocumentStorageS3!.bucket,
+              Key: storageKey,
+            }),
+          ),
         );
       } catch {
         throw this.unavailable();
@@ -66,11 +68,13 @@ export class PrivateDocumentStorage {
     this.assertStorageKey(storageKey);
     if (this.config.privateDocumentStorageS3) {
       try {
-        const response = await this.client().send(
-          new GetObjectCommand({
-            Bucket: this.config.privateDocumentStorageS3.bucket,
-            Key: storageKey,
-          }),
+        const response = await this.withRetry(() =>
+          this.client().send(
+            new GetObjectCommand({
+              Bucket: this.config.privateDocumentStorageS3!.bucket,
+              Key: storageKey,
+            }),
+          ),
         );
         if (!response.Body) throw new Error("Object body missing");
         const bytes = Buffer.from(await response.Body.transformToByteArray());
@@ -107,15 +111,17 @@ export class PrivateDocumentStorage {
 
   private async putS3(storageKey: string, mimeType: string, bytes: Buffer) {
     try {
-      await this.client().send(
-        new PutObjectCommand({
-          Bucket: this.config.privateDocumentStorageS3!.bucket,
-          Key: storageKey,
-          Body: bytes,
-          ContentType: mimeType,
-          ServerSideEncryption: "AES256",
-          CacheControl: "private, no-store",
-        }),
+      await this.withRetry(() =>
+        this.client().send(
+          new PutObjectCommand({
+            Bucket: this.config.privateDocumentStorageS3!.bucket,
+            Key: storageKey,
+            Body: bytes,
+            ContentType: mimeType,
+            ServerSideEncryption: "AES256",
+            CacheControl: "private, no-store",
+          }),
+        ),
       );
     } catch {
       throw this.unavailable();
@@ -135,6 +141,19 @@ export class PrivateDocumentStorage {
       },
     });
     return this.s3Client;
+  }
+
+  private async withRetry<T>(operation: () => Promise<T>) {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 75));
+      }
+    }
+    throw lastError;
   }
 
   private createStorageKey(reservationId: string, mimeType: string, namespace: string) {

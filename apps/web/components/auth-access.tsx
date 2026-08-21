@@ -8,7 +8,7 @@ import { ExperienceMotion } from "./experience-motion";
 import { Footer, Header, Icon } from "./public-home";
 
 type AuthMode = "login" | "register";
-type VerificationChannel = "email" | "phone";
+type VerificationChannel = "email";
 
 type SessionResult = AuthSession;
 
@@ -22,11 +22,12 @@ const authCopy = {
     registerTab: "حساب جديد",
     loginTitle: "أهلًا برجوعك.",
     registerTitle: "ابدأ حساب رحال.",
-    loginCopy: "ادخل بالبريد الإلكتروني أو رقم الهاتف.",
-    registerCopy: "بيانات أساسية فقط. التحقق من الهاتف والبريد مطلوب قبل إرسال طلب حجز.",
+    loginCopy: "ادخل بالبريد الإلكتروني أو رقم الهاتف المسجل.",
+    registerCopy:
+      "بيانات أساسية فقط. البريد هو وسيلة التحقق الأساسية، ورقم الهاتف اختياري للتواصل.",
     fullName: "الاسم الكامل",
     email: "البريد الإلكتروني",
-    phone: "رقم الهاتف الدولي",
+    phone: "رقم الهاتف الدولي (اختياري)",
     identifier: "البريد الإلكتروني أو رقم الهاتف",
     password: "كلمة المرور",
     passwordHint: "8 أحرف على الأقل",
@@ -36,22 +37,17 @@ const authCopy = {
     working: "جاري التأمين...",
     pendingTitle: "الحساب اتعمل بنجاح",
     activeTitle: "تم تسجيل الدخول",
-    successCopy: "جلسة المتصفح آمنة. الخطوة التالية هي التحقق من الهاتف والبريد قبل إرسال الطلب.",
-    activeCopy: "تم التحقق من الهاتف والبريد. حسابك جاهز لمتابعة الطلبات وإرسال طلب حجز.",
+    successCopy: "جلسة المتصفح آمنة. تحقق من بريدك قبل إرسال الطلب.",
+    activeCopy: "تم التحقق من البريد. حسابك جاهز لمتابعة الطلبات وإرسال طلب حجز.",
     emailStatus: "البريد",
-    phoneStatus: "الهاتف",
     verified: "تم التحقق",
     pending: "بانتظار التحقق",
     verifyEmail: "تحقق من البريد",
-    verifyPhone: "تحقق عبر واتساب",
     codeTitle: "أدخل رمز التحقق",
     codeCopy: "الرمز صالح لمدة 10 دقائق وبحد أقصى 5 محاولات.",
-    phoneCodeCopy:
-      "أرسلنا الرمز إلى رقمك عبر واتساب. الرمز صالح لمدة 10 دقائق وبحد أقصى 5 محاولات.",
     codeLabel: "رمز من 6 أرقام",
     confirmCode: "تأكيد الرمز",
     sendCode: "إرسال رمز التحقق",
-    sendWhatsAppCode: "إرسال رمز واتساب",
     cancelVerification: "رجوع",
     verifiedMessage: "تم التحقق بنجاح.",
     requestingCode: "جاري إنشاء الرمز...",
@@ -78,10 +74,10 @@ const authCopy = {
     registerTitle: "Start your Rahal account.",
     loginCopy: "Use your email address or phone number.",
     registerCopy:
-      "Only the essentials. Phone and email verification are required before a reservation request can be submitted.",
+      "Only the essentials. Email is the primary verification method, and a phone number is optional contact information.",
     fullName: "Full name",
     email: "Email address",
-    phone: "International phone number",
+    phone: "International phone number (optional)",
     identifier: "Email address or phone number",
     password: "Password",
     passwordHint: "At least 8 characters",
@@ -91,24 +87,17 @@ const authCopy = {
     working: "Securing session...",
     pendingTitle: "Your account is ready",
     activeTitle: "You are signed in",
-    successCopy:
-      "Your browser session is protected. Phone and email verification come next before request submission.",
-    activeCopy:
-      "Phone and email are verified. Your account is ready to follow and submit reservation requests.",
+    successCopy: "Your browser session is protected. Verify your email before request submission.",
+    activeCopy: "Your email is verified. Your account can follow and submit reservation requests.",
     emailStatus: "Email",
-    phoneStatus: "Phone",
     verified: "Verified",
     pending: "Verification pending",
     verifyEmail: "Verify email",
-    verifyPhone: "Verify through WhatsApp",
     codeTitle: "Enter your verification code",
     codeCopy: "The code expires in 10 minutes and allows up to 5 attempts.",
-    phoneCodeCopy:
-      "We sent the code to your number through WhatsApp. It expires in 10 minutes and allows up to 5 attempts.",
     codeLabel: "Six-digit code",
     confirmCode: "Confirm code",
     sendCode: "Send verification code",
-    sendWhatsAppCode: "Send WhatsApp code",
     cancelVerification: "Back",
     verifiedMessage: "Verification completed.",
     requestingCode: "Creating code...",
@@ -201,7 +190,9 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
             fullNameEn: String(data.get("fullName") ?? ""),
             ...(locale === "ar" ? { fullNameAr: String(data.get("fullName") ?? "") } : {}),
             email: String(data.get("email") ?? ""),
-            phone: String(data.get("phone") ?? ""),
+            ...(String(data.get("phone") ?? "").trim()
+              ? { phone: String(data.get("phone")).trim() }
+              : {}),
             password: String(data.get("password") ?? ""),
             preferredLocale: locale,
           };
@@ -416,25 +407,13 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                   <b>{session.user.emailVerified ? copy.verified : copy.pending}</b>
                   {!session.user.emailVerified ? <small>{copy.verifyEmail}</small> : null}
                 </button>
-                <button
-                  disabled={session.user.phoneVerified || verificationBusy}
-                  onClick={() => requestVerification("phone")}
-                  type="button"
-                >
-                  {copy.phoneStatus}
-                  <b>{session.user.phoneVerified ? copy.verified : copy.pending}</b>
-                  {!session.user.phoneVerified ? <small>{copy.verifyPhone}</small> : null}
-                </button>
               </div>
               {verificationChannel ? (
                 <form className="auth-verification auth-panel" onSubmit={confirmVerification}>
-                  <span className="eyebrow">
-                    {verificationChannel === "phone" ? copy.sendWhatsAppCode : copy.sendCode}
-                  </span>
+                  <span className="eyebrow">{copy.sendCode}</span>
                   <h3>{copy.codeTitle}</h3>
                   <p>
-                    {verificationChannel === "phone" ? copy.phoneCodeCopy : copy.codeCopy}{" "}
-                    <strong>{verificationDestination}</strong>
+                    {copy.codeCopy} <strong>{verificationDestination}</strong>
                   </p>
                   <label>
                     <span>{copy.codeLabel}</span>
@@ -522,7 +501,6 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
                       name="phone"
                       pattern="\+?[1-9][0-9]{7,14}"
                       placeholder="+20…"
-                      required
                       type="tel"
                     />
                   </label>

@@ -124,7 +124,7 @@ describe("verified contact changes", () => {
     await expect(
       used.service.requestContactChange(
         "session",
-        { channel: "phone", value: "+201000000099" },
+        { channel: "email", value: "used@example.com" },
         {},
       ),
     ).rejects.toBeInstanceOf(ConflictException);

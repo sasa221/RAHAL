@@ -12,13 +12,25 @@ describe("branch management", () => {
     expect(controller).toContain('@Get("admin")');
     expect(controller).toContain('@Post("admin")');
     expect(controller).toContain('@Put("admin/:id")');
-    expect(service).toContain('["ADMIN", "SUPER_ADMIN"]');
+    expect(controller).toContain('@Patch("admin/:id/disable")');
+    expect(controller).toContain('@Delete("admin/:id")');
+    for (const permission of [
+      "branches.view",
+      "branches.edit",
+      "branches.create",
+      "branches.disable",
+      "branches.delete",
+    ])
+      expect(service).toContain(permission);
   });
 
   it("audits branch creation and updates without storing provider secrets", () => {
     const repository = read("apps/api/src/branches/branches.repository.ts");
     expect(repository).toContain('"BRANCH_CREATED"');
     expect(repository).toContain('"BRANCH_UPDATED"');
+    expect(repository).toContain('"BRANCH_DISABLED"');
+    expect(repository).toContain('"BRANCH_DELETED"');
+    expect(repository).toContain('return "REFERENCED"');
     expect(repository).toContain("previousData");
     expect(repository).toContain("newData");
     expect(repository).not.toContain("AUTH_SECRET");
@@ -31,6 +43,9 @@ describe("branch management", () => {
     expect(read("apps/web/app/en/admin/branches/page.tsx")).toContain('locale="en"');
     expect(workspace).toContain('activePage="branches"');
     expect(workspace).toContain('credentials: "include"');
+    expect(workspace).toContain("BranchLocationPicker");
+    expect(workspace).toContain("BranchHoursEditor");
+    expect(workspace).toContain('role="dialog"');
     expect(styles).toContain("@media (max-width: 620px)");
   });
 
@@ -41,10 +56,15 @@ describe("branch management", () => {
     const home = read("apps/web/components/public-home.tsx");
     const information = read("apps/web/components/public-information-page.tsx");
 
-    expect(repository).toContain("where: { active: true }");
+    expect(repository).toContain('where: { active: true, status: "ACTIVE" }');
     expect(repository).toContain("isApprovedPublicBranch");
     expect(repository).toContain('"تجريبي"');
     expect(repository).toContain("whatsappNumbers: true");
+    expect(repository).toContain("whatsappVisible: true");
+    expect(surface).toContain("https://wa.me/");
+    expect(surface).toContain("encodeURIComponent(whatsappMessage)");
+    expect(surface).toContain("branch.whatsappVisible !== false");
+    expect(surface).toContain("branch.whatsappNumber ?? branch.whatsappNumbers[0]");
     expect(contracts).toContain("workingHours: Record<string, unknown>");
     expect(surface).toContain('fetch("/api/branches"');
     expect(surface).toContain("No unconfirmed address or number is shown.");

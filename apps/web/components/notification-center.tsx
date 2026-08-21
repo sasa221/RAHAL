@@ -77,7 +77,7 @@ export function NotificationCenter({
   kind,
   locale,
 }: {
-  kind: "customer" | "sales";
+  kind: "customer" | "sales" | "admin";
   locale: PublicLocale;
 }) {
   const text = copy[locale];
@@ -193,7 +193,10 @@ export function NotificationCenter({
       }).catch(() => undefined);
     }
     if (notification.target?.kind === "RESERVATION") {
-      const base = localizedPath(locale, kind === "sales" ? "/sales" : "/account/requests");
+      const base = localizedPath(
+        locale,
+        kind === "admin" ? "/admin/requests" : kind === "sales" ? "/sales" : "/account/requests",
+      );
       window.location.assign(`${base}?request=${encodeURIComponent(notification.target.id)}`);
     } else if (notification.target?.kind === "URL") {
       window.location.assign(localizedPath(locale, notification.target.path));

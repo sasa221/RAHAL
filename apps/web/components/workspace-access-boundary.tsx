@@ -1,11 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import type { ApiSuccess, AuthSession, AuthUser } from "@rahal/contracts";
+import {
+  roleCanOpenWorkspace,
+  type ApiSuccess,
+  type AuthSession,
+  type AuthUser,
+  type WorkspaceKind,
+} from "@rahal/contracts";
 import { useEffect, useState, type ReactNode } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 
-type WorkspaceKind = "customer" | "sales" | "admin";
 type AccessState =
   | { status: "loading" }
   | { status: "allowed"; user: AuthUser }
@@ -87,7 +92,9 @@ export function WorkspaceAccessBoundary({
         }
 
         setAccess(
-          roleCanOpen(kind, user.role) ? { status: "allowed", user } : { status: "denied", user },
+          roleCanOpenWorkspace(kind, user.role)
+            ? { status: "allowed", user }
+            : { status: "denied", user },
         );
       })
       .catch((error: unknown) => {
@@ -192,12 +199,6 @@ function WorkspaceAccessScreen({
       </section>
     </main>
   );
-}
-
-function roleCanOpen(kind: WorkspaceKind, role: AuthUser["role"]) {
-  if (kind === "customer") return role === "CUSTOMER";
-  if (kind === "sales") return role === "SALES";
-  return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
 function workspacePath(role: AuthUser["role"], locale: PublicLocale) {

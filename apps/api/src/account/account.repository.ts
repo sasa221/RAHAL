@@ -8,7 +8,6 @@ const accountSelect = {
   email: true,
   phone: true,
   emailVerifiedAt: true,
-  phoneVerifiedAt: true,
   preferredLocale: true,
   dateOfBirth: true,
   nationality: true,
@@ -20,7 +19,6 @@ const accountSelect = {
     select: {
       inAppEnabled: true,
       emailEnabled: true,
-      whatsappEnabled: true,
       pushEnabled: true,
       marketingEnabled: true,
       marketingConsentDecidedAt: true,
@@ -79,7 +77,6 @@ export class AccountRepository {
     userId: string,
     data: {
       emailEnabled: boolean;
-      whatsappEnabled: boolean;
       pushEnabled: boolean;
       marketingEnabled: boolean;
       quietHoursStart: string | null;

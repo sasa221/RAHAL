@@ -60,8 +60,6 @@ const copy = {
     inAppCopy: "قناة أساسية لحالة الطلب والحجز ولا يمكن إيقافها.",
     emailChannel: "البريد الإلكتروني",
     emailCopy: "تحديثات الطلب والحضور والتأكيد.",
-    whatsapp: "واتساب",
-    whatsappCopy: "تنبيهات تشغيلية عبر القالب المعتمد.",
     push: "إشعارات الجهاز",
     pushCopy: "تحتاج موافقة المتصفح وربط الجهاز لاحقًا.",
     marketing: "عروض رحال الاختيارية",
@@ -132,8 +130,6 @@ const copy = {
     inAppCopy: "The essential request and booking channel cannot be disabled.",
     emailChannel: "Email",
     emailCopy: "Request, branch attendance, and confirmation updates.",
-    whatsapp: "WhatsApp",
-    whatsappCopy: "Operational alerts through an approved template.",
     push: "Device notifications",
     pushCopy: "Requires browser permission and a linked device later.",
     marketing: "Optional Rahal offers",
@@ -288,7 +284,6 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           emailEnabled: preferences.emailEnabled,
-          whatsappEnabled: preferences.whatsappEnabled,
           pushEnabled: preferences.pushEnabled,
           marketingEnabled: preferences.marketingEnabled,
           quietHoursStart: preferences.quietHoursStart,
@@ -532,30 +527,30 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
                   </div>
                 </header>
                 <div className="account-contact-locks">
-                  {(
-                    [
-                      ["email", text.email, overview.profile.email, overview.profile.emailVerified],
-                      ["phone", text.phone, overview.profile.phone, overview.profile.phoneVerified],
-                    ] as const
-                  ).map(([channel, label, value, verified]) => (
-                    <article key={String(label)}>
-                      <span>{label}</span>
-                      <strong>{value}</strong>
-                      <small className={verified ? "is-verified" : ""}>
-                        <Icon name={verified ? "check" : "clock"} size={14} />
-                        {verified ? text.verified : text.pending}
-                      </small>
-                      <button
-                        onClick={() => {
-                          setContactError("");
-                          setContactFlow({ channel, step: "VALUE", value: "" });
-                        }}
-                        type="button"
-                      >
-                        {text.change} ↗
-                      </button>
-                    </article>
-                  ))}
+                  <article>
+                    <span>{text.email}</span>
+                    <strong>{overview.profile.email}</strong>
+                    <small className={overview.profile.emailVerified ? "is-verified" : ""}>
+                      <Icon name={overview.profile.emailVerified ? "check" : "clock"} size={14} />
+                      {overview.profile.emailVerified ? text.verified : text.pending}
+                    </small>
+                    <button
+                      onClick={() => {
+                        setContactError("");
+                        setContactFlow({ channel: "email", step: "VALUE", value: "" });
+                      }}
+                      type="button"
+                    >
+                      {text.change} ↗
+                    </button>
+                  </article>
+                  <article>
+                    <span>{text.phone}</span>
+                    <strong>{overview.profile.phone || "—"}</strong>
+                    <small>
+                      {locale === "ar" ? "بيانات تواصل اختيارية" : "Optional contact detail"}
+                    </small>
+                  </article>
                 </div>
                 <p className="account-locked-note">
                   <Icon name="shield" size={17} />
@@ -667,13 +662,6 @@ export function CustomerAccountWorkspace({ locale }: { locale: PublicLocale }) {
                     onChange={(checked) => updatePreference("emailEnabled", checked)}
                   />
                   <ChannelToggle
-                    checked={preferences.whatsappEnabled}
-                    copy={text.whatsappCopy}
-                    icon="whatsapp"
-                    label={text.whatsapp}
-                    onChange={(checked) => updatePreference("whatsappEnabled", checked)}
-                  />
-                  <ChannelToggle
                     checked={preferences.pushEnabled}
                     copy={text.pushCopy}
                     icon="phone"
@@ -783,7 +771,7 @@ function ChannelToggle({
   checked: boolean;
   copy: string;
   disabled?: boolean;
-  icon: "document" | "whatsapp" | "phone";
+  icon: "document" | "phone";
   label: string;
   onChange: (checked: boolean) => void;
 }) {

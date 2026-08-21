@@ -12,8 +12,6 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.verificationBrevo).toBeUndefined();
     expect(config.verificationEmail).toBeUndefined();
     expect(config.verificationGmail).toBeUndefined();
-    expect(config.verificationWhatsApp).toBeUndefined();
-    expect(config.verificationTwilioVerifyWhatsApp).toBeUndefined();
     expect(config.backgroundJobs).toEqual({ mode: "interval" });
     expect(Buffer.from(config.mfaEncryptionKey, "base64url")).toHaveLength(32);
   });
@@ -81,58 +79,6 @@ describe("loadApiConfig verification delivery", () => {
     );
   });
 
-  it("requires complete WhatsApp credentials and an explicit Graph API version", () => {
-    expect(() =>
-      loadApiConfig({
-        ...baseEnv,
-        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
-        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
-        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
-      }),
-    ).toThrow(
-      "WHATSAPP_CLOUD_ACCESS_TOKEN, WHATSAPP_CLOUD_PHONE_NUMBER_ID, WHATSAPP_AUTH_TEMPLATE_NAME, WHATSAPP_GRAPH_API_VERSION must be configured together.",
-    );
-  });
-
-  it("rejects an invalid WhatsApp Graph API version", () => {
-    expect(() =>
-      loadApiConfig({
-        ...baseEnv,
-        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
-        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
-        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
-        WHATSAPP_GRAPH_API_VERSION: "latest",
-      }),
-    ).toThrow("WHATSAPP_GRAPH_API_VERSION must use the v00.0 format.");
-  });
-
-  it("requires complete and valid Twilio Verify WhatsApp credentials", () => {
-    expect(() =>
-      loadApiConfig({
-        ...baseEnv,
-        TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
-      }),
-    ).toThrow(
-      "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID must be configured together.",
-    );
-    expect(() =>
-      loadApiConfig({
-        ...baseEnv,
-        TWILIO_ACCOUNT_SID: "invalid",
-        TWILIO_AUTH_TOKEN: "test-token",
-        TWILIO_VERIFY_SERVICE_SID: `VA${"2".repeat(32)}`,
-      }),
-    ).toThrow("TWILIO_ACCOUNT_SID must be a valid account SID.");
-    expect(() =>
-      loadApiConfig({
-        ...baseEnv,
-        TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
-        TWILIO_AUTH_TOKEN: "test-token",
-        TWILIO_VERIFY_SERVICE_SID: "invalid",
-      }),
-    ).toThrow("TWILIO_VERIFY_SERVICE_SID must be a valid Verify service SID.");
-  });
-
   it("maps complete direct-provider credentials", () => {
     const config = loadApiConfig({
       ...baseEnv,
@@ -143,13 +89,6 @@ describe("loadApiConfig verification delivery", () => {
       VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
       GMAIL_SMTP_USER: "sender@gmail.com",
       GMAIL_SMTP_APP_PASSWORD: "test-app-password",
-      WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
-      WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
-      WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
-      WHATSAPP_GRAPH_API_VERSION: "v23.0",
-      TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
-      TWILIO_AUTH_TOKEN: "twilio-test-token",
-      TWILIO_VERIFY_SERVICE_SID: `VA${"2".repeat(32)}`,
     });
 
     expect(config.verificationBrevo).toEqual({
@@ -164,17 +103,6 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.verificationGmail).toEqual({
       user: "sender@gmail.com",
       appPassword: "test-app-password",
-    });
-    expect(config.verificationWhatsApp).toEqual({
-      accessToken: "token",
-      phoneNumberId: "123",
-      templateName: "rahal_account_verification",
-      graphApiVersion: "v23.0",
-    });
-    expect(config.verificationTwilioVerifyWhatsApp).toEqual({
-      accountSid: `AC${"1".repeat(32)}`,
-      authToken: "twilio-test-token",
-      serviceSid: `VA${"2".repeat(32)}`,
     });
   });
 
@@ -196,30 +124,13 @@ describe("loadApiConfig verification delivery", () => {
         BREVO_API_KEY: "brevo-production-key",
         BREVO_SENDER_EMAIL: "sender@example.com",
       }),
-    ).toThrow(
-      "Approved WhatsApp Business authentication-template credentials are required in production.",
-    );
+    ).toThrow("Private S3 document storage is required in production.");
     expect(() =>
       loadApiConfig({
         ...production,
         WEB_URL: "https://rahal.example",
         RESEND_API_KEY: "re_production",
         VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
-      }),
-    ).toThrow(
-      "Approved WhatsApp Business authentication-template credentials are required in production.",
-    );
-
-    expect(() =>
-      loadApiConfig({
-        ...production,
-        WEB_URL: "https://rahal.example",
-        RESEND_API_KEY: "re_production",
-        VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
-        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
-        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
-        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
-        WHATSAPP_GRAPH_API_VERSION: "v23.0",
       }),
     ).toThrow("Private S3 document storage is required in production.");
 
@@ -229,10 +140,6 @@ describe("loadApiConfig verification delivery", () => {
         WEB_URL: "https://rahal.example",
         RESEND_API_KEY: "re_production",
         VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
-        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
-        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
-        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
-        WHATSAPP_GRAPH_API_VERSION: "v23.0",
         PRIVATE_S3_REGION: "eu-central-1",
         PRIVATE_S3_BUCKET: "rahal-private",
         PRIVATE_S3_ACCESS_KEY_ID: "test-access",
@@ -246,10 +153,6 @@ describe("loadApiConfig verification delivery", () => {
         WEB_URL: "https://rahal.example",
         RESEND_API_KEY: "re_production",
         VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
-        WHATSAPP_CLOUD_ACCESS_TOKEN: "token",
-        WHATSAPP_CLOUD_PHONE_NUMBER_ID: "123",
-        WHATSAPP_AUTH_TEMPLATE_NAME: "rahal_account_verification",
-        WHATSAPP_GRAPH_API_VERSION: "v23.0",
         PRIVATE_S3_REGION: "eu-central-1",
         PRIVATE_S3_BUCKET: "rahal-private",
         PRIVATE_S3_ACCESS_KEY_ID: "test-access",
@@ -274,7 +177,23 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.privateDocumentStoragePath).toBeUndefined();
     expect(config.privateDocumentStorageS3).toBeUndefined();
     expect(config.documentScan).toBeUndefined();
-    expect(config.verificationWhatsApp).toBeUndefined();
+    expect(config.protectedDocumentUploadsEnabled).toBe(false);
+  });
+
+  it("keeps protected uploads enabled for local tests but supports an explicit delivery lock", () => {
+    expect(loadApiConfig(baseEnv).protectedDocumentUploadsEnabled).toBe(true);
+    expect(
+      loadApiConfig({
+        ...baseEnv,
+        RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "false",
+      }).protectedDocumentUploadsEnabled,
+    ).toBe(false);
+    expect(() =>
+      loadApiConfig({
+        ...baseEnv,
+        RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "maybe",
+      }),
+    ).toThrow("RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED must be true or false.");
   });
 
   it("rejects unknown release tiers", () => {

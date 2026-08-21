@@ -14,6 +14,7 @@ export type ApiConfig = {
   };
   redisUrl?: string;
   privateDocumentStoragePath?: string;
+  protectedDocumentUploadsEnabled: boolean;
   privateDocumentStorageS3?: {
     endpoint?: string;
     region: string;
@@ -48,18 +49,6 @@ export type ApiConfig = {
   verificationGmail?: {
     user: string;
     appPassword: string;
-  };
-  verificationWhatsApp?: {
-    accessToken: string;
-    phoneNumberId: string;
-    templateName: string;
-    notificationTemplateName?: string;
-    graphApiVersion: string;
-  };
-  verificationTwilioVerifyWhatsApp?: {
-    accountSid: string;
-    authToken: string;
-    serviceSid: string;
   };
 };
 
@@ -102,6 +91,10 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }
   const releaseTier = configuredReleaseTier as ApiConfig["releaseTier"];
   const launchValidated = production && releaseTier === "production";
+  const uploadFlag = env.RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED?.trim().toLowerCase();
+  if (uploadFlag && !["true", "false"].includes(uploadFlag)) {
+    throw new Error("RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED must be true or false.");
+  }
   const configuredBackgroundJobMode = env.RAHAL_BACKGROUND_JOB_MODE?.trim().toLowerCase();
   if (
     configuredBackgroundJobMode &&
@@ -214,58 +207,9 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     throw new Error("Gmail SMTP is development-only; production email must use Brevo or Resend.");
   }
 
-  const whatsAppDelivery = readCompleteGroup(env, [
-    "WHATSAPP_CLOUD_ACCESS_TOKEN",
-    "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
-    "WHATSAPP_AUTH_TEMPLATE_NAME",
-    "WHATSAPP_GRAPH_API_VERSION",
-  ]);
-  let verificationWhatsApp: ApiConfig["verificationWhatsApp"];
-  if (whatsAppDelivery) {
-    const [accessToken, phoneNumberId, templateName, graphApiVersion] = whatsAppDelivery;
-    if (!/^v\d+\.\d+$/.test(graphApiVersion!)) {
-      throw new Error("WHATSAPP_GRAPH_API_VERSION must use the v00.0 format.");
-    }
-    verificationWhatsApp = {
-      accessToken: accessToken!,
-      phoneNumberId: phoneNumberId!,
-      templateName: templateName!,
-      graphApiVersion: graphApiVersion!,
-      ...(env.WHATSAPP_NOTIFICATION_TEMPLATE_NAME?.trim()
-        ? { notificationTemplateName: env.WHATSAPP_NOTIFICATION_TEMPLATE_NAME.trim() }
-        : {}),
-    };
-  }
-
-  const twilioVerifyDelivery = readCompleteGroup(env, [
-    "TWILIO_ACCOUNT_SID",
-    "TWILIO_AUTH_TOKEN",
-    "TWILIO_VERIFY_SERVICE_SID",
-  ]);
-  let verificationTwilioVerifyWhatsApp: ApiConfig["verificationTwilioVerifyWhatsApp"];
-  if (twilioVerifyDelivery) {
-    const [accountSid, authToken, serviceSid] = twilioVerifyDelivery;
-    if (!/^AC[0-9a-f]{32}$/i.test(accountSid!)) {
-      throw new Error("TWILIO_ACCOUNT_SID must be a valid account SID.");
-    }
-    if (!/^VA[0-9a-f]{32}$/i.test(serviceSid!)) {
-      throw new Error("TWILIO_VERIFY_SERVICE_SID must be a valid Verify service SID.");
-    }
-    verificationTwilioVerifyWhatsApp = {
-      accountSid: accountSid!,
-      authToken: authToken!,
-      serviceSid: serviceSid!,
-    };
-  }
   if (launchValidated && !verificationBrevo && !verificationEmail) {
     throw new Error("A configured Brevo or Resend email provider is required in production.");
   }
-  if (launchValidated && !verificationWhatsApp) {
-    throw new Error(
-      "Approved WhatsApp Business authentication-template credentials are required in production.",
-    );
-  }
-
   const s3Delivery = readCompleteGroup(env, [
     "PRIVATE_S3_REGION",
     "PRIVATE_S3_BUCKET",
@@ -352,6 +296,14 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (launchValidated && !documentScan) {
     throw new Error("Document malware scanning is required in production.");
   }
+  const protectedDocumentUploadsEnabled = production
+    ? uploadFlag === "true" && Boolean(privateDocumentStorageS3 && documentScan)
+    : uploadFlag !== "false";
+  if (launchValidated && !protectedDocumentUploadsEnabled) {
+    throw new Error(
+      "Protected document uploads must be explicitly enabled after private S3 and scanning are configured.",
+    );
+  }
 
   const webPushGroup = readCompleteGroup(env, [
     "WEB_PUSH_PUBLIC_KEY",
@@ -380,9 +332,6 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       "Web Push VAPID and subscription-encryption settings are required in production.",
     );
   }
-  if (launchValidated && !verificationWhatsApp?.notificationTemplateName) {
-    throw new Error("WHATSAPP_NOTIFICATION_TEMPLATE_NAME is required in production.");
-  }
 
   return {
     port: readPort(env.PORT),
@@ -399,6 +348,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     redisUrl,
     privateDocumentStoragePath:
       privateDocumentStoragePath || (production ? undefined : ".private-storage"),
+    protectedDocumentUploadsEnabled,
     privateDocumentStorageS3,
     documentScan,
     webPush,
@@ -406,7 +356,5 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     verificationBrevo,
     verificationEmail,
     verificationGmail,
-    verificationWhatsApp,
-    verificationTwilioVerifyWhatsApp,
   };
 }

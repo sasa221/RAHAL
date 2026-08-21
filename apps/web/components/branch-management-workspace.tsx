@@ -1,111 +1,101 @@
 "use client";
 
-import type { ApiSuccess, ManagedBranch } from "@rahal/contracts";
+import type {
+  ApiSuccess,
+  BranchManagementOverview,
+  BranchSocialLink,
+  BranchWorkingHours,
+  ManagedBranch,
+} from "@rahal/contracts";
 import { useEffect, useState, type FormEvent } from "react";
 import type { PublicLocale } from "../lib/public-content";
+import { BranchHoursEditor } from "./branch-hours-editor";
+import { emptyBranchForm, type BranchEditorForm } from "./branch-editor-types";
+import { BranchLocationPicker } from "./branch-location-picker";
 import { WorkspaceShell } from "./workspace-shell";
 
+const serviceOptions = [
+  "BRANCH_PICKUP",
+  "BRANCH_RETURN",
+  "DOCUMENT_SIGNING",
+  "DEPOSIT_RECORDING",
+  "CUSTOMER_SUPPORT",
+] as const;
 const copy = {
   ar: {
     eyebrow: "رحال / شبكة الفروع",
-    title: "بيانات الفرع من مصدر واحد.",
-    subtitle:
-      "العناوين والأرقام وساعات العمل هنا تغذي التشغيل والمحتوى العام. لا تنشر بيانات تجريبية.",
+    title: "كل فرع واضح قبل ما يظهر للعميل.",
+    subtitle: "أنشئ مسودة مستقلة، اختر الموقع، نظّم المواعيد وراجع النسختين قبل التفعيل.",
     list: "الفروع",
-    add: "إضافة فرع",
-    edit: "تعديل الفرع",
-    active: "نشط ويظهر للعملاء",
-    inactive: "غير نشط",
-    nameAr: "الاسم بالعربية",
-    nameEn: "الاسم بالإنجليزية",
-    addressAr: "العنوان بالعربية",
-    addressEn: "العنوان بالإنجليزية",
-    latitude: "خط العرض",
-    longitude: "خط الطول",
-    phones: "أرقام الهاتف — رقم في كل سطر",
-    whatsapp: "أرقام واتساب — رقم في كل سطر",
-    regularHours: "ساعات السبت إلى الخميس",
-    fridayHours: "ساعات الجمعة",
-    save: "حفظ بيانات الفرع",
-    saving: "جارٍ الحفظ...",
-    saved: "تم حفظ الفرع وتسجيل التعديل.",
-    failed: "تعذر حفظ الفرع. راجع البيانات وصلاحية الحساب.",
+    add: "إضافة فرع جديد",
+    edit: "تعديل",
+    active: "نشط",
+    inactive: "معطّل",
+    draft: "مسودة",
     loading: "جارٍ تحميل الفروع...",
-    empty: "لا توجد فروع مسجلة.",
-    newBranch: "فرع جديد",
-    editAction: "فتح للتعديل",
-    hoursPlaceholder: "مثال: 09:00–22:00",
+    empty: "لا توجد فروع بعد. ابدأ بإضافة أول فرع.",
+    error: "تعذر تحميل إدارة الفروع بهذا الحساب.",
+    createTitle: "إنشاء فرع",
+    editTitle: "تعديل الفرع",
+    save: "حفظ الفرع",
+    saving: "جارٍ الحفظ...",
+    cancel: "إغلاق",
+    delete: "حذف الفرع",
+    disable: "تعطيل الفرع",
+    unsaved: "لديك تعديلات غير محفوظة. هل تريد تجاهلها؟",
+    saved: "تم حفظ الفرع وتسجيل التغيير.",
+    failed: "تعذر تنفيذ العملية. راجع الحقول والصلاحيات.",
+    reason: "سبب التعطيل أو الحذف",
+    advanced: "الإحداثيات — خيارات متقدمة",
+    previewAr: "معاينة العربية",
+    previewEn: "English preview",
+    dependencies: "مرتبط بالتشغيل",
+    deleteBlocked:
+      "لا يمكن حذف هذا الفرع لأنه مرتبط بسيارات أو طلبات أو حجوزات. عطّله بدلًا من ذلك.",
   },
   en: {
     eyebrow: "RAHAL / BRANCH NETWORK",
-    title: "One source of truth for every branch.",
+    title: "Make every branch clear before customers see it.",
     subtitle:
-      "Addresses, contacts, and hours feed operations and public content. Never publish demo details.",
+      "Create a separate draft, choose its location, structure hours, and inspect both languages before activation.",
     list: "Branches",
-    add: "Add branch",
-    edit: "Edit branch",
-    active: "Active and visible to customers",
+    add: "Add new branch",
+    edit: "Edit",
+    active: "Active",
     inactive: "Inactive",
-    nameAr: "Arabic name",
-    nameEn: "English name",
-    addressAr: "Arabic address",
-    addressEn: "English address",
-    latitude: "Latitude",
-    longitude: "Longitude",
-    phones: "Phone numbers — one per line",
-    whatsapp: "WhatsApp numbers — one per line",
-    regularHours: "Saturday–Thursday hours",
-    fridayHours: "Friday hours",
-    save: "Save branch details",
-    saving: "Saving...",
-    saved: "Branch saved and the change was audited.",
-    failed: "The branch could not be saved. Check the data and account access.",
+    draft: "Draft",
     loading: "Loading branches...",
-    empty: "No branches are configured.",
-    newBranch: "New branch",
-    editAction: "Open editor",
-    hoursPlaceholder: "Example: 09:00–22:00",
+    empty: "No branches yet. Add the first branch when ready.",
+    error: "Branch management is unavailable for this account.",
+    createTitle: "Create branch",
+    editTitle: "Edit branch",
+    save: "Save branch",
+    saving: "Saving...",
+    cancel: "Close",
+    delete: "Delete branch",
+    disable: "Disable branch",
+    unsaved: "You have unsaved changes. Discard them?",
+    saved: "Branch saved and audited.",
+    failed: "The action failed. Check the fields and permissions.",
+    reason: "Reason for disabling or deletion",
+    advanced: "Coordinates — advanced options",
+    previewAr: "Arabic preview",
+    previewEn: "English preview",
+    dependencies: "Operational links",
+    deleteBlocked: "This branch is linked to vehicles, requests, or bookings. Disable it instead.",
   },
 } as const;
 
-type BranchForm = {
-  id: string | null;
-  nameAr: string;
-  nameEn: string;
-  addressAr: string;
-  addressEn: string;
-  latitude: string;
-  longitude: string;
-  phones: string;
-  whatsapp: string;
-  regularHours: string;
-  fridayHours: string;
-  active: boolean;
-};
-
-const emptyForm: BranchForm = {
-  id: null,
-  nameAr: "",
-  nameEn: "",
-  addressAr: "",
-  addressEn: "",
-  latitude: "",
-  longitude: "",
-  phones: "",
-  whatsapp: "",
-  regularHours: "",
-  fridayHours: "",
-  active: true,
-};
-
 export function BranchManagementWorkspace({ locale }: { locale: PublicLocale }) {
   const text = copy[locale];
-  const [branches, setBranches] = useState<ManagedBranch[]>([]);
-  const [form, setForm] = useState<BranchForm>(emptyForm);
+  const [overview, setOverview] = useState<BranchManagementOverview | null>(null);
+  const [editor, setEditor] = useState<BranchEditorForm | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [feedback, setFeedback] = useState<"SAVED" | "FAILED" | null>(null);
+  const [working, setWorking] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const [previewLocale, setPreviewLocale] = useState<"ar" | "en">(locale);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -115,258 +105,783 @@ export function BranchManagementWorkspace({ locale }: { locale: PublicLocale }) 
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error("unavailable");
-        setBranches(((await response.json()) as ApiSuccess<ManagedBranch[]>).data);
+        if (!response.ok) throw new Error();
+        setOverview(((await response.json()) as ApiSuccess<BranchManagementOverview>).data);
       })
-      .catch(() => setLoadFailed(true))
+      .catch(() => setFeedback(text.error))
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, []);
-
-  function edit(branch: ManagedBranch) {
-    setForm({
-      id: branch.id,
-      nameAr: branch.nameAr,
-      nameEn: branch.nameEn,
-      addressAr: branch.addressAr,
-      addressEn: branch.addressEn ?? "",
-      latitude: branch.latitude?.toString() ?? "",
-      longitude: branch.longitude?.toString() ?? "",
-      phones: branch.phones.join("\n"),
-      whatsapp: branch.whatsappNumbers.join("\n"),
-      regularHours: String(branch.workingHours.regular ?? ""),
-      fridayHours: String(branch.workingHours.friday ?? ""),
-      active: branch.active,
-    });
-    setFeedback(null);
-    document.getElementById("branch-editor")?.scrollIntoView({ behavior: "smooth" });
-  }
-
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
-    setFeedback(null);
-    const splitLines = (value: string) =>
-      value
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
-    const payload = {
-      nameAr: form.nameAr.trim(),
-      nameEn: form.nameEn.trim(),
-      addressAr: form.addressAr.trim(),
-      addressEn: form.addressEn.trim(),
-      latitude: form.latitude ? Number(form.latitude) : undefined,
-      longitude: form.longitude ? Number(form.longitude) : undefined,
-      phones: splitLines(form.phones),
-      whatsappNumbers: splitLines(form.whatsapp),
-      workingHours: { regular: form.regularHours.trim(), friday: form.fridayHours.trim() },
-      active: form.active,
+  }, [text.error]);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (dirty) event.preventDefault();
     };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const closeEditor = () => {
+    if (dirty && !window.confirm(text.unsaved)) return;
+    setEditor(null);
+    setDirty(false);
+    setFeedback(null);
+    setReason("");
+  };
+  const change = <K extends keyof BranchEditorForm>(key: K, value: BranchEditorForm[K]) => {
+    setDirty(true);
+    setEditor((current) => (current ? { ...current, [key]: value } : current));
+  };
+  const openCreate = () => {
+    if (dirty && !window.confirm(text.unsaved)) return;
+    setEditor(emptyBranchForm());
+    setDirty(false);
+    setFeedback(null);
+  };
+  const openEdit = (branch: ManagedBranch) => {
+    if (dirty && !window.confirm(text.unsaved)) return;
+    setEditor(toForm(branch));
+    setDirty(false);
+    setFeedback(null);
+  };
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!editor) return;
+    setWorking(true);
+    setFeedback(null);
     try {
       const response = await fetch(
-        form.id ? `/api/branches/admin/${encodeURIComponent(form.id)}` : "/api/branches/admin",
+        editor.id ? `/api/branches/admin/${encodeURIComponent(editor.id)}` : "/api/branches/admin",
         {
-          method: form.id ? "PUT" : "POST",
+          method: editor.id ? "PUT" : "POST",
           credentials: "include",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(toPayload(editor)),
         },
       );
-      if (!response.ok) throw new Error("save failed");
+      if (!response.ok) throw new Error(await responseMessage(response));
       const saved = ((await response.json()) as ApiSuccess<ManagedBranch>).data;
-      setBranches((current) => {
-        const exists = current.some((branch) => branch.id === saved.id);
-        return exists
-          ? current.map((branch) => (branch.id === saved.id ? saved : branch))
-          : [...current, saved];
-      });
-      setForm(emptyForm);
-      setFeedback("SAVED");
-    } catch {
-      setFeedback("FAILED");
+      setOverview((current) =>
+        current
+          ? {
+              ...current,
+              branches: current.branches.some((branch) => branch.id === saved.id)
+                ? current.branches.map((branch) => (branch.id === saved.id ? saved : branch))
+                : [...current.branches, saved],
+            }
+          : current,
+      );
+      setEditor(toForm(saved));
+      setDirty(false);
+      setFeedback(text.saved);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : text.failed);
     } finally {
-      setSaving(false);
+      setWorking(false);
     }
   }
 
-  function field(key: keyof BranchForm, value: string | boolean) {
-    setForm((current) => ({ ...current, [key]: value }));
+  async function action(kind: "disable" | "delete") {
+    if (!editor?.id || reason.trim().length < 5) {
+      setFeedback(text.failed);
+      return;
+    }
+    setWorking(true);
+    setFeedback(null);
+    try {
+      const response = await fetch(
+        kind === "disable"
+          ? `/api/branches/admin/${encodeURIComponent(editor.id)}/disable`
+          : `/api/branches/admin/${encodeURIComponent(editor.id)}`,
+        {
+          method: kind === "disable" ? "PATCH" : "DELETE",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason: reason.trim() }),
+        },
+      );
+      if (!response.ok)
+        throw new Error(
+          response.status === 409 ? text.deleteBlocked : await responseMessage(response),
+        );
+      if (kind === "delete") {
+        setOverview((current) =>
+          current
+            ? { ...current, branches: current.branches.filter((branch) => branch.id !== editor.id) }
+            : current,
+        );
+        setEditor(null);
+      } else {
+        const saved = ((await response.json()) as ApiSuccess<ManagedBranch>).data;
+        setOverview((current) =>
+          current
+            ? {
+                ...current,
+                branches: current.branches.map((branch) =>
+                  branch.id === saved.id ? saved : branch,
+                ),
+              }
+            : current,
+        );
+        setEditor(toForm(saved));
+      }
+      setDirty(false);
+      setReason("");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : text.failed);
+    } finally {
+      setWorking(false);
+    }
   }
 
   return (
     <WorkspaceShell activePage="branches" kind="admin" locale={locale}>
-      <div className="branch-admin">
+      <div className="branch-admin branch-admin--v2">
         <header className="branch-admin__hero">
           <span>{text.eyebrow}</span>
           <h1>{text.title}</h1>
           <p>{text.subtitle}</p>
         </header>
-
-        {loadFailed ? (
+        {loading ? (
+          <p className="branch-admin__access-state">{text.loading}</p>
+        ) : !overview ? (
           <p className="branch-admin__access-state" role="alert">
-            {text.failed}
+            {feedback || text.error}
           </p>
         ) : (
-          <div className="branch-admin__layout">
-            <section className="branch-admin__list">
-              <header>
+          <section className="branch-command">
+            <header>
+              <div>
+                <span>01</span>
+                <h2>{text.list}</h2>
+              </div>
+              {overview.permissions.create ? (
+                <button onClick={openCreate} type="button">
+                  + {text.add}
+                </button>
+              ) : null}
+            </header>
+            {overview.branches.length ? (
+              <div className="branch-command__grid">
+                {overview.branches.map((branch, index) => (
+                  <article
+                    key={branch.id}
+                    className={`is-${branch.status?.toLowerCase() ?? "active"}`}
+                  >
+                    <span>0{index + 1}</span>
+                    <small>
+                      {branch.status === "DRAFT"
+                        ? text.draft
+                        : branch.status === "INACTIVE"
+                          ? text.inactive
+                          : text.active}
+                    </small>
+                    <h3>{locale === "ar" ? branch.nameAr : branch.nameEn}</h3>
+                    <p>{locale === "ar" ? branch.addressAr : branch.addressEn}</p>
+                    <div>
+                      <strong>{branch.dependencyCounts.vehicles}</strong>
+                      <span>{text.dependencies}</span>
+                    </div>
+                    {overview.permissions.edit ? (
+                      <button onClick={() => openEdit(branch)} type="button">
+                        {text.edit}
+                      </button>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="branch-admin__state">{text.empty}</p>
+            )}
+          </section>
+        )}
+
+        {editor && overview ? (
+          <div
+            className="branch-editor-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) closeEditor();
+            }}
+          >
+            <section
+              aria-modal="true"
+              className="branch-editor"
+              role="dialog"
+              aria-label={editor.id ? text.editTitle : text.createTitle}
+            >
+              <header className="branch-editor__head">
                 <div>
-                  <span>01</span>
-                  <h2>{text.list}</h2>
+                  <span>02</span>
+                  <h2>{editor.id ? text.editTitle : text.createTitle}</h2>
                 </div>
-                <button onClick={() => setForm(emptyForm)} type="button">
-                  {text.add}
+                <button onClick={closeEditor} type="button" aria-label={text.cancel}>
+                  ×
                 </button>
               </header>
-              {loading ? (
-                <p className="branch-admin__state">{text.loading}</p>
-              ) : branches.length ? (
-                <div className="branch-admin__cards">
-                  {branches.map((branch, index) => (
-                    <article className={branch.active ? "" : "is-inactive"} key={branch.id}>
-                      <span>0{index + 1}</span>
+              <form onSubmit={save}>
+                <div className="branch-editor__body">
+                  <div className="branch-editor__form">
+                    <EditorSection title={locale === "ar" ? "هوية الفرع" : "Branch identity"}>
+                      <Field
+                        label="الاسم بالعربية"
+                        value={editor.nameAr}
+                        onChange={(value) => change("nameAr", value)}
+                        dir="rtl"
+                      />
+                      <Field
+                        label="English name"
+                        value={editor.nameEn}
+                        onChange={(value) => change("nameEn", value)}
+                        dir="ltr"
+                      />
+                    </EditorSection>
+                    <EditorSection
+                      title={locale === "ar" ? "العنوان المنظم" : "Structured address"}
+                    >
+                      <Field
+                        label="المحافظة"
+                        value={editor.governorateAr}
+                        onChange={(value) => change("governorateAr", value)}
+                      />
+                      <Field
+                        label="Governorate"
+                        value={editor.governorateEn}
+                        onChange={(value) => change("governorateEn", value)}
+                      />
+                      <Field
+                        label="المنطقة"
+                        value={editor.areaAr}
+                        onChange={(value) => change("areaAr", value)}
+                      />
+                      <Field
+                        label="Area"
+                        value={editor.areaEn}
+                        onChange={(value) => change("areaEn", value)}
+                      />
+                      <Field
+                        label="الشارع"
+                        value={editor.streetAr}
+                        onChange={(value) => change("streetAr", value)}
+                      />
+                      <Field
+                        label="Street"
+                        value={editor.streetEn}
+                        onChange={(value) => change("streetEn", value)}
+                      />
+                      <Field
+                        label="علامة مميزة"
+                        required={false}
+                        value={editor.landmarkAr}
+                        onChange={(value) => change("landmarkAr", value)}
+                      />
+                      <Field
+                        label="Landmark"
+                        required={false}
+                        value={editor.landmarkEn}
+                        onChange={(value) => change("landmarkEn", value)}
+                      />
+                      <Field
+                        area
+                        label="العنوان الكامل بالعربية"
+                        value={editor.addressAr}
+                        onChange={(value) => change("addressAr", value)}
+                      />
+                      <Field
+                        area
+                        label="Full English address"
+                        value={editor.addressEn}
+                        onChange={(value) => change("addressEn", value)}
+                      />
+                    </EditorSection>
+                    <BranchLocationPicker
+                      locale={locale}
+                      latitude={editor.latitude}
+                      longitude={editor.longitude}
+                      onChange={(latitude, longitude) => {
+                        setDirty(true);
+                        setEditor((current) =>
+                          current ? { ...current, latitude, longitude } : current,
+                        );
+                      }}
+                    />
+                    <details className="branch-editor__advanced">
+                      <summary>{text.advanced}</summary>
                       <div>
-                        <small>{branch.active ? text.active : text.inactive}</small>
-                        <h3>{locale === "ar" ? branch.nameAr : branch.nameEn}</h3>
-                        <p>{locale === "ar" ? branch.addressAr : branch.addressEn}</p>
+                        <Field
+                          label="Latitude"
+                          type="number"
+                          value={editor.latitude?.toString() ?? ""}
+                          onChange={(value) => change("latitude", value ? Number(value) : null)}
+                        />
+                        <Field
+                          label="Longitude"
+                          type="number"
+                          value={editor.longitude?.toString() ?? ""}
+                          onChange={(value) => change("longitude", value ? Number(value) : null)}
+                        />
                       </div>
-                      <button onClick={() => edit(branch)} type="button">
-                        {text.editAction}
-                      </button>
-                    </article>
-                  ))}
+                    </details>
+                    <EditorSection title={locale === "ar" ? "التواصل" : "Contact channels"}>
+                      <PhoneFields
+                        locale={locale}
+                        value={editor.phones}
+                        onChange={(phones) => change("phones", phones)}
+                      />
+                      <Field
+                        label={locale === "ar" ? "رقم واتساب اليدوي" : "Manual WhatsApp number"}
+                        value={editor.whatsappNumber}
+                        onChange={(value) => change("whatsappNumber", value)}
+                        dir="ltr"
+                      />
+                      <Check
+                        label={locale === "ar" ? "إظهار زر واتساب" : "Show WhatsApp button"}
+                        checked={editor.whatsappVisible}
+                        onChange={(value) => change("whatsappVisible", value)}
+                      />
+                      <Field
+                        label="رسالة واتساب بالعربية"
+                        required={false}
+                        value={editor.whatsappMessageAr}
+                        onChange={(value) => change("whatsappMessageAr", value)}
+                      />
+                      <Field
+                        label="English WhatsApp opener"
+                        required={false}
+                        value={editor.whatsappMessageEn}
+                        onChange={(value) => change("whatsappMessageEn", value)}
+                      />
+                      <Field
+                        label={locale === "ar" ? "البريد الإلكتروني" : "Email"}
+                        required={false}
+                        type="email"
+                        value={editor.email}
+                        onChange={(value) => change("email", value)}
+                      />
+                      <SocialFields
+                        locale={locale}
+                        value={editor.socialLinks}
+                        onChange={(value) => change("socialLinks", value)}
+                      />
+                    </EditorSection>
+                    <BranchHoursEditor
+                      locale={locale}
+                      value={editor.workingHours}
+                      onChange={(value) => change("workingHours", value)}
+                    />
+                    <EditorSection
+                      title={locale === "ar" ? "التشغيل والنشر" : "Operations and publication"}
+                    >
+                      <label>
+                        <span>{locale === "ar" ? "مدير الفرع" : "Branch manager"}</span>
+                        <select
+                          value={editor.managerId}
+                          onChange={(event) => change("managerId", event.target.value)}
+                        >
+                          <option value="">—</option>
+                          {overview.managers.map((manager) => (
+                            <option key={manager.id} value={manager.id}>
+                              {manager.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>{locale === "ar" ? "حالة الفرع" : "Branch status"}</span>
+                        <select
+                          value={editor.status}
+                          onChange={(event) =>
+                            change("status", event.target.value as BranchEditorForm["status"])
+                          }
+                        >
+                          <option value="DRAFT">{text.draft}</option>
+                          <option value="ACTIVE">{text.active}</option>
+                          <option value="INACTIVE">{text.inactive}</option>
+                        </select>
+                      </label>
+                      <div className="branch-editor__services">
+                        {serviceOptions.map((service) => (
+                          <Check
+                            key={service}
+                            label={service.replaceAll("_", " ")}
+                            checked={editor.services.includes(service)}
+                            onChange={(checked) =>
+                              change(
+                                "services",
+                                checked
+                                  ? [...editor.services, service]
+                                  : editor.services.filter((item) => item !== service),
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                    </EditorSection>
+                  </div>
+                  <BranchPreview
+                    form={editor}
+                    locale={previewLocale}
+                    onLocale={setPreviewLocale}
+                    labels={{ ar: text.previewAr, en: text.previewEn }}
+                  />
                 </div>
-              ) : (
-                <p className="branch-admin__state">{text.empty}</p>
-              )}
+                {editor.id ? (
+                  <div className="branch-editor__danger">
+                    <Field
+                      label={text.reason}
+                      required={false}
+                      value={reason}
+                      onChange={setReason}
+                    />
+                    {overview.permissions.disable && editor.status === "ACTIVE" ? (
+                      <button onClick={() => void action("disable")} type="button">
+                        {text.disable}
+                      </button>
+                    ) : null}
+                    {overview.permissions.delete ? (
+                      <button
+                        className="is-delete"
+                        onClick={() => void action("delete")}
+                        type="button"
+                      >
+                        {text.delete}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {feedback ? (
+                  <p className="branch-admin__feedback" role="status">
+                    {feedback}
+                  </p>
+                ) : null}
+                <footer>
+                  <button onClick={closeEditor} type="button">
+                    {text.cancel}
+                  </button>
+                  <button
+                    disabled={
+                      working ||
+                      (!editor.id && !overview.permissions.create) ||
+                      (Boolean(editor.id) && !overview.permissions.edit)
+                    }
+                    type="submit"
+                  >
+                    {working ? text.saving : text.save}
+                  </button>
+                </footer>
+              </form>
             </section>
-
-            <form className="branch-admin__form" id="branch-editor" onSubmit={save}>
-              <header>
-                <span>02</span>
-                <h2>{form.id ? text.edit : text.newBranch}</h2>
-              </header>
-              <div className="branch-admin__fields">
-                <label>
-                  <span>{text.nameAr}</span>
-                  <input
-                    dir="rtl"
-                    maxLength={120}
-                    minLength={2}
-                    onChange={(event) => field("nameAr", event.target.value)}
-                    required
-                    value={form.nameAr}
-                  />
-                </label>
-                <label>
-                  <span>{text.nameEn}</span>
-                  <input
-                    dir="ltr"
-                    maxLength={120}
-                    minLength={2}
-                    onChange={(event) => field("nameEn", event.target.value)}
-                    required
-                    value={form.nameEn}
-                  />
-                </label>
-                <label className="is-wide">
-                  <span>{text.addressAr}</span>
-                  <textarea
-                    dir="rtl"
-                    maxLength={500}
-                    minLength={5}
-                    onChange={(event) => field("addressAr", event.target.value)}
-                    required
-                    value={form.addressAr}
-                  />
-                </label>
-                <label className="is-wide">
-                  <span>{text.addressEn}</span>
-                  <textarea
-                    dir="ltr"
-                    maxLength={500}
-                    minLength={5}
-                    onChange={(event) => field("addressEn", event.target.value)}
-                    required
-                    value={form.addressEn}
-                  />
-                </label>
-                <label>
-                  <span>{text.latitude}</span>
-                  <input
-                    max="90"
-                    min="-90"
-                    onChange={(event) => field("latitude", event.target.value)}
-                    step="0.0000001"
-                    type="number"
-                    value={form.latitude}
-                  />
-                </label>
-                <label>
-                  <span>{text.longitude}</span>
-                  <input
-                    max="180"
-                    min="-180"
-                    onChange={(event) => field("longitude", event.target.value)}
-                    step="0.0000001"
-                    type="number"
-                    value={form.longitude}
-                  />
-                </label>
-                <label>
-                  <span>{text.phones}</span>
-                  <textarea
-                    dir="ltr"
-                    onChange={(event) => field("phones", event.target.value)}
-                    value={form.phones}
-                  />
-                </label>
-                <label>
-                  <span>{text.whatsapp}</span>
-                  <textarea
-                    dir="ltr"
-                    onChange={(event) => field("whatsapp", event.target.value)}
-                    value={form.whatsapp}
-                  />
-                </label>
-                <label>
-                  <span>{text.regularHours}</span>
-                  <input
-                    onChange={(event) => field("regularHours", event.target.value)}
-                    placeholder={text.hoursPlaceholder}
-                    value={form.regularHours}
-                  />
-                </label>
-                <label>
-                  <span>{text.fridayHours}</span>
-                  <input
-                    onChange={(event) => field("fridayHours", event.target.value)}
-                    placeholder={text.hoursPlaceholder}
-                    value={form.fridayHours}
-                  />
-                </label>
-                <label className="branch-admin__active is-wide">
-                  <input
-                    checked={form.active}
-                    onChange={(event) => field("active", event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>{text.active}</span>
-                </label>
-              </div>
-              <button className="branch-admin__save" disabled={saving} type="submit">
-                {saving ? text.saving : text.save}
-              </button>
-              {feedback ? (
-                <p className={`branch-admin__feedback is-${feedback.toLowerCase()}`} role="status">
-                  {feedback === "SAVED" ? text.saved : text.failed}
-                </p>
-              ) : null}
-            </form>
           </div>
-        )}
+        ) : null}
       </div>
     </WorkspaceShell>
   );
+}
+
+function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="branch-editor__section">
+      <legend>{title}</legend>
+      <div>{children}</div>
+    </fieldset>
+  );
+}
+function Field({
+  label,
+  value,
+  onChange,
+  area = false,
+  dir,
+  type = "text",
+  required = true,
+}: {
+  label: string;
+  value: string;
+  onChange(value: string): void;
+  area?: boolean;
+  dir?: "rtl" | "ltr";
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label>
+      <span>{label}</span>
+      {area ? (
+        <textarea
+          dir={dir}
+          minLength={2}
+          onChange={(event) => onChange(event.target.value)}
+          required={required}
+          value={value}
+        />
+      ) : (
+        <input
+          dir={dir}
+          onChange={(event) => onChange(event.target.value)}
+          required={required && type !== "number"}
+          type={type}
+          value={value}
+        />
+      )}
+    </label>
+  );
+}
+function Check({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange(value: boolean): void;
+}) {
+  return (
+    <label className="branch-editor__check">
+      <input
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        type="checkbox"
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+function PhoneFields({
+  locale,
+  value,
+  onChange,
+}: {
+  locale: PublicLocale;
+  value: string[];
+  onChange(value: string[]): void;
+}) {
+  return (
+    <div className="branch-editor__repeat">
+      <header>
+        <strong>{locale === "ar" ? "أرقام الهاتف" : "Phone numbers"}</strong>
+        <button onClick={() => onChange([...value, ""])} type="button">
+          +
+        </button>
+      </header>
+      {value.map((phone, index) => (
+        <div key={index}>
+          <input
+            aria-label={`${locale === "ar" ? "رقم هاتف" : "Phone"} ${index + 1}`}
+            dir="ltr"
+            onChange={(event) =>
+              onChange(
+                value.map((item, current) => (current === index ? event.target.value : item)),
+              )
+            }
+            placeholder="+201001234567"
+            pattern="^\+[1-9]\d{7,14}$"
+            required
+            value={phone}
+          />
+          <button
+            disabled={value.length === 1}
+            onClick={() => onChange(value.filter((_, current) => current !== index))}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+function SocialFields({
+  locale,
+  value,
+  onChange,
+}: {
+  locale: PublicLocale;
+  value: BranchSocialLink[];
+  onChange(value: BranchSocialLink[]): void;
+}) {
+  return (
+    <div className="branch-editor__repeat is-wide">
+      <header>
+        <strong>{locale === "ar" ? "روابط السوشيال" : "Social links"}</strong>
+        <button
+          onClick={() => onChange([...value, { id: crypto.randomUUID(), platform: "", url: "" }])}
+          type="button"
+        >
+          +
+        </button>
+      </header>
+      {value.map((social, index) => (
+        <div key={social.id}>
+          <input
+            aria-label="Platform"
+            onChange={(event) =>
+              onChange(
+                value.map((item, current) =>
+                  current === index ? { ...item, platform: event.target.value } : item,
+                ),
+              )
+            }
+            placeholder="Facebook"
+            value={social.platform}
+          />
+          <input
+            aria-label="URL"
+            dir="ltr"
+            onChange={(event) =>
+              onChange(
+                value.map((item, current) =>
+                  current === index ? { ...item, url: event.target.value } : item,
+                ),
+              )
+            }
+            placeholder="https://"
+            value={social.url}
+          />
+          <button
+            onClick={() => onChange(value.filter((_, current) => current !== index))}
+            type="button"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+function BranchPreview({
+  form,
+  locale,
+  onLocale,
+  labels,
+}: {
+  form: BranchEditorForm;
+  locale: "ar" | "en";
+  onLocale(locale: "ar" | "en"): void;
+  labels: { ar: string; en: string };
+}) {
+  const hours = form.workingHours.weekly.find((day) => !day.closed);
+  return (
+    <aside className="branch-editor__preview" dir={locale === "ar" ? "rtl" : "ltr"}>
+      <div className="branch-editor__preview-tabs">
+        <button
+          className={locale === "ar" ? "is-active" : ""}
+          onClick={() => onLocale("ar")}
+          type="button"
+        >
+          {labels.ar}
+        </button>
+        <button
+          className={locale === "en" ? "is-active" : ""}
+          onClick={() => onLocale("en")}
+          type="button"
+        >
+          {labels.en}
+        </button>
+      </div>
+      <span>RAHAL BRANCH · LIVE PREVIEW</span>
+      <h2>{locale === "ar" ? form.nameAr : form.nameEn || "—"}</h2>
+      <p>{locale === "ar" ? form.addressAr : form.addressEn}</p>
+      <div className="branch-editor__preview-map">
+        <strong>R</strong>
+        {form.latitude !== null ? (
+          <small>
+            {form.latitude.toFixed(4)} · {form.longitude?.toFixed(4)}
+          </small>
+        ) : null}
+      </div>
+      <dl>
+        <div>
+          <dt>{locale === "ar" ? "الهاتف" : "Phone"}</dt>
+          <dd>{form.phones[0] || "—"}</dd>
+        </div>
+        <div>
+          <dt>{locale === "ar" ? "المواعيد" : "Hours"}</dt>
+          <dd>{hours ? `${hours.opensAt}–${hours.closesAt}` : "—"}</dd>
+        </div>
+      </dl>
+      {form.whatsappVisible && form.whatsappNumber ? (
+        <span className="branch-editor__preview-wa">WhatsApp · {form.whatsappNumber}</span>
+      ) : null}
+    </aside>
+  );
+}
+
+function toForm(branch: ManagedBranch): BranchEditorForm {
+  const fallback = emptyBranchForm();
+  return {
+    ...fallback,
+    id: branch.id,
+    nameAr: branch.nameAr,
+    nameEn: branch.nameEn,
+    governorateAr: branch.governorateAr ?? "",
+    governorateEn: branch.governorateEn ?? "",
+    areaAr: branch.areaAr ?? "",
+    areaEn: branch.areaEn ?? "",
+    streetAr: branch.streetAr ?? "",
+    streetEn: branch.streetEn ?? "",
+    landmarkAr: branch.landmarkAr ?? "",
+    landmarkEn: branch.landmarkEn ?? "",
+    addressAr: branch.addressAr,
+    addressEn: branch.addressEn ?? "",
+    latitude: branch.latitude,
+    longitude: branch.longitude,
+    phones: branch.phones.length ? branch.phones : [""],
+    whatsappNumber: branch.whatsappNumber ?? branch.whatsappNumbers[0] ?? "",
+    whatsappVisible: branch.whatsappVisible ?? false,
+    whatsappMessageAr: branch.whatsappMessageAr ?? "",
+    whatsappMessageEn: branch.whatsappMessageEn ?? "",
+    email: branch.email ?? "",
+    socialLinks: branch.socialLinks ?? [],
+    workingHours: readHours(branch.workingHours),
+    services: branch.services ?? [],
+    managerId: branch.managerId ?? "",
+    status: branch.status ?? (branch.active ? "ACTIVE" : "INACTIVE"),
+  };
+}
+function readHours(value: Record<string, unknown>): BranchWorkingHours {
+  if (Array.isArray(value.weekly) && value.weekly.length === 7)
+    return value as unknown as BranchWorkingHours;
+  const result = emptyBranchForm().workingHours;
+  const regular = String(value.regular ?? value.saturdayToThursday ?? "");
+  const friday = String(value.friday ?? "");
+  const match = (text: string) => text.match(/(\d{2}:\d{2}).*?(\d{2}:\d{2})/);
+  const regularMatch = match(regular);
+  const fridayMatch = match(friday);
+  return {
+    ...result,
+    weekly: result.weekly.map((day) =>
+      day.day === "FRIDAY"
+        ? {
+            ...day,
+            closed: !fridayMatch,
+            opensAt: fridayMatch?.[1] ?? null,
+            closesAt: fridayMatch?.[2] ?? null,
+          }
+        : {
+            ...day,
+            closed: !regularMatch,
+            opensAt: regularMatch?.[1] ?? "09:00",
+            closesAt: regularMatch?.[2] ?? "21:00",
+          },
+    ),
+  };
+}
+function toPayload(form: BranchEditorForm) {
+  return {
+    ...form,
+    id: undefined,
+    landmarkAr: form.landmarkAr || undefined,
+    landmarkEn: form.landmarkEn || undefined,
+    email: form.email || undefined,
+    managerId: form.managerId || undefined,
+    whatsappNumber: form.whatsappNumber || undefined,
+    phones: form.phones.map((phone) => phone.replace(/[\s()-]/g, "")),
+  };
+}
+async function responseMessage(response: Response) {
+  try {
+    const body = (await response.json()) as { message?: string | string[] };
+    return Array.isArray(body.message) ? body.message.join(" ") : body.message || "Request failed";
+  } catch {
+    return "Request failed";
+  }
 }

@@ -586,20 +586,40 @@ export async function PublicInformationPage({
   const baseContent = content[page][locale];
   const key = informationContentKey(page);
   const published = key ? publishedTranslation(await getPublishedSiteContent(), key, locale) : null;
+  const document = published?.document;
   const pageContent: InformationPageContent = published
     ? {
         ...baseContent,
-        eyebrow: published.eyebrow,
-        title: published.title,
-        introduction: published.introduction,
-        statement: published.statement,
-        chapters: published.items.length
-          ? published.items.map((item, index) => ({
-              number: String(index + 1).padStart(2, "0"),
-              title: item.title,
-              body: item.body,
-            }))
-          : baseContent.chapters,
+        eyebrow: document?.eyebrow ?? published.eyebrow,
+        title: document?.title ?? published.title,
+        introduction:
+          document && "introduction" in document ? document.introduction : published.introduction,
+        statement:
+          document?.kind === "ABOUT" || document?.kind === "HOW_IT_WORKS"
+            ? document.statement
+            : published.statement,
+        chapters:
+          document?.kind === "ABOUT" || document?.kind === "HOW_IT_WORKS"
+            ? document.sections.map((item, index) => ({
+                number: String(index + 1).padStart(2, "0"),
+                title: item.title,
+                body: item.body,
+              }))
+            : document?.kind === "FAQ"
+              ? document.items
+                  .filter((item) => item.published)
+                  .map((item, index) => ({
+                    number: String(index + 1).padStart(2, "0"),
+                    title: item.question,
+                    body: item.answer,
+                  }))
+              : published.items.length
+                ? published.items.map((item, index) => ({
+                    number: String(index + 1).padStart(2, "0"),
+                    title: item.title,
+                    body: item.body,
+                  }))
+                : baseContent.chapters,
       }
     : baseContent;
   const isFaq = page === "faq";
@@ -688,6 +708,42 @@ export async function PublicInformationPage({
 
         {page === "contact" ? (
           <div className="container">
+            {document?.kind === "CONTACT" ? (
+              <section className="information-chapter public-contact-directory" data-reveal>
+                <span>00</span>
+                <div>
+                  <h2>{document.address}</h2>
+                  <p>{document.workingHours}</p>
+                  <ul>
+                    {document.phones.map((phone) => (
+                      <li key={phone}>
+                        <a href={`tel:${phone}`}>{phone}</a>
+                      </li>
+                    ))}
+                    <li>
+                      <a href={`mailto:${document.email}`}>{document.email}</a>
+                    </li>
+                    {document.socialLinks.map((social) => (
+                      <li key={social.id}>
+                        <a href={social.url} rel="noreferrer" target="_blank">
+                          {social.platform}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  {document.whatsapp.visible ? (
+                    <a
+                      className="button button--whatsapp"
+                      href={`https://wa.me/${document.whatsapp.number.replace(/\D/g, "")}?text=${encodeURIComponent(document.whatsapp.message)}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {locale === "ar" ? "الانتقال إلى واتساب" : "Continue to WhatsApp"}
+                    </a>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
             <PublicBranchSurface locale={locale} variant="directory" />
           </div>
         ) : null}

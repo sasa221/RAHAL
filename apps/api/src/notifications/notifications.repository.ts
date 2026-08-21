@@ -151,13 +151,11 @@ export class NotificationsRepository {
             phone: true,
             preferredLocale: true,
             emailVerifiedAt: true,
-            phoneVerifiedAt: true,
             notificationPreference: {
               select: {
                 inAppEnabled: true,
                 pushEnabled: true,
                 emailEnabled: true,
-                whatsappEnabled: true,
                 quietHoursStart: true,
                 quietHoursEnd: true,
               },
@@ -172,7 +170,7 @@ export class NotificationsRepository {
     });
   }
 
-  upsertDelivery(notificationId: string, channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP") {
+  upsertDelivery(notificationId: string, channel: "IN_APP" | "PUSH" | "EMAIL") {
     return this.prisma.client.$transaction(async (transaction) => {
       const existing = await transaction.notificationDelivery.findUnique({
         where: { notificationId_channel: { notificationId, channel } },
@@ -358,7 +356,7 @@ export class NotificationsRepository {
     bodyAr: string;
     bodyEn: string;
     targetPath?: string;
-    channels: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+    channels: Array<"IN_APP" | "PUSH" | "EMAIL">;
     important: boolean;
     marketing: boolean;
     recipientIds: string[];

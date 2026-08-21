@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatEgp, localizedPath, type PublicLocale } from "../lib/public-content";
 import { ProtectedDocumentStudio } from "./protected-document-studio";
 import { WorkspaceShell } from "./workspace-shell";
+import { WorkspaceState } from "./workspace-state";
 
 type QueueStatus =
   | "PENDING_REVIEW"
@@ -34,6 +35,7 @@ type QueueItem = {
 
 type Review = QueueItem & {
   canReviewDocuments: boolean;
+  protectedUploadsEnabled: boolean;
   customer: QueueItem["customer"] & {
     nationality: string | null;
     customerCategory: "EGYPTIAN" | "FOREIGN" | null;
@@ -41,7 +43,7 @@ type Review = QueueItem & {
     emergencyContactNameMasked: string | null;
     emergencyContactPhoneMasked: string | null;
   };
-  verification: { email: boolean; phone: boolean };
+  verification: { email: boolean };
   consents: { policyVersion: string | null; requiredAccepted: boolean };
   documents: Array<{
     id: string;
@@ -252,6 +254,8 @@ const copy = {
     contractStored: "تم حفظ العقد الموقّع",
     contractProtected: "النسخة محمية ومربوطة بهذا الطلب فقط.",
     contractUploadFailed: "تعذر حفظ العقد. تأكد أنه ملف PDF صالح وأن الطلب ما زال نشطًا.",
+    contractUploadsDisabled:
+      "رفع العقود متوقف في نسخة التسليم حتى اعتماد التخزين الخاص وفحص الملفات.",
     contractAccessReason: "اكتب سبب فتح العقد (10 أحرف على الأقل)",
     contractOpen: "فتح النسخة المحمية",
     contractOpening: "جارٍ فتح العقد...",
@@ -413,6 +417,8 @@ const copy = {
     contractProtected: "The private copy is linked only to this request.",
     contractUploadFailed:
       "The contract could not be stored. Use a valid PDF and check that the request is still active.",
+    contractUploadsDisabled:
+      "Contract upload is disabled in this delivery build until private storage and file scanning are approved.",
     contractAccessReason: "Reason for opening the contract (at least 10 characters)",
     contractOpen: "Open protected copy",
     contractOpening: "Opening contract...",
@@ -474,7 +480,13 @@ function statusLabel(status: QueueStatus, locale: PublicLocale) {
   return labels.pending;
 }
 
-export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
+export function SalesReviewWorkspace({
+  locale,
+  workspaceKind = "sales",
+}: {
+  locale: PublicLocale;
+  workspaceKind?: "sales" | "admin";
+}) {
   const text = copy[locale];
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [filter, setFilter] = useState<"ALL" | QueueStatus>("ALL");
@@ -526,7 +538,27 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
         if (response.status === 403) return setError("FORBIDDEN");
         if (!response.ok || !payload.data) return setError("GENERAL");
         setQueue(payload.data);
-        const requestedId = new URLSearchParams(window.location.search).get("request");
+        const params = new URLSearchParams(window.location.search);
+        const requestedId = params.get("request");
+        const requestedFilter = params.get("filter");
+        if (requestedFilter === "OPEN" || requestedFilter === "ATTENTION") {
+          setFilter("ALL");
+        } else if (
+          [
+            "PENDING_REVIEW",
+            "UNDER_REVIEW",
+            "MORE_INFORMATION_REQUIRED",
+            "PRE_APPROVED",
+            "ALTERNATIVE_OFFERED",
+            "CONFIRMED",
+            "ACTIVE",
+            "COMPLETED",
+            "CANCELLED",
+            "NO_SHOW",
+          ].includes(requestedFilter ?? "")
+        ) {
+          setFilter(requestedFilter as QueueStatus);
+        }
         const initial = payload.data.find((item) => item.id === requestedId) ?? payload.data[0];
         if (initial) void openReview(initial.id);
       })
@@ -556,10 +588,25 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
     [contractUrl],
   );
 
-  const filteredQueue = useMemo(
-    () => queue.filter((item) => filter === "ALL" || item.status === filter),
-    [filter, queue],
-  );
+  const filteredQueue = useMemo(() => {
+    const queryFilter =
+      typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("filter");
+    if (queryFilter === "OPEN")
+      return queue.filter((item) =>
+        [
+          "PENDING_REVIEW",
+          "UNDER_REVIEW",
+          "MORE_INFORMATION_REQUIRED",
+          "PRE_APPROVED",
+          "ALTERNATIVE_OFFERED",
+        ].includes(item.status),
+      );
+    if (queryFilter === "ATTENTION")
+      return queue.filter((item) => ["ACTIVE", "PRE_APPROVED"].includes(item.status));
+    return queue.filter((item) => filter === "ALL" || item.status === filter);
+  }, [filter, queue]);
   const pendingCount = queue.filter((item) => item.status === "PENDING_REVIEW").length;
   const reviewingCount = queue.filter((item) => item.status === "UNDER_REVIEW").length;
   const customerActionCount = queue.filter((item) => item.status === "PRE_APPROVED").length;
@@ -571,6 +618,15 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   const returnOperation = review?.branchProgress.operations.find(
     (operation) => operation.type === "RETURN",
   );
+
+  function selectFilter(value: "ALL" | QueueStatus) {
+    setFilter(value);
+    const url = new URL(window.location.href);
+    if (value === "ALL") url.searchParams.delete("filter");
+    else url.searchParams.set("filter", value);
+    url.searchParams.delete("attention");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 
   async function openReview(id: string) {
     setSelectedId(id);
@@ -740,7 +796,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   }
 
   async function uploadSignedContract() {
-    if (!review || !contractFile) {
+    if (!review || !review.protectedUploadsEnabled || !contractFile || uploadingContract) {
       setActionError(text.contractUploadFailed);
       return;
     }
@@ -991,7 +1047,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
   }
 
   return (
-    <WorkspaceShell activePage="requests" kind="sales" locale={locale}>
+    <WorkspaceShell activePage="requests" kind={workspaceKind} locale={locale}>
       <div className="sales-workspace" dir={locale === "ar" ? "rtl" : "ltr"} lang={locale}>
         <section className="portal-overview sales-hero">
           <div>
@@ -1028,22 +1084,33 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
           </article>
         </section>
 
-        {loading ? <div className="sales-state">{text.loading}</div> : null}
+        {loading ? <WorkspaceState kind="loading" title={text.loading} /> : null}
         {!loading && error ? (
-          <div className="sales-state sales-state--error">
-            <strong>
-              {error === "AUTH"
+          <WorkspaceState
+            action={
+              error === "AUTH" ? (
+                <a className="sales-action" href={localizedPath(locale, "/auth")}>
+                  {text.signIn}
+                </a>
+              ) : error === "GENERAL" ? (
+                <button onClick={() => window.location.reload()} type="button">
+                  {locale === "ar" ? "إعادة المحاولة" : "Try again"}
+                </button>
+              ) : (
+                <a href={localizedPath(locale, "/")}>
+                  {locale === "ar" ? "العودة للموقع" : "Return to website"}
+                </a>
+              )
+            }
+            kind={error === "FORBIDDEN" ? "no-permission" : "error"}
+            title={
+              error === "AUTH"
                 ? text.signIn
                 : error === "FORBIDDEN"
                   ? text.forbidden
-                  : text.unavailable}
-            </strong>
-            {error === "AUTH" ? (
-              <a className="sales-action" href={localizedPath(locale, "/auth")}>
-                {text.signIn}
-              </a>
-            ) : null}
-          </div>
+                  : text.unavailable
+            }
+          />
         ) : null}
 
         {!loading && !error ? (
@@ -1070,7 +1137,7 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                   <button
                     aria-pressed={filter === value}
                     key={value}
-                    onClick={() => setFilter(value)}
+                    onClick={() => selectFilter(value)}
                     type="button"
                   >
                     {label}
@@ -1128,7 +1195,17 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                     </article>
                   ))
                 ) : (
-                  <div className="sales-state">{text.empty}</div>
+                  <WorkspaceState
+                    action={
+                      filter !== "ALL" ? (
+                        <button onClick={() => selectFilter("ALL")} type="button">
+                          {locale === "ar" ? "عرض كل الطلبات" : "Show all requests"}
+                        </button>
+                      ) : null
+                    }
+                    kind={queue.length ? "no-results" : "empty"}
+                    title={text.empty}
+                  />
                 )}
               </div>
             </section>
@@ -1230,10 +1307,6 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                       <span>
                         {text.email}
                         <b>{review.verification.email ? text.verified : text.notVerified}</b>
-                      </span>
-                      <span>
-                        {text.phone}
-                        <b>{review.verification.phone ? text.verified : text.notVerified}</b>
                       </span>
                       <span>
                         {text.consent}
@@ -1513,10 +1586,16 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                                   <div>
                                     <strong>{text.contractUpload}</strong>
                                     <small>{text.contractUploadHint}</small>
+                                    {!review.protectedUploadsEnabled ? (
+                                      <small role="status">{text.contractUploadsDisabled}</small>
+                                    ) : null}
                                   </div>
                                   <label>
                                     <input
                                       accept="application/pdf"
+                                      disabled={
+                                        !review.protectedUploadsEnabled || uploadingContract
+                                      }
                                       onChange={(event) =>
                                         setContractFile(event.target.files?.[0] ?? null)
                                       }
@@ -1525,7 +1604,11 @@ export function SalesReviewWorkspace({ locale }: { locale: PublicLocale }) {
                                     <span>{contractFile?.name ?? text.contractChoose}</span>
                                   </label>
                                   <button
-                                    disabled={!contractFile || uploadingContract}
+                                    disabled={
+                                      !review.protectedUploadsEnabled ||
+                                      !contractFile ||
+                                      uploadingContract
+                                    }
                                     onClick={() => void uploadSignedContract()}
                                     type="button"
                                   >

@@ -20,8 +20,7 @@ const activeUser: AuthUserRecord = {
   preferredLocale: "en",
   systemRole: "CUSTOMER",
   status: "ACTIVE",
-  emailVerifiedAt: new Date("2026-07-01T00:00:00Z"),
-  phoneVerifiedAt: null,
+  emailVerifiedAt: null,
   mustChangePassword: false,
   staffMfaCredential: null,
 };
@@ -44,6 +43,32 @@ function buildRepository() {
 }
 
 describe("AuthService", () => {
+  it("registers a customer without a phone number", async () => {
+    const repository = buildRepository();
+    repository.findByIdentifier.mockResolvedValue(null);
+    repository.createUser.mockResolvedValue({ ...activeUser, phone: null });
+    const passwords = { hash: vi.fn().mockResolvedValue("hashed-password") };
+    const service = new AuthService(
+      repository as unknown as AuthRepository,
+      passwords as unknown as PasswordService,
+    );
+
+    const result = await service.register(
+      {
+        fullNameEn: "Rahal Customer",
+        email: "customer@example.com",
+        password: "strong-password",
+        preferredLocale: "en",
+      },
+      {},
+    );
+
+    expect(repository.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "customer@example.com", phone: undefined }),
+    );
+    expect(result.session.user.phone).toBeNull();
+  });
+
   beforeEach(() => {
     process.env.VERIFICATION_DELIVERY_WEBHOOK_URL = "http://localhost:9999/verification";
     process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET =
@@ -68,13 +93,6 @@ describe("AuthService", () => {
       "BREVO_SENDER_NAME",
       "GMAIL_SMTP_USER",
       "GMAIL_SMTP_APP_PASSWORD",
-      "WHATSAPP_CLOUD_ACCESS_TOKEN",
-      "WHATSAPP_CLOUD_PHONE_NUMBER_ID",
-      "WHATSAPP_AUTH_TEMPLATE_NAME",
-      "WHATSAPP_GRAPH_API_VERSION",
-      "TWILIO_ACCOUNT_SID",
-      "TWILIO_AUTH_TOKEN",
-      "TWILIO_VERIFY_SERVICE_SID",
     ]) {
       delete process.env[name];
     }
@@ -101,8 +119,7 @@ describe("AuthService", () => {
       preferredLocale: "en",
       role: "CUSTOMER",
       status: "ACTIVE",
-      emailVerified: true,
-      phoneVerified: false,
+      emailVerified: false,
       mfaEnabled: false,
       securityAction: null,
     });
@@ -150,7 +167,7 @@ describe("AuthService", () => {
     });
     const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
 
-    const result = await service.requestVerification("session-token", { channel: "phone" }, {});
+    const result = await service.requestVerification("session-token", { channel: "email" }, {});
 
     const deliveryRequest = vi.mocked(fetch).mock.calls[0];
     const delivered = JSON.parse(String(deliveryRequest?.[1]?.body)) as { code: string };
@@ -158,7 +175,7 @@ describe("AuthService", () => {
     expect(delivered.code).toMatch(/^\d{6}$/);
     expect(result).not.toHaveProperty("developmentCode");
     expect(result).toEqual(
-      expect.objectContaining({ channel: "phone", destination: expect.any(String) }),
+      expect.objectContaining({ channel: "email", destination: expect.any(String) }),
     );
     expect(deliveryRequest?.[0]).toBe("http://localhost:9999/verification");
     expect(deliveryRequest?.[1]).toEqual(
@@ -171,12 +188,12 @@ describe("AuthService", () => {
     );
     expect(repository.invalidateVerificationCodes).toHaveBeenCalledWith(
       activeUser.id,
-      "VERIFY_PHONE",
+      "VERIFY_EMAIL",
     );
     expect(repository.createVerificationCode).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: activeUser.id,
-        purpose: "VERIFY_PHONE",
+        purpose: "VERIFY_EMAIL",
         codeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     );
@@ -283,142 +300,6 @@ describe("AuthService", () => {
     expect(result).not.toHaveProperty("code");
   });
 
-  it("sends phone verification through a Meta WhatsApp authentication template", async () => {
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
-    process.env.WHATSAPP_CLOUD_ACCESS_TOKEN = "whatsapp-test-token";
-    process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID = "123456789";
-    process.env.WHATSAPP_AUTH_TEMPLATE_NAME = "rahal_account_verification";
-    process.env.WHATSAPP_GRAPH_API_VERSION = "v23.0";
-    const repository = buildRepository();
-    repository.findSession.mockResolvedValue({
-      id: "session-1",
-      expiresAt: new Date(Date.now() + 60_000),
-      user: activeUser,
-    });
-    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
-
-    const result = await service.requestVerification("session-token", { channel: "phone" }, {});
-    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
-    const body = JSON.parse(String(deliveryRequest?.[1]?.body)) as {
-      to: string;
-      template: { name: string; components: Array<{ parameters: Array<{ text: string }> }> };
-    };
-
-    expect(deliveryRequest?.[0]).toBe("https://graph.facebook.com/v23.0/123456789/messages");
-    expect(body.to).toBe("201001112222");
-    expect(body.template.name).toBe("rahal_account_verification");
-    expect(body.template.components[0]?.parameters[0]?.text).toMatch(/^\d{6}$/);
-    expect(result).not.toHaveProperty("code");
-    expect(result).not.toHaveProperty("developmentCode");
-  });
-
-  it("starts phone verification through Twilio Verify for WhatsApp", async () => {
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
-    const accountSid = `AC${"1".repeat(32)}`;
-    const serviceSid = `VA${"2".repeat(32)}`;
-    process.env.TWILIO_ACCOUNT_SID = accountSid;
-    process.env.TWILIO_AUTH_TOKEN = "twilio-test-token";
-    process.env.TWILIO_VERIFY_SERVICE_SID = serviceSid;
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: vi.fn().mockResolvedValue({ status: "pending" }),
-    } as unknown as Response);
-    const repository = buildRepository();
-    repository.findSession.mockResolvedValue({
-      id: "session-1",
-      expiresAt: new Date(Date.now() + 60_000),
-      user: activeUser,
-    });
-    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
-
-    const result = await service.requestVerification("session-token", { channel: "phone" }, {});
-    const deliveryRequest = vi.mocked(fetch).mock.calls[0];
-    const body = new URLSearchParams(String(deliveryRequest?.[1]?.body));
-
-    expect(deliveryRequest?.[0]).toBe(
-      `https://verify.twilio.com/v2/Services/${serviceSid}/Verifications`,
-    );
-    expect(deliveryRequest?.[1]?.headers).toEqual(
-      expect.objectContaining({
-        authorization: `Basic ${Buffer.from(`${accountSid}:twilio-test-token`).toString("base64")}`,
-        "content-type": "application/x-www-form-urlencoded",
-      }),
-    );
-    expect(body.get("To")).toBe("+201001112222");
-    expect(body.get("Channel")).toBe("whatsapp");
-    expect(body.get("Locale")).toBe("en");
-    expect(repository.createVerificationCode.mock.calls[0]?.[0].codeHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(result).not.toHaveProperty("code");
-    expect(result).not.toHaveProperty("developmentCode");
-  });
-
-  it("confirms a Twilio Verify WhatsApp code with the provider", async () => {
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
-    delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
-    const accountSid = `AC${"1".repeat(32)}`;
-    const serviceSid = `VA${"2".repeat(32)}`;
-    process.env.TWILIO_ACCOUNT_SID = accountSid;
-    process.env.TWILIO_AUTH_TOKEN = "twilio-test-token";
-    process.env.TWILIO_VERIFY_SERVICE_SID = serviceSid;
-    const repository = buildRepository();
-    repository.findSession.mockResolvedValue({
-      id: "session-1",
-      expiresAt: new Date(Date.now() + 60_000),
-      user: activeUser,
-    });
-    repository.completeVerification.mockResolvedValue({
-      ...activeUser,
-      phoneVerifiedAt: new Date(),
-    });
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      status: 201,
-      json: vi.fn().mockResolvedValue({ status: "pending" }),
-    } as unknown as Response);
-    const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
-
-    await service.requestVerification("session-token", { channel: "phone" }, {});
-    repository.findActiveVerificationCode.mockResolvedValue({
-      id: "code-1",
-      codeHash: repository.createVerificationCode.mock.calls[0]?.[0].codeHash as string,
-      attempts: 0,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    vi.mocked(fetch)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({ status: "pending" }),
-      } as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({ status: "approved" }),
-      } as unknown as Response);
-
-    await expect(
-      service.confirmVerification("session-token", { channel: "phone", code: "000000" }, {}),
-    ).rejects.toThrow("Invalid or expired verification code.");
-    expect(repository.incrementVerificationAttempts).toHaveBeenCalledWith("code-1");
-
-    const confirmed = await service.confirmVerification(
-      "session-token",
-      { channel: "phone", code: "123456" },
-      {},
-    );
-    expect(confirmed.verified).toBe(true);
-    const checkRequest = vi.mocked(fetch).mock.calls.at(-1);
-    expect(checkRequest?.[0]).toBe(
-      `https://verify.twilio.com/v2/Services/${serviceSid}/VerificationCheck`,
-    );
-    const checkBody = new URLSearchParams(String(checkRequest?.[1]?.body));
-    expect(checkBody.get("To")).toBe(activeUser.phone);
-    expect(checkBody.get("Code")).toBe("123456");
-  });
-
   it("fails closed without a delivery provider and does not create a code", async () => {
     delete process.env.VERIFICATION_DELIVERY_WEBHOOK_URL;
     delete process.env.VERIFICATION_DELIVERY_WEBHOOK_SECRET;
@@ -431,7 +312,7 @@ describe("AuthService", () => {
     const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
 
     await expect(
-      service.requestVerification("session-token", { channel: "phone" }, {}),
+      service.requestVerification("session-token", { channel: "email" }, {}),
     ).rejects.toThrow(
       new ServiceUnavailableException("Verification delivery provider is not configured."),
     );
@@ -450,7 +331,7 @@ describe("AuthService", () => {
     const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
 
     await expect(
-      service.requestVerification("session-token", { channel: "phone" }, {}),
+      service.requestVerification("session-token", { channel: "email" }, {}),
     ).rejects.toThrow(
       new ServiceUnavailableException("Verification delivery is temporarily unavailable."),
     );
@@ -458,7 +339,7 @@ describe("AuthService", () => {
     expect(repository.writeAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         succeeded: false,
-        reason: "VERIFY_PHONE_DELIVERY_FAILED",
+        reason: "VERIFY_EMAIL_DELIVERY_FAILED",
       }),
     );
   });
@@ -472,10 +353,10 @@ describe("AuthService", () => {
     });
     repository.completeVerification.mockResolvedValue({
       ...activeUser,
-      phoneVerifiedAt: new Date(),
+      emailVerifiedAt: new Date(),
     });
     const service = new AuthService(repository as unknown as AuthRepository, {} as PasswordService);
-    await service.requestVerification("session-token", { channel: "phone" }, {});
+    await service.requestVerification("session-token", { channel: "email" }, {});
     const deliveryRequest = vi.mocked(fetch).mock.calls[0];
     const delivered = JSON.parse(String(deliveryRequest?.[1]?.body)) as { code: string };
     const codeHash = repository.createVerificationCode.mock.calls[0]?.[0].codeHash as string;
@@ -487,21 +368,21 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.confirmVerification("session-token", { channel: "phone", code: "000000" }, {}),
+      service.confirmVerification("session-token", { channel: "email", code: "000000" }, {}),
     ).rejects.toThrow("Invalid or expired verification code.");
     expect(repository.incrementVerificationAttempts).toHaveBeenCalledWith("code-1");
 
     const confirmed = await service.confirmVerification(
       "session-token",
-      { channel: "phone", code: delivered.code },
+      { channel: "email", code: delivered.code },
       {},
     );
     expect(confirmed.verified).toBe(true);
-    expect(confirmed.user.phoneVerified).toBe(true);
+    expect(confirmed.user.emailVerified).toBe(true);
     expect(repository.completeVerification).toHaveBeenCalledWith(
       "code-1",
       activeUser.id,
-      "VERIFY_PHONE",
+      "VERIFY_EMAIL",
     );
   });
 });

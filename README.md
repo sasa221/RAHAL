@@ -91,13 +91,11 @@ RAHAL has an idempotent transactional outbox for:
 
 - In-app notifications
 - Transactional email through Brevo with Resend fallback
-- WhatsApp through approved Meta templates
+- Manual branch/company WhatsApp contact links (external `wa.me`; no platform delivery)
 - Browser Web Push
 
-For staging phone verification, the API can use Twilio Verify over WhatsApp. Twilio creates and
-checks the one-time code; Rahal stores only an expiring provider marker. Trial Twilio accounts can
-reach only numbers verified in Twilio. Production request notifications continue to require the
-official Meta WhatsApp Business integration and approved authentication/notification templates.
+Email is the only verification and recovery channel. Phone numbers are optional contact data.
+WhatsApp buttons only open an external branch/company conversation and never send from Rahal.
 
 Vercel deployments use request-driven outbox draining after mutations plus a protected daily
 recovery sweep. Persistent Node deployments keep the interval worker. Administrators can see safe
@@ -117,7 +115,7 @@ flowchart LR
     API --> Redis[("Redis rate limits")]
     API --> Storage[("Private S3 storage")]
     API --> Scanner["Malware scanner"]
-    API --> Providers["Brevo / Resend · Meta WhatsApp · Web Push"]
+    API --> Providers["Brevo / Resend · Web Push"]
 ```
 
 ```text

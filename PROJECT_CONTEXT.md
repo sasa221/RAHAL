@@ -62,7 +62,7 @@ Remove or replace all generated references to:
 - airport pickup or airport return
 - concierge service
 - online payment, checkout, cards, payment gateway or “secure transaction”
-- SMS as the planned messaging channel; use official WhatsApp instead
+- SMS and automated WhatsApp messaging are not planned; WhatsApp is a manual external contact link only
 - sales targets unless explicitly added later by the owner
 
 ## 4. Design references
@@ -154,10 +154,9 @@ Never assume a role grants every action. Enforce server-side permissions for eve
 
 ## 6. Authentication and account security
 
-- Registration requires full name, phone, email and password.
-- Verify phone with OTP.
+- Registration requires full name, email and password; phone is optional contact data.
 - Verify email with a verification link or code.
-- A customer cannot submit a reservation until both are verified.
+- A customer cannot submit a reservation until the email is verified.
 - Use secure, HTTP-only, same-site cookies for browser sessions.
 - Implement access/refresh session rotation or an equally secure server-managed session design.
 - Rate-limit login, OTP, password reset, verification resend and document access.
@@ -375,7 +374,7 @@ Channels:
 - In-app notification center
 - Web/mobile push using Firebase Cloud Messaging or an approved equivalent
 - Transactional email from the company domain
-- Official WhatsApp Business Platform API
+- Manual external `wa.me` links for company and branch contact; the platform sends no WhatsApp messages
 
 No SMS channel is currently planned.
 
@@ -530,7 +529,7 @@ Use this as the baseline unless repository constraints or an approved ADR change
 | Private documents | Private S3-compatible object storage |
 | Push | Firebase Cloud Messaging |
 | Email | Transactional provider such as Resend, from Rahal domain |
-| WhatsApp | Official Meta WhatsApp Business Platform Cloud API |
+| WhatsApp | Manual external `wa.me` contact links only |
 | Queue/cache | Redis-compatible service with a robust job queue |
 | API documentation | OpenAPI/Swagger |
 | Unit/integration tests | Jest or repository-equivalent |
@@ -663,7 +662,7 @@ Until real fleet data is supplied:
 9. Fleet calendar, maintenance, blocks, delivery/return and completion
 10. Customer dashboard and history
 11. Staff, roles, permissions and audit
-12. Notification outbox, push, email and WhatsApp integrations
+12. Notification outbox, push and email integrations
 13. Content management, reviews and reports
 14. Security review, accessibility, performance, backups and end-to-end testing
 15. Production deployment and operational monitoring

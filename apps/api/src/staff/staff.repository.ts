@@ -127,7 +127,6 @@ export class StaffRepository {
           ...data,
           status: "ACTIVE",
           emailVerifiedAt: data.systemRole === "SALES" ? new Date() : null,
-          phoneVerifiedAt: new Date(),
           mustChangePassword: true,
           temporaryPasswordIssuedAt: new Date(),
         },

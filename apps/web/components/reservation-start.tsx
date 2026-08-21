@@ -94,6 +94,9 @@ const requestCopy = {
     uploadedFile: "تم الرفع بأمان",
     uploadFailed: "تعذر رفع المستند. تأكد من النوع والحجم وحاول مرة أخرى.",
     removeFailed: "تعذر حذف المستند الآن.",
+    confirmRemove: "هل تريد حذف هذا المستند الخاص؟ لا يمكن التراجع عن هذا الإجراء.",
+    uploadsDisabled:
+      "رفع مستندات الهوية متوقف في نسخة التسليم حتى اعتماد التخزين الخاص وفحص الملفات. لا ترسل مستنداتك بالبريد أو واتساب.",
     uploadingFile: "جارٍ الرفع الآمن...",
     documentFormats: "JPEG أو PNG أو PDF — بحد أقصى",
     documentsComplete: "اكتملت المستندات المطلوبة. الخطوة التالية هي المراجعة النهائية.",
@@ -155,6 +158,9 @@ const requestCopy = {
     uploadedFile: "Uploaded securely",
     uploadFailed: "The document could not be uploaded. Check its type and size, then try again.",
     removeFailed: "The document could not be removed right now.",
+    confirmRemove: "Remove this private document? This action cannot be undone.",
+    uploadsDisabled:
+      "Identity-document upload is disabled in this delivery build until private storage and file scanning are approved. Do not send documents by email or WhatsApp.",
     uploadingFile: "Uploading securely...",
     documentFormats: "JPEG, PNG, or PDF — maximum",
     documentsComplete: "All required documents are complete. Final review is next.",
@@ -291,7 +297,6 @@ const finalReviewCopy = {
 const submissionBlockerCopy = {
   ar: {
     EMAIL_VERIFICATION_REQUIRED: "توثيق البريد الإلكتروني",
-    PHONE_VERIFICATION_REQUIRED: "توثيق رقم الهاتف",
     CUSTOMER_DETAILS_REQUIRED: "استكمال بيانات العميل",
     REQUIRED_CONSENTS_REQUIRED: "الموافقة على السياسات المطلوبة",
     APPROVED_POLICY_REQUIRED: "اعتماد النسخة النهائية من السياسات قبل الإطلاق",
@@ -300,7 +305,6 @@ const submissionBlockerCopy = {
   },
   en: {
     EMAIL_VERIFICATION_REQUIRED: "Verify the email address",
-    PHONE_VERIFICATION_REQUIRED: "Verify the phone number",
     CUSTOMER_DETAILS_REQUIRED: "Complete customer details",
     REQUIRED_CONSENTS_REQUIRED: "Accept all required policies",
     APPROVED_POLICY_REQUIRED: "Publish the approved production policy version",
@@ -416,6 +420,8 @@ export function ReservationStart({
   } | null>(null);
   const [documentChecklist, setDocumentChecklist] = useState<{
     developmentRules: boolean;
+    uploadsEnabled: boolean;
+    uploadUnavailableReason: string | null;
     complete: boolean;
     requirements: Array<{
       key: string;
@@ -426,7 +432,6 @@ export function ReservationStart({
       uploaded: boolean;
       document?: {
         id: string;
-        originalName: string;
         sizeBytes: number;
         status: string;
       };
@@ -756,7 +761,9 @@ export function ReservationStart({
   }
 
   async function uploadPrivateDocument(type: string, file: File | undefined) {
-    if (!savedDraft || !file) return;
+    if (!savedDraft || !file || !documentChecklist?.uploadsEnabled || uploadingType !== null) {
+      return false;
+    }
     setUploadingType(type);
     setDocumentError(null);
     const body = new FormData();
@@ -772,18 +779,20 @@ export function ReservationStart({
       };
       if (!response.ok || !payload.data) {
         setDocumentError(payload.error?.message ?? copy.uploadFailed);
-        return;
+        return false;
       }
       setDocumentChecklist(payload.data);
+      return true;
     } catch {
       setDocumentError(copy.uploadFailed);
+      return false;
     } finally {
       setUploadingType(null);
     }
   }
 
   async function removePrivateDocument(documentId: string) {
-    if (!savedDraft) return;
+    if (!savedDraft || uploadingType !== null || !window.confirm(copy.confirmRemove)) return;
     setDocumentError(null);
     try {
       const response = await fetch(
@@ -1276,6 +1285,11 @@ export function ReservationStart({
                       {documentChecklist.developmentRules ? (
                         <div className="reservation-assurance__notice">{copy.developmentRules}</div>
                       ) : null}
+                      {!documentChecklist.uploadsEnabled ? (
+                        <div className="reservation-assurance__notice" role="status">
+                          <strong>{copy.uploadsDisabled}</strong>
+                        </div>
+                      ) : null}
                       <div className="reservation-document-list">
                         {documentChecklist.requirements.map((requirement) => (
                           <article className="reservation-document" key={requirement.key}>
@@ -1287,7 +1301,7 @@ export function ReservationStart({
                               </small>
                               {requirement.document ? (
                                 <p>
-                                  {copy.uploadedFile}: {requirement.document.originalName} ·{" "}
+                                  {copy.uploadedFile} ·{" "}
                                   {Math.max(1, Math.round(requirement.document.sizeBytes / 1024))}{" "}
                                   KB
                                 </p>
@@ -1302,11 +1316,16 @@ export function ReservationStart({
                                     : copy.chooseFile}
                                 <input
                                   accept={requirement.allowedMimeTypes.join(",")}
-                                  disabled={uploadingType !== null}
-                                  onChange={(event) => {
+                                  disabled={
+                                    !documentChecklist.uploadsEnabled || uploadingType !== null
+                                  }
+                                  onChange={async (event) => {
                                     const file = event.currentTarget.files?.[0];
-                                    void uploadPrivateDocument(requirement.type, file);
-                                    event.currentTarget.value = "";
+                                    const uploaded = await uploadPrivateDocument(
+                                      requirement.type,
+                                      file,
+                                    );
+                                    if (uploaded) event.currentTarget.value = "";
                                   }}
                                   type="file"
                                 />
@@ -1314,6 +1333,7 @@ export function ReservationStart({
                               {requirement.document ? (
                                 <button
                                   className="button button--outline"
+                                  disabled={uploadingType !== null}
                                   onClick={() =>
                                     void removePrivateDocument(requirement.document!.id)
                                   }

@@ -37,6 +37,6 @@ describe("administrator document access oversight", () => {
     expect(ledger).toContain("/api/admin-operations/document-access");
     expect(workspace).toContain("اعرف من فتح المستند، ولماذا");
     expect(workspace).toContain("Know who touched a document and why");
-    expect(ledger).toContain('localizedPath(locale, "/sales")');
+    expect(ledger).toContain('localizedPath(locale, "/admin/requests")');
   });
 });

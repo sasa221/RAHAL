@@ -452,7 +452,7 @@ export class ReservationsRepository {
           privacyConsentAt: true,
           documentConsentAt: true,
           operationalConsentAt: true,
-          customer: { select: { emailVerifiedAt: true, phoneVerifiedAt: true } },
+          customer: { select: { emailVerifiedAt: true } },
           vehicle: { select: { active: true, archivedAt: true, status: true } },
         },
       });
@@ -478,7 +478,6 @@ export class ReservationsRepository {
       );
       if (
         !reservation.customer.emailVerifiedAt ||
-        !reservation.customer.phoneVerifiedAt ||
         !reservation.customerDetailsCompletedAt ||
         !reservation.customerCategorySnapshot ||
         !requiredConsents
@@ -662,7 +661,6 @@ export class ReservationsRepository {
             email: true,
             phone: true,
             emailVerifiedAt: true,
-            phoneVerifiedAt: true,
           },
         },
         documents: {

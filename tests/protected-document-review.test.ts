@@ -23,6 +23,7 @@ describe("protected customer document review", () => {
     expect(controller).toContain('"X-Content-Type-Options": "nosniff"');
     expect(service).toContain("documentStorage.read(document.storageKey)");
     expect(sales).not.toContain("storageKey");
+    expect(controller).not.toContain('@Get("sales/:id/documents/:documentId/access")');
   });
 
   it("requires a bounded access reason and assigned-reviewer authorization", () => {
@@ -80,5 +81,9 @@ describe("protected customer document review", () => {
     expect(studio).not.toContain("storageKey");
     expect(customer).toContain("رفع مستند بديل");
     expect(customer).toContain("Upload replacement");
+    expect(customer).not.toContain("requirement.document.originalName");
+    expect(service).toContain("assertProtectedUploadsEnabled");
+    expect(service).toContain("Protected uploads are disabled in this delivery environment");
+    expect(storage).toContain("withRetry");
   });
 });

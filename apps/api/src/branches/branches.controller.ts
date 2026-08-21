@@ -1,8 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put, Req } from "@nestjs/common";
-import type { ApiSuccess, BranchSummary, ManagedBranch } from "@rahal/contracts";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from "@nestjs/common";
+import type {
+  ApiSuccess,
+  BranchManagementOverview,
+  BranchSummary,
+  ManagedBranch,
+} from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
-import { SaveBranchDto } from "./branches.dto";
+import { BranchActionDto, SaveBranchDto } from "./branches.dto";
 import { BranchesService } from "./branches.service";
 
 @Controller("branches")
@@ -16,7 +21,7 @@ export class BranchesController {
   }
 
   @Get("admin")
-  async adminList(@Req() request: Request): Promise<ApiSuccess<ManagedBranch[]>> {
+  async adminList(@Req() request: Request): Promise<ApiSuccess<BranchManagementOverview>> {
     return { data: await this.branches.adminList(readAuthCookie(request)) };
   }
 
@@ -35,5 +40,23 @@ export class BranchesController {
     @Req() request: Request,
   ): Promise<ApiSuccess<ManagedBranch>> {
     return { data: await this.branches.update(readAuthCookie(request), id, input) };
+  }
+
+  @Patch("admin/:id/disable")
+  async disable(
+    @Param("id") id: string,
+    @Body() input: BranchActionDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<ManagedBranch>> {
+    return { data: await this.branches.disable(readAuthCookie(request), id, input) };
+  }
+
+  @Delete("admin/:id")
+  async delete(
+    @Param("id") id: string,
+    @Body() input: BranchActionDto,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<{ deleted: true }>> {
+    return { data: await this.branches.delete(readAuthCookie(request), id, input) };
   }
 }

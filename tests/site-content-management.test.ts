@@ -27,7 +27,8 @@ describe("site content management", () => {
     expect(controller).toContain('@Get("admin")');
     expect(controller).toContain('@Put("admin/:key")');
     expect(controller).toContain('@Post("admin/:key/publish")');
-    expect(service).toContain("Only administrators can manage public site content");
+    expect(service).toContain('"content.edit"');
+    expect(service).toContain('"content.publish"');
     expect(service).toContain("forbiddenContent");
   });
 

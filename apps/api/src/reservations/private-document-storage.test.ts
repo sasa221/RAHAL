@@ -69,4 +69,24 @@ describe("PrivateDocumentStorage", () => {
     await expect(storage.read(key)).resolves.toEqual(Buffer.from([1, 2, 3]));
     expect(send.mock.calls[1]?.[0]).toBeInstanceOf(GetObjectCommand);
   });
+
+  it("retries a transient private S3 write without exposing a public fallback", async () => {
+    vi.stubEnv("PRIVATE_DOCUMENT_STORAGE_PATH", "");
+    vi.stubEnv("PRIVATE_S3_REGION", "eu-central-1");
+    vi.stubEnv("PRIVATE_S3_BUCKET", "rahal-private");
+    vi.stubEnv("PRIVATE_S3_ACCESS_KEY_ID", "test-access");
+    vi.stubEnv("PRIVATE_S3_SECRET_ACCESS_KEY", "test-secret");
+    const send = vi
+      .spyOn(S3Client.prototype, "send")
+      .mockRejectedValueOnce(new Error("temporary network failure"))
+      .mockRejectedValueOnce(new Error("temporary network failure"))
+      .mockResolvedValueOnce({} as never);
+    const storage = new PrivateDocumentStorage();
+
+    await expect(
+      storage.put("reservation-retry", "image/png", Buffer.from("\u0089PNG-private")),
+    ).resolves.toMatch(/^reservations\/reservation-retry\/[a-f0-9-]{36}\.png$/);
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(send.mock.calls.every(([command]) => command instanceof PutObjectCommand)).toBe(true);
+  });
 });

@@ -21,7 +21,9 @@ describe("staff fleet calendar", () => {
 
   it("keeps customer identity data out of the calendar query and contract", () => {
     const contracts = read("packages/contracts/src/index.ts");
-    const calendarContracts = contracts.split("export type FleetCalendarEventKind")[1]!;
+    const calendarContracts = contracts
+      .split("export type FleetCalendarEventKind")[1]!
+      .split("export type InAppNotification")[0]!;
     expect(repository).not.toContain("customerNameSnapshot");
     expect(repository).not.toContain("customerEmailSnapshot");
     expect(repository).not.toContain("customerPhoneSnapshot");

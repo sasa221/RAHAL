@@ -141,7 +141,8 @@ describe("public multi-page experience", () => {
     expect(auth).not.toContain('className="auth-success" aria-live="polite" data-reveal');
     expect(auth).toContain('document.getElementById("auth-workspace")?.scrollIntoView');
     expect(auth).toContain('pattern="\\+?[1-9][0-9]{7,14}"');
-    expect(auth).toContain("Phone and email verification are required");
+    expect(auth).toContain("Email is the primary verification method");
+    expect(auth).not.toContain("Verify through WhatsApp");
     expect(auth).not.toContain("identityNumber");
     expect(auth).not.toContain('type="file"');
     expect(home).toContain("AccountEntryLink");

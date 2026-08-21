@@ -132,7 +132,9 @@ export class NotificationsService {
         title: locale === "ar" ? campaign.titleAr : campaign.titleEn,
         body: locale === "ar" ? campaign.bodyAr : campaign.bodyEn,
         targetPath: campaign.targetPath,
-        channels: campaign.channels,
+        channels: campaign.channels.flatMap((channel) =>
+          channel === "IN_APP" || channel === "PUSH" || channel === "EMAIL" ? [channel] : [],
+        ),
         important: campaign.important,
         marketing: campaign.marketing,
         recipientCount: campaign.recipientCount,
@@ -145,7 +147,7 @@ export class NotificationsService {
       })),
       capabilities: {
         audiences: isAdmin ? ["CUSTOMERS", "SALES", "CUSTOMERS_AND_SALES"] : ["CUSTOMERS"],
-        channels: ["IN_APP", "PUSH", "EMAIL", "WHATSAPP"],
+        channels: ["IN_APP", "PUSH", "EMAIL"],
       },
     };
   }
@@ -229,10 +231,10 @@ export class NotificationsService {
   }
 }
 
-function maskRecipientContact(email: string, phone: string) {
+function maskRecipientContact(email: string, phone: string | null) {
   if (email) {
     const [local = "", domain = ""] = email.split("@");
     return `${local.slice(0, 2)}***@${domain}`;
   }
-  return phone.length > 4 ? `${phone.slice(0, 3)}***${phone.slice(-2)}` : "***";
+  return phone && phone.length > 4 ? `${phone.slice(0, 3)}***${phone.slice(-2)}` : "***";
 }

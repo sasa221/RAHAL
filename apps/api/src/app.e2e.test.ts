@@ -724,7 +724,6 @@ describe("RAHAL API", () => {
       email: authUser.email,
       role: "CUSTOMER",
       emailVerified: true,
-      phoneVerified: true,
     });
     expect(login.body.data.user).not.toHaveProperty("passwordHash");
     expect(login.body.data).not.toHaveProperty("token");
@@ -872,10 +871,8 @@ describe("RAHAL API", () => {
       .expect(201);
 
     expect(response.body.data).toMatchObject({ complete: true });
-    expect(response.body.data.requirements[0].document).toMatchObject({
-      originalName: "identity-front.png",
-      status: "UPLOADED",
-    });
+    expect(response.body.data.requirements[0].document).toMatchObject({ status: "UPLOADED" });
+    expect(response.body.data.requirements[0].document).not.toHaveProperty("originalName");
     expect(JSON.stringify(response.body)).not.toContain("storageKey");
     expect(JSON.stringify(response.body)).not.toContain("private-document.png");
   });

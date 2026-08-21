@@ -34,7 +34,6 @@ function setup(role: "CUSTOMER" | "SALES" = "CUSTOMER") {
       notificationPreference: {
         inAppEnabled: true,
         emailEnabled: false,
-        whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
         marketingConsentDecidedAt: new Date("2026-07-30T12:00:00.000Z"),
@@ -57,12 +56,10 @@ describe("AccountService", () => {
         email: "sara@example.test",
         phone: "+201000000001",
         emailVerified: true,
-        phoneVerified: true,
       },
       notifications: {
         inAppEnabled: true,
         emailEnabled: true,
-        whatsappEnabled: true,
         pushEnabled: true,
         marketingEnabled: false,
         marketingConsentDecided: false,
@@ -127,7 +124,6 @@ describe("AccountService", () => {
     await expect(
       service.updateNotifications("session", {
         emailEnabled: true,
-        whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
         quietHoursStart: "22:00",
@@ -141,7 +137,6 @@ describe("AccountService", () => {
     await expect(
       service.updateNotifications("session", {
         emailEnabled: true,
-        whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
         quietHoursStart: "22:00",
@@ -155,7 +150,6 @@ describe("AccountService", () => {
     await expect(
       service.updateNotifications("session", {
         emailEnabled: false,
-        whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
         quietHoursStart: "22:00",
@@ -165,7 +159,6 @@ describe("AccountService", () => {
       notifications: {
         inAppEnabled: true,
         emailEnabled: false,
-        whatsappEnabled: true,
         pushEnabled: false,
         marketingEnabled: false,
         marketingConsentDecided: true,
@@ -175,7 +168,6 @@ describe("AccountService", () => {
       "customer-1",
       expect.objectContaining({
         emailEnabled: false,
-        whatsappEnabled: true,
         marketingEnabled: false,
       }),
       expect.objectContaining({ inAppEnabled: true }),

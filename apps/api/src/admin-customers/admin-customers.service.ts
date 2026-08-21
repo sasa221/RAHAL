@@ -84,7 +84,6 @@ export class AdminCustomersService {
         inApp: preference?.inAppEnabled ?? true,
         push: preference?.pushEnabled ?? true,
         email: preference?.emailEnabled ?? true,
-        whatsapp: preference?.whatsappEnabled ?? true,
         marketing: preference?.marketingEnabled ?? false,
       },
       recentReservations: customer.reservations.map((reservation) => ({
@@ -144,13 +143,12 @@ export class AdminCustomersService {
     customer: {
       id: string;
       email: string;
-      phone: string;
+      phone: string | null;
       fullNameAr: string | null;
       fullNameEn: string;
       status: string;
       preferredLocale: string;
       emailVerifiedAt: Date | null;
-      phoneVerifiedAt: Date | null;
       createdAt: Date;
       _count: { reservations: number; bookings: number };
       sessions: Array<{ lastSeenAt: Date }>;
@@ -167,7 +165,6 @@ export class AdminCustomersService {
       preferredLocale: customer.preferredLocale === "en" ? "en" : "ar",
       verification: {
         email: Boolean(customer.emailVerifiedAt),
-        phone: Boolean(customer.phoneVerifiedAt),
       },
       reservationCount: customer._count.reservations,
       bookingCount: customer._count.bookings,
@@ -182,7 +179,8 @@ export function maskEmail(value: string) {
   return `${local.slice(0, 2)}${"*".repeat(Math.max(3, local.length - 2))}@${domain}`;
 }
 
-export function maskPhone(value: string) {
+export function maskPhone(value: string | null) {
+  if (!value) return "—";
   if (value.length < 7) return "***";
   return `${value.slice(0, 3)}${"*".repeat(Math.max(4, value.length - 6))}${value.slice(-3)}`;
 }

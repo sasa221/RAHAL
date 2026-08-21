@@ -62,9 +62,9 @@ export class CreateNotificationCampaignDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(4)
-  @IsIn(["IN_APP", "PUSH", "EMAIL", "WHATSAPP"], { each: true })
-  channels!: Array<"IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP">;
+  @ArrayMaxSize(3)
+  @IsIn(["IN_APP", "PUSH", "EMAIL"], { each: true })
+  channels!: Array<"IN_APP" | "PUSH" | "EMAIL">;
 
   @IsBoolean()
   important!: boolean;

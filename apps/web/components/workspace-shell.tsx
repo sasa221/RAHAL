@@ -192,7 +192,10 @@ export function WorkspaceShell({
     locale,
     kind === "admin" ? "/admin" : isStaff ? "/sales" : "/account/requests",
   );
-  const requestsHref = localizedPath(locale, isStaff ? "/sales" : "/account/requests");
+  const requestsHref = localizedPath(
+    locale,
+    kind === "admin" ? "/admin/requests" : isStaff ? "/sales" : "/account/requests",
+  );
   const fleetHref = localizedPath(
     locale,
     kind === "admin" ? "/admin/fleet" : isStaff ? "/fleet" : "/cars",
@@ -229,7 +232,9 @@ export function WorkspaceShell({
                               : activePage === "security"
                                 ? "/en/account/security"
                                 : kind === "admin"
-                                  ? "/en/admin"
+                                  ? activePage === "requests"
+                                    ? "/en/admin/requests"
+                                    : "/en/admin"
                                   : "/en/sales"
         : activePage === "security"
           ? "/en/account/security"
@@ -266,7 +271,9 @@ export function WorkspaceShell({
                               : activePage === "security"
                                 ? "/account/security"
                                 : kind === "admin"
-                                  ? "/admin"
+                                  ? activePage === "requests"
+                                    ? "/admin/requests"
+                                    : "/admin"
                                   : "/sales"
         : activePage === "security"
           ? "/account/security"
@@ -476,7 +483,10 @@ export function WorkspaceShell({
                   locale={locale}
                 />
               ) : null}
-              <NotificationCenter kind={isStaff ? "sales" : "customer"} locale={locale} />
+              <NotificationCenter
+                kind={kind === "admin" ? "admin" : isStaff ? "sales" : "customer"}
+                locale={locale}
+              />
               <a href={localizedPath(locale)}>{text.publicSite}</a>
               <a href={languageHref}>{text.language}</a>
               <a href={localizedPath(locale, isStaff ? "/account/security" : "/account/profile")}>

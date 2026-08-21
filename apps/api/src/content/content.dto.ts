@@ -4,6 +4,8 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsObject,
+  IsOptional,
   IsString,
   Length,
   ValidateNested,
@@ -35,25 +37,34 @@ export class SiteContentTranslationDto {
 
   @IsString()
   @Length(2, 100)
-  eyebrow!: string;
+  @IsOptional()
+  eyebrow?: string;
 
   @IsString()
   @Length(4, 180)
-  title!: string;
+  @IsOptional()
+  title?: string;
 
   @IsString()
   @Length(20, 1_500)
-  introduction!: string;
+  @IsOptional()
+  introduction?: string;
 
   @IsString()
   @Length(10, 1_000)
-  statement!: string;
+  @IsOptional()
+  statement?: string;
 
   @IsArray()
   @ArrayMaxSize(8)
   @ValidateNested({ each: true })
   @Type(() => SiteContentItemDto)
-  items!: SiteContentItemDto[];
+  @IsOptional()
+  items?: SiteContentItemDto[];
+
+  @IsObject()
+  @IsOptional()
+  document?: Record<string, unknown>;
 }
 
 export class SaveSiteContentDto {

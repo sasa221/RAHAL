@@ -146,7 +146,8 @@ describe("Milestone 2 public home", () => {
     const modelPath = join(root, "apps/web/public/models/rahal-drive-scene.rahal3d");
 
     expect(component).toContain("<CinematicDriveCar locale={locale} />");
-    expect(component).toContain('src="/images/rahal-hero-gem-clean.png"');
+    expect(component).toContain('content.heroMedia?.type === "IMAGE"');
+    expect(component).toContain(': "/images/rahal-hero-gem-clean.png"');
     expect(driveScene).toContain('aria-hidden="true"');
     expect(driveScene).toContain('powerPreference: "high-performance"');
     expect(driveScene).toContain("smokeParticles");

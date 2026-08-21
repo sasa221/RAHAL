@@ -11,7 +11,7 @@ import { PrismaService } from "../database/prisma.service";
 export type AuthUserRecord = {
   id: string;
   email: string;
-  phone: string;
+  phone: string | null;
   passwordHash: string;
   fullNameAr: string | null;
   fullNameEn: string;
@@ -19,7 +19,6 @@ export type AuthUserRecord = {
   systemRole: SystemRole;
   status: UserStatus;
   emailVerifiedAt: Date | null;
-  phoneVerifiedAt: Date | null;
   mustChangePassword: boolean;
   staffMfaCredential: {
     id: string;
@@ -40,7 +39,6 @@ const authUserSelect = {
   systemRole: true,
   status: true,
   emailVerifiedAt: true,
-  phoneVerifiedAt: true,
   mustChangePassword: true,
   staffMfaCredential: {
     select: {
@@ -65,7 +63,7 @@ export class AuthRepository {
 
   createUser(input: {
     email: string;
-    phone: string;
+    phone?: string;
     passwordHash: string;
     fullNameAr?: string;
     fullNameEn: string;
@@ -312,7 +310,7 @@ export class AuthRepository {
         data:
           input.kind === "EMAIL"
             ? { email: input.value, emailVerifiedAt: verifiedAt }
-            : { phone: input.value, phoneVerifiedAt: verifiedAt },
+            : { phone: input.value },
         select: authUserSelect,
       });
       const revoked = await transaction.session.updateMany({
@@ -509,19 +507,16 @@ export class AuthRepository {
     });
   }
 
-  completeVerification(id: string, userId: string, purpose: VerificationPurpose) {
+  completeVerification(id: string, userId: string, _purpose: VerificationPurpose) {
     return this.prisma.client.$transaction(async (transaction) => {
       await transaction.verificationCode.update({ where: { id }, data: { usedAt: new Date() } });
       const verifiedAt = new Date();
       let user = await transaction.user.update({
         where: { id: userId },
-        data:
-          purpose === "VERIFY_EMAIL"
-            ? { emailVerifiedAt: verifiedAt }
-            : { phoneVerifiedAt: verifiedAt },
+        data: { emailVerifiedAt: verifiedAt },
         select: authUserSelect,
       });
-      if (user.status === "PENDING_VERIFICATION" && user.emailVerifiedAt && user.phoneVerifiedAt) {
+      if (user.status === "PENDING_VERIFICATION" && user.emailVerifiedAt) {
         user = await transaction.user.update({
           where: { id: userId },
           data: { status: "ACTIVE" },

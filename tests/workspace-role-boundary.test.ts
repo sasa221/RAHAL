@@ -8,16 +8,30 @@ describe("workspace role boundary", () => {
   it("keeps customer, sales, and admin workspaces strictly separated", () => {
     const boundary = read("apps/web/components/workspace-access-boundary.tsx");
     const shell = read("apps/web/components/workspace-shell.tsx");
+    const contracts = read("packages/contracts/src/index.ts");
 
-    expect(boundary).toContain('if (kind === "customer") return role === "CUSTOMER"');
-    expect(boundary).toContain('if (kind === "sales") return role === "SALES"');
-    expect(boundary).toContain('return role === "ADMIN" || role === "SUPER_ADMIN"');
+    expect(contracts).toContain('customer: ["CUSTOMER"]');
+    expect(contracts).toContain('sales: ["SALES"]');
+    expect(contracts).toContain('admin: ["ADMIN", "SUPER_ADMIN"]');
+    expect(boundary).toContain("roleCanOpenWorkspace(kind, user.role)");
     expect(boundary).toContain("response.status === 401");
     expect(boundary).toContain("This workspace is not assigned to your account");
     expect(boundary).toContain("هذه المساحة ليست مخصّصة لحسابك");
     expect(boundary).toContain('className="workspace-loading"');
     expect(boundary).toContain('aria-busy="true"');
     expect(shell).toContain("<WorkspaceAccessBoundary");
+  });
+
+  it("keeps admin request review inside the admin workspace", () => {
+    const shell = read("apps/web/components/workspace-shell.tsx");
+    const notifications = read("apps/web/components/notification-center.tsx");
+    const adminPage = read("apps/web/app/admin/requests/page.tsx");
+    const englishAdminPage = read("apps/web/app/en/admin/requests/page.tsx");
+
+    expect(shell).toContain('kind === "admin" ? "/admin/requests"');
+    expect(notifications).toContain('kind === "admin" ? "/admin/requests"');
+    expect(adminPage).toContain('workspaceKind="admin"');
+    expect(englishAdminPage).toContain('workspaceKind="admin"');
   });
 
   it("returns every denied role to its own workspace", () => {

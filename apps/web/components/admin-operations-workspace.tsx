@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { localizedPath, type PublicLocale } from "../lib/public-content";
 import { AdminDocumentAccessLedger } from "./admin-document-access-ledger";
 import { WorkspaceShell } from "./workspace-shell";
+import { WorkspaceState } from "./workspace-state";
 
 const copy = {
   en: {
@@ -118,6 +119,9 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
     1,
     ...(overview?.trend.flatMap((point) => [point.submitted, point.completed]) ?? [1]),
   );
+  const hasTrendData = Boolean(
+    overview?.trend.some((point) => point.submitted > 0 || point.completed > 0),
+  );
 
   return (
     <WorkspaceShell activePage="overview" kind="admin" locale={locale}>
@@ -147,15 +151,30 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
           </a>
         </section>
         {loading ? (
-          <div className="ops-state">{text.loading}</div>
+          <WorkspaceState kind="loading" title={text.loading} />
         ) : !overview ? (
-          <div className="ops-state is-error">{text.unavailable}</div>
+          <WorkspaceState
+            action={
+              <button onClick={() => window.location.reload()} type="button">
+                {locale === "ar" ? "إعادة المحاولة" : "Try again"}
+              </button>
+            }
+            description={
+              locale === "ar"
+                ? "تحقق من الاتصال أو صلاحية حساب الإدارة."
+                : "Check the connection or administrator access."
+            }
+            kind="error"
+            title={text.unavailable}
+          />
         ) : (
           <>
             <section className="ops-metrics">
               {overview.metrics.map((metric, index) => (
-                <article
+                <a
                   className={metric.key === "ATTENTION_REQUIRED" ? "is-attention" : ""}
+                  data-metric={metric.key}
+                  href={localizedPath(locale, metric.href)}
                   key={metric.key}
                 >
                   <span>0{index + 1}</span>
@@ -163,7 +182,8 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
                     {metric.value.toLocaleString(locale === "ar" ? "ar-EG" : "en-GB")}
                   </strong>
                   <small>{text.metrics[index]}</small>
-                </article>
+                  <b aria-hidden="true">↗</b>
+                </a>
               ))}
             </section>
             <div className="ops-grid">
@@ -178,21 +198,29 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
                     <span>{text.completed}</span>
                   </div>
                 </header>
-                <div className="ops-chart">
-                  {overview.trend.map((point) => (
-                    <div key={point.date}>
-                      <span
-                        className="is-submitted"
-                        style={{ height: `${Math.max(4, (point.submitted / chartMax) * 100)}%` }}
-                      />
-                      <span
-                        className="is-completed"
-                        style={{ height: `${Math.max(4, (point.completed / chartMax) * 100)}%` }}
-                      />
-                      <small>{new Date(`${point.date}T00:00:00Z`).getUTCDate()}</small>
-                    </div>
-                  ))}
-                </div>
+                {hasTrendData ? (
+                  <div className="ops-chart">
+                    {overview.trend.map((point) => (
+                      <div key={point.date}>
+                        <span
+                          className="is-submitted"
+                          style={{ height: `${Math.max(4, (point.submitted / chartMax) * 100)}%` }}
+                        />
+                        <span
+                          className="is-completed"
+                          style={{ height: `${Math.max(4, (point.completed / chartMax) * 100)}%` }}
+                        />
+                        <small>{new Date(`${point.date}T00:00:00Z`).getUTCDate()}</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="ops-panel-empty">
+                    {locale === "ar"
+                      ? "لا يوجد نشاط طلبات خلال هذه الفترة."
+                      : "No request activity in this period."}
+                  </div>
+                )}
               </section>
               <section className="ops-panel ops-alert-panel">
                 <header>
@@ -237,9 +265,15 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
                   <a href={localizedPath(locale, "/admin/audit")}>{text.audit} →</a>
                 </header>
                 <div className="ops-audit-list">
-                  {overview.recentActivity.map((entry) => (
-                    <AuditRow entry={entry} key={entry.id} locale={locale} />
-                  ))}
+                  {overview.recentActivity.length ? (
+                    overview.recentActivity.map((entry) => (
+                      <AuditRow entry={entry} key={entry.id} locale={locale} />
+                    ))
+                  ) : (
+                    <div className="ops-panel-empty">
+                      {locale === "ar" ? "لا يوجد نشاط مسجل بعد." : "No recorded activity yet."}
+                    </div>
+                  )}
                 </div>
               </section>
               <section className="ops-panel ops-fleet-panel">
@@ -250,13 +284,21 @@ export function AdminOperationsWorkspace({ locale }: { locale: PublicLocale }) {
                   </div>
                 </header>
                 <div>
-                  {overview.fleet.map((item) => (
-                    <article key={item.status}>
-                      <span>{titleCase(item.status)}</span>
-                      <strong>{item.count}</strong>
-                      <i style={{ width: `${Math.min(100, item.count * 12)}%` }} />
-                    </article>
-                  ))}
+                  {overview.fleet.length ? (
+                    overview.fleet.map((item) => (
+                      <article key={item.status}>
+                        <span>{titleCase(item.status)}</span>
+                        <strong>{item.count}</strong>
+                        <i style={{ width: `${Math.min(100, item.count * 12)}%` }} />
+                      </article>
+                    ))
+                  ) : (
+                    <div className="ops-panel-empty">
+                      {locale === "ar"
+                        ? "لم تُضف سيارات للأسطول بعد."
+                        : "No vehicles have been added yet."}
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

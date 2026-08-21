@@ -64,7 +64,6 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
           inAppEnabled: true,
           pushEnabled: true,
           emailEnabled: true,
-          whatsappEnabled: true,
           quietHoursStart: null,
           quietHoursEnd: null,
         };
@@ -82,9 +81,6 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
           (requestedChannels.has("EMAIL") &&
             preference.emailEnabled &&
             Boolean(notification.user.emailVerifiedAt)) ||
-          (requestedChannels.has("WHATSAPP") &&
-            preference.whatsappEnabled &&
-            Boolean(notification.user.phoneVerifiedAt)) ||
           (requestedChannels.has("PUSH") &&
             preference.pushEnabled &&
             notification.user.pushSubscriptions.length > 0);
@@ -116,16 +112,6 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
             ),
           );
           if (!result) failures.push("EMAIL");
-        }
-        if (
-          requestedChannels.has("WHATSAPP") &&
-          preference.whatsappEnabled &&
-          notification.user.phoneVerifiedAt
-        ) {
-          const result = await this.recordChannel(notification.id, "WHATSAPP", () =>
-            this.sendWhatsApp(notification.user.phone, title, body, locale),
-          );
-          if (!result) failures.push("WHATSAPP");
         }
         if (
           requestedChannels.has("PUSH") &&
@@ -178,7 +164,7 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
 
   private async recordChannel(
     notificationId: string,
-    channel: "IN_APP" | "PUSH" | "EMAIL" | "WHATSAPP",
+    channel: "IN_APP" | "PUSH" | "EMAIL",
     deliver: () => Promise<{ providerId?: string }>,
   ) {
     const row = await this.notifications.upsertDelivery(notificationId, channel);
@@ -245,44 +231,6 @@ export class NotificationOutboxService implements OnModuleInit, OnModuleDestroy 
     return { providerId: result.id };
   }
 
-  private async sendWhatsApp(phone: string, title: string, body: string, locale: "ar" | "en") {
-    const provider = this.config.verificationWhatsApp;
-    if (!provider?.notificationTemplateName) {
-      throw new Error("WhatsApp notification template is not configured.");
-    }
-    const response = await fetch(
-      `https://graph.facebook.com/${provider.graphApiVersion}/${provider.phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${provider.accessToken}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: phone.replace(/^\+/, ""),
-          type: "template",
-          template: {
-            name: provider.notificationTemplateName,
-            language: { code: locale === "ar" ? "ar" : "en_US" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  { type: "text", text: title.slice(0, 120) },
-                  { type: "text", text: body.slice(0, 500) },
-                ],
-              },
-            ],
-          },
-        }),
-      },
-    );
-    if (!response.ok) throw new Error(`WhatsApp provider returned HTTP ${response.status}.`);
-    const result = (await response.json()) as { messages?: Array<{ id?: string }> };
-    return { providerId: result.messages?.[0]?.id };
-  }
-
   private async sendPush(
     userId: string,
     subscriptions: Array<{ id: string; subscriptionCiphertext: string | null }>,
@@ -336,7 +284,7 @@ function stringValue(value: unknown) {
 }
 
 function channelSet(value: unknown) {
-  const allowed = new Set(["IN_APP", "PUSH", "EMAIL", "WHATSAPP"]);
+  const allowed = new Set(["IN_APP", "PUSH", "EMAIL"]);
   const requested = Array.isArray(value)
     ? value.filter(
         (channel): channel is string => typeof channel === "string" && allowed.has(channel),

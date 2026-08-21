@@ -154,7 +154,7 @@ Expired alternative offers must return to sales review automatically. Expired pr
 
 ## Security and privacy requirements
 
-- Email and phone verification are both required before reservation submission.
+- Email verification is required before reservation submission; phone is optional contact data and is never OTP-verified.
 - Use HTTP-only same-site browser sessions or an equivalent secure server-managed session design.
 - Rate-limit authentication, OTP, password reset, verification resend, and document access.
 - Use a memory-hard password-hashing algorithm.
@@ -173,7 +173,7 @@ Supported channels:
 - In-app.
 - Web/mobile push.
 - Transactional email.
-- Official WhatsApp Business Platform API.
+- Manual company/branch WhatsApp contact links (`wa.me`) only; no automated WhatsApp delivery.
 
 Use an outbox/queue design. Persist event, channel, recipient, localized template version, delivery attempts, provider IDs, and provider webhook results where applicable.
 

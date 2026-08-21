@@ -5,7 +5,7 @@ import type { FullConfig } from "@playwright/test";
 import type { createPrismaClient as CreatePrismaClientFactory } from "@rahal/database";
 import { fixtureIds, sessionToken, storageStatePath, type E2eRole } from "./fixture-data";
 
-const roles: E2eRole[] = ["customer", "sales", "rival-sales", "admin"];
+const roles: E2eRole[] = ["customer", "sales", "rival-sales", "admin", "super-admin"];
 type E2ePrismaClient = ReturnType<typeof CreatePrismaClientFactory>;
 
 export default async function globalSetup(config: FullConfig) {
@@ -37,6 +37,37 @@ export default async function globalSetup(config: FullConfig) {
     if (vehicleBySlug.size !== 4 || !branch || !salesRole) {
       throw new Error("Run the Rahal database seed before the authenticated browser suite.");
     }
+
+    await prisma.branch.upsert({
+      where: { id: "e2e-public-branch" },
+      update: {
+        nameAr: "فرع رحال القاهرة للاختبار",
+        nameEn: "Rahal Cairo QA Branch",
+        addressAr: "القاهرة، مصر",
+        addressEn: "Cairo, Egypt",
+        phones: ["+201000000001"],
+        whatsappNumbers: ["+201000000002"],
+        whatsappVisible: true,
+        whatsappMessageAr: "مرحبًا، أريد التواصل مع فرع رحال.",
+        whatsappMessageEn: "Hello, I would like to contact the Rahal branch.",
+        workingHours: { saturdayToThursday: "09:00-21:00", friday: "14:00-21:00" },
+        active: true,
+      },
+      create: {
+        id: "e2e-public-branch",
+        nameAr: "فرع رحال القاهرة للاختبار",
+        nameEn: "Rahal Cairo QA Branch",
+        addressAr: "القاهرة، مصر",
+        addressEn: "Cairo, Egypt",
+        phones: ["+201000000001"],
+        whatsappNumbers: ["+201000000002"],
+        whatsappVisible: true,
+        whatsappMessageAr: "مرحبًا، أريد التواصل مع فرع رحال.",
+        whatsappMessageEn: "Hello, I would like to contact the Rahal branch.",
+        workingHours: { saturdayToThursday: "09:00-21:00", friday: "14:00-21:00" },
+        active: true,
+      },
+    });
 
     for (const project of config.projects) {
       const vehicle = vehicleBySlug.get(
@@ -81,7 +112,14 @@ async function prepareProjectFixtures(
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
   for (const [index, role] of roles.entries()) {
-    const systemRole = role === "customer" ? "CUSTOMER" : role === "admin" ? "ADMIN" : "SALES";
+    const systemRole =
+      role === "customer"
+        ? "CUSTOMER"
+        : role === "admin"
+          ? "ADMIN"
+          : role === "super-admin"
+            ? "SUPER_ADMIN"
+            : "SALES";
     const userId = ids.users[role];
     const email = `${userId}@example.test`;
     const phone = `+20110000${projectName.includes("mobile") ? "1" : "2"}${index}0`;
@@ -95,7 +133,7 @@ async function prepareProjectFixtures(
         systemRole,
         status: "ACTIVE",
         emailVerifiedAt: verifiedAt,
-        phoneVerifiedAt: verifiedAt,
+        phoneVerifiedAt: null,
         mustChangePassword: false,
         staffRoleId: systemRole === "SALES" ? salesRoleId : null,
       },
@@ -108,7 +146,7 @@ async function prepareProjectFixtures(
         systemRole,
         status: "ACTIVE",
         emailVerifiedAt: verifiedAt,
-        phoneVerifiedAt: verifiedAt,
+        phoneVerifiedAt: null,
         preferredLocale: "en",
         staffRoleId: systemRole === "SALES" ? salesRoleId : null,
       },

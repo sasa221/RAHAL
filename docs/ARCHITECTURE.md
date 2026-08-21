@@ -49,9 +49,9 @@ Use the existing choices unless an ADR changes them:
 - Email: Brevo is the primary transactional adapter, with Resend fallback. A verified Rahal
   domain remains required before the final production launch; staging may use a verified
   single-sender address whose provider-managed rewrite is accepted explicitly.
-- WhatsApp: official Meta WhatsApp Business Platform Cloud API for production notifications and
-  authentication templates. Staging phone verification may use Twilio Verify's WhatsApp channel;
-  Twilio owns code generation and approval, while Rahal stores only an expiring provider marker.
+- WhatsApp is deliberately outside the automated delivery architecture. Administrators manage
+  normalized company/branch contact numbers and bilingual opener text; public `wa.me` links open an
+  external conversation. Email is the only account-verification and recovery channel.
 - Tests: Vitest for unit/integration and browser-controlled acceptance checks.
 - Password hashing: Node.js memory-hard scrypt.
 - Session storage: secure HTTP-only cookies with server-side session records and refresh rotation.
@@ -171,9 +171,9 @@ globals, including desktop-mode iPad user agents. Browser-tab users receive conc
 Home Screen instructions; the permission request is attempted only after the installed standalone
 app is opened.
 
-The Twilio Verify adapter is deliberately scoped to phone verification and does not send general
-notification-outbox events. It calls the Verify start/check endpoints instead of repurposing a
-Sandbox content template. Trial accounts can reach only recipient numbers verified with Twilio.
+Automated phone verification, Meta Cloud API, Twilio Verify WhatsApp, WhatsApp templates and
+delivery webhooks are not part of the product. Legacy database enum values remain read-only during
+a phased migration and cannot be created by the API.
 The verified Meta adapter remains the production path for both authentication and approved
 notification templates.
 
@@ -244,7 +244,7 @@ and verifies the contact, preserves only the current session, revokes other acti
 audits channel plus revocation count without old or new contact values. Existing reservation
 snapshots remain unchanged.
 
-Sensitive profile audit events contain the names of changed fields, not their previous or new values. Communication preferences are less sensitive and use a bounded before/after audit record. In-app remains an essential operational channel. Email, WhatsApp, Push, marketing consent, and quiet hours are stored independently; delivery workers must read these settings before creating optional external attempts. Important legally or operationally required behavior still needs approved policy before provider rollout.
+Sensitive profile audit events contain the names of changed fields, not their previous or new values. Communication preferences are less sensitive and use a bounded before/after audit record. In-app remains an essential operational channel. Email, Push, marketing consent, and quiet hours are stored independently; delivery workers must read these settings before creating optional external attempts. Important legally or operationally required behavior still needs approved policy before provider rollout.
 
 ## Administrator customer-control architecture
 

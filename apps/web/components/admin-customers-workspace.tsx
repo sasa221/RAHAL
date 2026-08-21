@@ -46,7 +46,6 @@ const copy = {
     marketing: "تسويق",
     inApp: "داخل الموقع",
     push: "إشعار جهاز",
-    whatsapp: "واتساب",
     changeStatus: "إدارة حالة الحساب",
     activate: "إعادة التفعيل",
     suspend: "إيقاف مؤقت",
@@ -101,7 +100,6 @@ const copy = {
     marketing: "Marketing",
     inApp: "In-app",
     push: "Device push",
-    whatsapp: "WhatsApp",
     changeStatus: "Manage account status",
     activate: "Reactivate",
     suspend: "Suspend temporarily",
@@ -334,7 +332,6 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
               </header>
               <div className="customer-card__signal">
                 <span className={customer.verification.email ? "is-on" : ""}>@ {text.email}</span>
-                <span className={customer.verification.phone ? "is-on" : ""}>✓ {text.phone}</span>
               </div>
               <dl>
                 <div>
@@ -431,7 +428,6 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
                       [text.inApp, selected.preferences.inApp],
                       [text.push, selected.preferences.push],
                       [text.email, selected.preferences.email],
-                      [text.whatsapp, selected.preferences.whatsapp],
                       [text.marketing, selected.preferences.marketing],
                     ].map(([label, enabled]) => (
                       <span className={enabled ? "is-on" : ""} key={String(label)}>
@@ -450,7 +446,7 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
                     {selected.recentReservations.length ? (
                       selected.recentReservations.map((request) => (
                         <a
-                          href={`${locale === "en" ? "/en" : ""}/sales?request=${request.id}`}
+                          href={`${locale === "en" ? "/en" : ""}/admin/requests?request=${request.id}`}
                           key={request.id}
                         >
                           <span>

@@ -361,58 +361,64 @@ export async function PublicHome({ locale }: PublicHomeProps) {
 
       <main className="public-home-main" id="main-content">
         <CinematicDriveCar locale={locale} />
-        <section className="hero" data-scroll-scene id="top">
-          <Image
-            alt=""
-            className="hero__image"
-            fill
-            priority
-            sizes="100vw"
-            src="/images/rahal-hero-gem-clean.png"
-          />
-          <div className="hero__overlay" />
-          <div className="hero__grain" aria-hidden="true" />
-          <div className="hero__motion-grid" aria-hidden="true" />
-          <div className="hero__light-trails" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="hero__road-signal" aria-hidden="true">
-            <span />
-          </div>
-          <span className="hero__orb hero__orb--one" aria-hidden="true" />
-          <span className="hero__orb hero__orb--two" aria-hidden="true" />
-          <div className="hero__edition" aria-hidden="true">
-            <span>01</span>
-            <span>{locale === "ar" ? "رحال · مصر" : "RAHAL · EGYPT"}</span>
-          </div>
-          <div className="container hero__content">
-            <span className="eyebrow eyebrow--light">{content.heroEyebrow}</span>
-            <h1>{content.heroTitle}</h1>
-            <p>{content.heroCopy}</p>
-            <div className="hero__actions">
-              <a className="button button--gold" href={localizedPath(locale, "/cars")}>
-                {content.heroPrimary}
-                <Icon name="arrow" size={18} />
-              </a>
-              <a className="button button--glass" href="#process">
-                {content.heroSecondary}
-              </a>
+        {content.heroVisible ? (
+          <section className="hero" data-scroll-scene id="top">
+            <Image
+              alt={content.heroMedia?.alt ?? ""}
+              className="hero__image"
+              fill
+              priority
+              sizes="100vw"
+              src={
+                content.heroMedia?.type === "IMAGE"
+                  ? content.heroMedia.url
+                  : "/images/rahal-hero-gem-clean.png"
+              }
+            />
+            <div className="hero__overlay" />
+            <div className="hero__grain" aria-hidden="true" />
+            <div className="hero__motion-grid" aria-hidden="true" />
+            <div className="hero__light-trails" aria-hidden="true">
+              <i />
+              <i />
+              <i />
             </div>
-            <div className="hero__badge">
-              <Icon name="shield" size={18} />
-              {content.heroBadge}
+            <div className="hero__road-signal" aria-hidden="true">
+              <span />
             </div>
-            <div className="hero__telemetry" aria-hidden="true">
-              <span className="hero__telemetry-ring">R</span>
-              <div>
-                <strong>{locale === "ar" ? "المشهد يتحرك معاك" : "DRIVE THE EXPERIENCE"}</strong>
-                <span>{locale === "ar" ? "رحال · القاهرة · 01" : "RAHAL · CAIRO · 01"}</span>
+            <span className="hero__orb hero__orb--one" aria-hidden="true" />
+            <span className="hero__orb hero__orb--two" aria-hidden="true" />
+            <div className="hero__edition" aria-hidden="true">
+              <span>01</span>
+              <span>{locale === "ar" ? "رحال · مصر" : "RAHAL · EGYPT"}</span>
+            </div>
+            <div className="container hero__content">
+              <span className="eyebrow eyebrow--light">{content.heroEyebrow}</span>
+              <h1>{content.heroTitle}</h1>
+              <p>{content.heroCopy}</p>
+              <div className="hero__actions">
+                <a className="button button--gold" href={content.heroPrimaryHref}>
+                  {content.heroPrimary}
+                  <Icon name="arrow" size={18} />
+                </a>
+                <a className="button button--glass" href={content.heroSecondaryHref}>
+                  {content.heroSecondary}
+                </a>
+              </div>
+              <div className="hero__badge">
+                <Icon name="shield" size={18} />
+                {content.heroBadge}
+              </div>
+              <div className="hero__telemetry" aria-hidden="true">
+                <span className="hero__telemetry-ring">R</span>
+                <div>
+                  <strong>{locale === "ar" ? "المشهد يتحرك معاك" : "DRIVE THE EXPERIENCE"}</strong>
+                  <span>{locale === "ar" ? "رحال · القاهرة · 01" : "RAHAL · CAIRO · 01"}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         <div className="home-search-stage">
           <div className="container">

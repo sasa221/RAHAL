@@ -120,6 +120,32 @@ test("mobile navigation opens, exposes links, and closes", async ({ page }, test
   await expect(page.locator(".mobile-menu nav a").first()).not.toBeVisible();
 });
 
+test("manual branch WhatsApp contact is built only from published branch data", async ({
+  page,
+}) => {
+  const branchResponse = await page.request.get("/api/branches");
+  expect(branchResponse.status()).toBe(200);
+  const branches = (await branchResponse.json()).data as Array<{
+    whatsappNumbers: string[];
+    whatsappVisible?: boolean;
+    whatsappMessageEn?: string | null;
+  }>;
+  const branch = branches.find(
+    (item) => item.whatsappVisible !== false && item.whatsappNumbers.length > 0,
+  );
+  expect(branch).toBeTruthy();
+
+  await page.goto("/en/contact", { waitUntil: "domcontentloaded" });
+  const digits = branch!.whatsappNumbers[0]!.replace(/\D/g, "");
+  const expected = `https://wa.me/${digits}${
+    branch!.whatsappMessageEn ? `?text=${encodeURIComponent(branch!.whatsappMessageEn)}` : ""
+  }`;
+  const link = page.locator(`a[href="${expected}"]`).first();
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link).toHaveAttribute("rel", /noreferrer/);
+});
+
 for (const path of protectedRoutes) {
   test(`${path} rejects an anonymous browser`, async ({ page }) => {
     const runtime = observeRuntimeErrors(page);

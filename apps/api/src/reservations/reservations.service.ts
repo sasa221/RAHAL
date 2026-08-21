@@ -38,6 +38,7 @@ import type {
 } from "@rahal/contracts";
 import { basename } from "node:path";
 import { AuthService } from "../auth/auth.service";
+import { loadApiConfig } from "../config";
 import { StaffAccessService } from "../staff/staff-access.service";
 import { DocumentScanService } from "./document-scan.service";
 import { PrivateDocumentStorage } from "./private-document-storage";
@@ -136,7 +137,7 @@ export class ReservationsService {
       customerId: session.user.id,
       fullName: session.user.fullName,
       email: session.user.email,
-      phone: session.user.phone,
+      phone: session.user.phone ?? "",
       nationality: input.nationality.trim(),
       customerCategory: input.customerCategory,
       address: input.address.trim(),
@@ -244,7 +245,6 @@ export class ReservationsService {
               document: {
                 id: document.id,
                 type: document.type as ReservationDocumentType,
-                originalName: document.originalName,
                 mimeType: document.mimeType,
                 sizeBytes: document.sizeBytes,
                 status: document.status as "UPLOADED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED",
@@ -258,6 +258,10 @@ export class ReservationsService {
       draftId,
       reference: draft.reference,
       developmentRules: true,
+      uploadsEnabled: loadApiConfig().protectedDocumentUploadsEnabled,
+      uploadUnavailableReason: loadApiConfig().protectedDocumentUploadsEnabled
+        ? null
+        : "Protected document upload is unavailable in this delivery environment until private S3 storage and malware scanning are approved.",
       requirements,
       complete: requirements.every((requirement) => requirement.uploaded),
     };
@@ -269,6 +273,7 @@ export class ReservationsService {
     type: string,
     file: { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined,
   ) {
+    this.assertProtectedUploadsEnabled();
     const { session, draft } = await this.getDocumentContext(token, draftId);
     if (!file?.buffer?.length) throw new BadRequestException("A document file is required.");
     const rules = await this.reservations.findDocumentRequirementRules(
@@ -400,7 +405,6 @@ export class ReservationsService {
     );
     const blockers: ReservationSubmissionBlocker[] = [];
     if (!session.user.emailVerified) blockers.push("EMAIL_VERIFICATION_REQUIRED");
-    if (!session.user.phoneVerified) blockers.push("PHONE_VERIFICATION_REQUIRED");
     if (!draft.customerDetailsCompletedAt) blockers.push("CUSTOMER_DETAILS_REQUIRED");
     if (!requiredAccepted) blockers.push("REQUIRED_CONSENTS_REQUIRED");
     if (!approvedPolicy) blockers.push("APPROVED_POLICY_REQUIRED");
@@ -442,7 +446,6 @@ export class ReservationsService {
       },
       verification: {
         email: session.user.emailVerified,
-        phone: session.user.phoneVerified,
       },
       documents,
       consents: {
@@ -525,6 +528,7 @@ export class ReservationsService {
       ...toSalesQueueItem(record, session.user.id, locale),
       canReviewDocuments:
         session.user.role !== "SALES" || record.assignedSalesId === session.user.id,
+      protectedUploadsEnabled: loadApiConfig().protectedDocumentUploadsEnabled,
       customer: {
         name: record.customerNameSnapshot ?? "Customer",
         emailMasked: maskEmail(record.customerEmailSnapshot ?? record.customer.email),
@@ -539,7 +543,6 @@ export class ReservationsService {
       },
       verification: {
         email: Boolean(record.customer.emailVerifiedAt),
-        phone: Boolean(record.customer.phoneVerifiedAt),
       },
       consents: { policyVersion: record.termsVersion, requiredAccepted },
       documents: record.documents.map((document) => ({
@@ -869,6 +872,7 @@ export class ReservationsService {
     reservationId: string,
     file: { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined,
   ): Promise<SalesSignedContractResult> {
+    this.assertProtectedUploadsEnabled();
     const session = await this.requireStaffPermission(token, "deposits.record");
     if (!file) throw new BadRequestException("A signed contract PDF is required.");
     if (file.mimetype !== "application/pdf" || !matchesFileSignature(file.mimetype, file.buffer)) {
@@ -1200,6 +1204,14 @@ export class ReservationsService {
     return { session, draft: { ...draft, customerCategorySnapshot: customerCategory } };
   }
 
+  private assertProtectedUploadsEnabled() {
+    if (!loadApiConfig().protectedDocumentUploadsEnabled) {
+      throw new ServiceUnavailableException(
+        "Protected uploads are disabled in this delivery environment until private S3 storage and malware scanning are approved.",
+      );
+    }
+  }
+
   private async requireStaffPermission(
     token: string | undefined,
     permission: import("@rahal/contracts").StaffPermissionKey,
@@ -1246,7 +1258,8 @@ function maskEmail(value: string) {
   return `${name?.slice(0, 2) || "**"}***@${domain ?? "***"}`;
 }
 
-function maskPhone(value: string) {
+function maskPhone(value: string | null) {
+  if (!value) return "—";
   return `${value.slice(0, 3)}••••${value.slice(-4)}`;
 }
 

@@ -18,8 +18,9 @@ describe("sales review workspace", () => {
     expect(read("apps/web/app/en/sales/page.tsx")).toContain('locale="en"');
     expect(workspace).toContain('dir={locale === "ar" ? "rtl" : "ltr"}');
     expect(workspace).toContain(
-      '<WorkspaceShell activePage="requests" kind="sales" locale={locale}>',
+      '<WorkspaceShell activePage="requests" kind={workspaceKind} locale={locale}>',
     );
+    expect(workspace).toContain('workspaceKind = "sales"');
     expect(workspace).toContain('className="portal-metrics"');
     expect(shell).toContain('className="portal-sidebar"');
   });

@@ -608,6 +608,26 @@ describe("reservation draft service", () => {
     expect(remove).not.toHaveBeenCalled();
   });
 
+  it("blocks protected document writes when delivery storage and scanning are disabled", async () => {
+    vi.stubEnv("RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED", "false");
+    const put = vi.fn();
+    const service = new ReservationsService({} as never, {} as never, { put } as never);
+
+    try {
+      await expect(
+        service.uploadSignedContract("session-token", "reservation-1", {
+          originalname: "signed-contract.pdf",
+          mimetype: "application/pdf",
+          size: 20,
+          buffer: Buffer.from("%PDF-signed-contract"),
+        }),
+      ).rejects.toThrow("Protected uploads are disabled in this delivery environment");
+      expect(put).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("rejects invalid signed-contract bytes before protected storage", async () => {
     const put = vi.fn();
     const service = new ReservationsService(

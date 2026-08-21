@@ -252,7 +252,7 @@ export function AdminDocumentAccessLedger({ locale }: { locale: PublicLocale }) 
                     <dd>
                       {entry.reservationReference}
                       <a
-                        href={`${localizedPath(locale, "/sales")}?request=${encodeURIComponent(
+                        href={`${localizedPath(locale, "/admin/requests")}?request=${encodeURIComponent(
                           entry.reservationId,
                         )}`}
                       >

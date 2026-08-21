@@ -18,6 +18,8 @@ const copy = {
     directions: "افتح الموقع على الخريطة",
     regular: "السبت إلى الخميس",
     friday: "الجمعة",
+    closed: "مغلق",
+    services: "الخدمات المتاحة",
     directory: "بيانات التواصل المعتمدة",
   },
   en: {
@@ -32,6 +34,8 @@ const copy = {
     directions: "Open map directions",
     regular: "Saturday to Thursday",
     friday: "Friday",
+    closed: "Closed",
+    services: "Available services",
     directory: "Approved contact details",
   },
 } as const;
@@ -153,6 +157,28 @@ function BranchDetails({ branch, locale }: { branch: BranchSummary; locale: Publ
             </div>
           </dl>
         ) : null}
+        {branch.email ? (
+          <a className="branch-contact-email" href={`mailto:${branch.email}`}>
+            {branch.email}
+          </a>
+        ) : null}
+        {branch.services?.length ? (
+          <div className="branch-public-services">
+            <strong>{text.services}</strong>
+            {branch.services.map((service) => (
+              <span key={service}>{service.replaceAll("_", " ")}</span>
+            ))}
+          </div>
+        ) : null}
+        {branch.socialLinks?.length ? (
+          <div className="branch-public-socials">
+            {branch.socialLinks.map((social) => (
+              <a href={social.url} key={social.id} rel="noreferrer" target="_blank">
+                {social.platform}
+              </a>
+            ))}
+          </div>
+        ) : null}
         <BranchActions branch={branch} locale={locale} />
       </div>
     </article>
@@ -162,7 +188,8 @@ function BranchDetails({ branch, locale }: { branch: BranchSummary; locale: Publ
 function BranchActions({ branch, locale }: { branch: BranchSummary; locale: PublicLocale }) {
   const text = copy[locale];
   const phone = branch.phones[0];
-  const whatsapp = branch.whatsappNumbers[0];
+  const whatsapp = branch.whatsappNumber ?? branch.whatsappNumbers[0];
+  const whatsappMessage = locale === "ar" ? branch.whatsappMessageAr : branch.whatsappMessageEn;
   const mapUrl =
     branch.latitude !== null && branch.longitude !== null
       ? `https://www.google.com/maps/search/?api=1&query=${branch.latitude},${branch.longitude}`
@@ -175,10 +202,12 @@ function BranchActions({ branch, locale }: { branch: BranchSummary; locale: Publ
           {text.call}
         </a>
       ) : null}
-      {whatsapp ? (
+      {branch.whatsappVisible !== false && whatsapp ? (
         <a
           className="button button--whatsapp"
-          href={`https://wa.me/${dialValue(whatsapp)}`}
+          href={`https://wa.me/${dialValue(whatsapp)}${
+            whatsappMessage ? `?text=${encodeURIComponent(whatsappMessage)}` : ""
+          }`}
           rel="noreferrer"
           target="_blank"
         >
@@ -226,6 +255,32 @@ function dialValue(value: string) {
 }
 
 function readHours(value: Record<string, unknown>) {
+  if (Array.isArray(value.weekly)) {
+    const weekly = value.weekly.flatMap((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+      const row = item as Record<string, unknown>;
+      return typeof row.day === "string"
+        ? [
+            {
+              day: row.day,
+              closed: Boolean(row.closed),
+              opensAt: typeof row.opensAt === "string" ? row.opensAt : null,
+              closesAt: typeof row.closesAt === "string" ? row.closesAt : null,
+            },
+          ]
+        : [];
+    });
+    const regular = weekly.find((day) => day.day !== "FRIDAY" && !day.closed);
+    const friday = weekly.find((day) => day.day === "FRIDAY");
+    return {
+      regular: regular ? `${regular.opensAt}–${regular.closesAt}` : "",
+      friday: friday
+        ? friday.closed
+          ? "Closed / مغلق"
+          : `${friday.opensAt}–${friday.closesAt}`
+        : "",
+    };
+  }
   return {
     regular: typeof value.regular === "string" ? value.regular : "",
     friday: typeof value.friday === "string" ? value.friday : "",

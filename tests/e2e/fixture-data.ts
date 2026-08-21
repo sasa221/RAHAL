@@ -1,4 +1,4 @@
-export type E2eRole = "customer" | "sales" | "rival-sales" | "admin";
+export type E2eRole = "customer" | "sales" | "rival-sales" | "admin" | "super-admin";
 
 export function fixtureKey(projectName: string) {
   return projectName.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
@@ -18,6 +18,7 @@ export function fixtureIds(projectName: string) {
       sales: `e2e-sales-${key}`,
       "rival-sales": `e2e-rival-sales-${key}`,
       admin: `e2e-admin-${key}`,
+      "super-admin": `e2e-super-admin-${key}`,
     } satisfies Record<E2eRole, string>,
   };
 }

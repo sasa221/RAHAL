@@ -230,6 +230,13 @@ const staffPermissions = [
   ["perm-fleet-view", "fleet.view", "Fleet", "View the private fleet calendar"],
   ["perm-fleet-manage", "fleet.manage", "Fleet", "Manage fleet blocks"],
   ["perm-vehicles-manage", "vehicles.manage", "Fleet", "Manage vehicle registry"],
+  ["perm-content-edit", "content.edit", "Content", "Edit public website content drafts"],
+  ["perm-content-publish", "content.publish", "Content", "Publish public website content"],
+  ["perm-branches-view", "branches.view", "Branches", "View branch management"],
+  ["perm-branches-edit", "branches.edit", "Branches", "Edit branch details"],
+  ["perm-branches-create", "branches.create", "Branches", "Create branch drafts"],
+  ["perm-branches-disable", "branches.disable", "Branches", "Disable active branches"],
+  ["perm-branches-delete", "branches.delete", "Branches", "Delete unreferenced branches"],
   ["perm-staff-manage", "staff.manage", "Administration", "Manage staff accounts"],
   ["perm-audit-view", "audit.view", "Administration", "View audit records"],
   [

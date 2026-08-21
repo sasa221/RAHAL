@@ -8,6 +8,7 @@ describe("staff roles, permissions, and audit", () => {
   const service = read("apps/api/src/staff/staff.service.ts");
   const repository = read("apps/api/src/staff/staff.repository.ts");
   const access = read("apps/api/src/staff/staff-access.service.ts");
+  const matrix = read("apps/api/src/staff/staff-role-matrix.ts");
   const reservations = read("apps/api/src/reservations/reservations.service.ts");
   const fleet = read("apps/api/src/fleet/fleet.service.ts");
   const workspace = read("apps/web/components/staff-management-workspace.tsx");
@@ -20,7 +21,10 @@ describe("staff roles, permissions, and audit", () => {
     expect(migration).toContain("'bookings.confirm'");
     expect(migration).toContain("'staff.manage'");
     expect(migration).toContain('"User"."staffRoleId" IS NULL');
-    expect(access).toContain("override ? override.allowed");
+    expect(access).toContain("? override.allowed");
+    expect(matrix).toContain("ADMIN_BASE_PERMISSIONS");
+    expect(matrix).toContain('"staff.manage"');
+    expect(access).toContain("systemRoleAllows(session.user.role, permission)");
   });
 
   it("enforces permissions on every sensitive sales workflow group", () => {

@@ -4,12 +4,18 @@ import type {
   ApiSuccess,
   ManagedSiteContent,
   SiteContentAdminOverview,
+  SiteContentDocument,
   SiteContentKey,
   SiteContentTranslation,
 } from "@rahal/contracts";
 import { useEffect, useMemo, useState } from "react";
 import type { PublicLocale } from "../lib/public-content";
 import { WorkspaceShell } from "./workspace-shell";
+import {
+  createContentDocument,
+  TypedContentEditor,
+  TypedContentPreview,
+} from "./typed-content-editors";
 
 const sectionLabels: Record<SiteContentKey, { ar: string; en: string }> = {
   HOME_HERO: { ar: "واجهة الصفحة الرئيسية", en: "Home hero" },
@@ -57,6 +63,8 @@ const copy = {
     unavailable: "لا يمكن الوصول إلى مركز المحتوى بهذا الحساب.",
     publishGuard: "احفظ مسودة عربية وإنجليزية كاملة قبل النشر.",
     publishedAt: "آخر نشر",
+    discard: "لديك تعديلات غير محفوظة. هل تريد تجاهلها؟",
+    publishConfirm: "هل أنت متأكد من نشر المسودة العربية والإنجليزية للعامة الآن؟",
   },
   en: {
     eyebrow: "RAHAL / CONTENT STUDIO",
@@ -93,6 +101,8 @@ const copy = {
     unavailable: "This account cannot access the content studio.",
     publishGuard: "Save a complete Arabic and English draft before publishing.",
     publishedAt: "Last published",
+    discard: "You have unsaved changes. Discard them?",
+    publishConfirm: "Publish the current Arabic and English drafts to the public website now?",
   },
 } as const;
 
@@ -113,22 +123,19 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<"SAVE" | "PUBLISH" | null>(null);
   const [feedback, setFeedback] = useState<"SAVED" | "PUBLISHED" | "FAILED" | null>(null);
+  const [dirty, setDirty] = useState(false);
 
   const selected = overview?.entries.find((entry) => entry.key === selectedKey);
   const activeTranslation =
     translations.find((translation) => translation.locale === editorLocale) ??
     emptyTranslation(editorLocale);
-  const complete = translations.every(
-    (translation) =>
-      translation.eyebrow.trim().length >= 2 &&
-      translation.title.trim().length >= 4 &&
-      translation.introduction.trim().length >= 20 &&
-      translation.statement.trim().length >= 10 &&
-      translation.items.every(
-        (item) => item.title.trim().length >= 2 && item.body.trim().length >= 10,
-      ),
+  const activeDocument =
+    activeTranslation.document ??
+    createContentDocument(selectedKey, editorLocale, activeTranslation);
+  const complete = translations.every((translation) => Boolean(translation.document));
+  const canPublish = Boolean(
+    overview?.permissions.publish && selected?.schemaVersion === 2 && complete && !dirty,
   );
-  const itemLimit = selectedKey === "HOME_HERO" ? 0 : selectedKey === "HOME_TRUST" ? 3 : 8;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -148,14 +155,30 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
 
   useEffect(() => {
     const entry = overview?.entries.find((candidate) => candidate.key === selectedKey);
-    setTranslations(
+    const source =
       entry?.translations.length === 2
         ? entry.translations.map(cloneTranslation)
-        : [emptyTranslation("ar"), emptyTranslation("en")],
+        : [emptyTranslation("ar"), emptyTranslation("en")];
+    setTranslations(
+      source.map((translation) => ({
+        ...translation,
+        schemaVersion: 2,
+        document: createContentDocument(selectedKey, translation.locale, translation),
+      })),
     );
     setReason("");
     setFeedback(null);
+    setDirty(false);
   }, [overview, selectedKey]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const sections = useMemo(
     () => overview?.supportedKeys ?? (Object.keys(sectionLabels) as SiteContentKey[]),
@@ -163,6 +186,7 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
   );
 
   function updateTranslation(patch: Partial<SiteContentTranslation>) {
+    setDirty(true);
     setTranslations((current) =>
       current.map((translation) =>
         translation.locale === editorLocale ? { ...translation, ...patch } : translation,
@@ -170,23 +194,14 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
     );
   }
 
-  function updateItem(index: number, field: "title" | "body", value: string) {
-    updateTranslation({
-      items: activeTranslation.items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    });
+  function updateDocument(document: SiteContentDocument) {
+    updateTranslation({ document, schemaVersion: 2 });
   }
 
-  function addItem() {
-    if (activeTranslation.items.length >= itemLimit) return;
-    updateTranslation({ items: [...activeTranslation.items, { title: "", body: "" }] });
-  }
-
-  function removeItem(index: number) {
-    updateTranslation({
-      items: activeTranslation.items.filter((_, itemIndex) => itemIndex !== index),
-    });
+  function selectSection(key: SiteContentKey) {
+    if (key === selectedKey) return;
+    if (dirty && !window.confirm(text.discard)) return;
+    setSelectedKey(key);
   }
 
   async function save() {
@@ -201,10 +216,11 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
   }
 
   async function publish() {
-    if (!selected || !complete || reason.trim().length < 10) {
+    if (!canPublish || reason.trim().length < 10) {
       setFeedback("FAILED");
       return;
     }
+    if (!window.confirm(text.publishConfirm)) return;
     await mutate("PUBLISH", `/api/content/admin/${selectedKey}/publish`, "POST", {
       reason: reason.trim(),
     });
@@ -238,6 +254,7 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
           : current,
       );
       setReason("");
+      setDirty(false);
       setFeedback(action === "SAVE" ? "SAVED" : "PUBLISHED");
     } catch {
       setFeedback("FAILED");
@@ -272,7 +289,7 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
                   <button
                     className={selectedKey === key ? "is-active" : ""}
                     key={key}
-                    onClick={() => setSelectedKey(key)}
+                    onClick={() => selectSection(key)}
                     type="button"
                   >
                     <span>{String(index + 1).padStart(2, "0")}</span>
@@ -317,75 +334,13 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
                 </div>
               </header>
 
-              <div className="content-studio__fields" dir={editorLocale === "ar" ? "rtl" : "ltr"}>
-                <ContentField
-                  label={text.eyebrowField}
-                  maxLength={100}
-                  onChange={(value) => updateTranslation({ eyebrow: value })}
-                  value={activeTranslation.eyebrow}
-                />
-                <ContentField
-                  label={text.titleField}
-                  maxLength={180}
-                  onChange={(value) => updateTranslation({ title: value })}
-                  value={activeTranslation.title}
-                />
-                <ContentField
-                  label={text.introField}
-                  maxLength={1500}
-                  multiline
-                  onChange={(value) => updateTranslation({ introduction: value })}
-                  value={activeTranslation.introduction}
-                />
-                <ContentField
-                  label={text.statementField}
-                  maxLength={1000}
-                  multiline
-                  onChange={(value) => updateTranslation({ statement: value })}
-                  value={activeTranslation.statement}
+              <div dir={editorLocale === "ar" ? "rtl" : "ltr"}>
+                <TypedContentEditor
+                  document={activeDocument}
+                  locale={editorLocale}
+                  onChange={updateDocument}
                 />
               </div>
-
-              {itemLimit > 0 ? (
-                <div className="content-studio__items">
-                  <header>
-                    <h3>{text.items}</h3>
-                    <button
-                      disabled={activeTranslation.items.length >= itemLimit}
-                      onClick={addItem}
-                      type="button"
-                    >
-                      + {text.addItem}
-                    </button>
-                  </header>
-                  {activeTranslation.items.map((item, index) => (
-                    <article key={`${editorLocale}-${index}`}>
-                      <span>{String(index + 1).padStart(2, "0")}</span>
-                      <label>
-                        {text.itemTitle}
-                        <input
-                          dir={editorLocale === "ar" ? "rtl" : "ltr"}
-                          maxLength={160}
-                          onChange={(event) => updateItem(index, "title", event.target.value)}
-                          value={item.title}
-                        />
-                      </label>
-                      <label>
-                        {text.itemBody}
-                        <textarea
-                          dir={editorLocale === "ar" ? "rtl" : "ltr"}
-                          maxLength={2000}
-                          onChange={(event) => updateItem(index, "body", event.target.value)}
-                          value={item.body}
-                        />
-                      </label>
-                      <button onClick={() => removeItem(index)} type="button">
-                        {text.remove}
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
 
               <div className="content-studio__reason">
                 <label>
@@ -405,14 +360,18 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
                 </button>
                 <button
                   className="is-publish"
-                  disabled={Boolean(working) || !selected || !complete}
+                  disabled={Boolean(working) || !canPublish}
                   onClick={publish}
                   type="button"
                 >
                   {working === "PUBLISH" ? text.publishing : text.publish}
                 </button>
               </div>
-              {!selected ? <p className="content-studio__guard">{text.publishGuard}</p> : null}
+              {!canPublish ? (
+                <p className="content-studio__guard">
+                  {overview.permissions.publish ? text.publishGuard : text.unavailable}
+                </p>
+              ) : null}
               {selected?.publishedAt ? (
                 <p className="content-studio__published-at">
                   {text.publishedAt}:{" "}
@@ -437,23 +396,7 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
 
             <aside className="content-studio__preview" dir={editorLocale === "ar" ? "rtl" : "ltr"}>
               <span>{text.preview}</span>
-              {activeTranslation.title ? (
-                <div>
-                  <small>{activeTranslation.eyebrow}</small>
-                  <h2>{activeTranslation.title}</h2>
-                  <p>{activeTranslation.introduction}</p>
-                  <strong>{activeTranslation.statement}</strong>
-                  {activeTranslation.items.map((item, index) => (
-                    <article key={`${item.title}-${index}`}>
-                      <span>{String(index + 1).padStart(2, "0")}</span>
-                      <h3>{item.title}</h3>
-                      <p>{item.body}</p>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p>{text.emptyPreview}</p>
-              )}
+              <TypedContentPreview document={activeDocument} emptyText={text.emptyPreview} />
             </aside>
           </div>
         )}
@@ -462,42 +405,6 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
   );
 }
 
-function ContentField({
-  label,
-  value,
-  maxLength,
-  multiline = false,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  maxLength: number;
-  multiline?: boolean;
-  onChange(value: string): void;
-}) {
-  return (
-    <label>
-      <span>{label}</span>
-      {multiline ? (
-        <textarea
-          maxLength={maxLength}
-          onChange={(event) => onChange(event.target.value)}
-          value={value}
-        />
-      ) : (
-        <input
-          maxLength={maxLength}
-          onChange={(event) => onChange(event.target.value)}
-          value={value}
-        />
-      )}
-      <small>
-        {value.length} / {maxLength}
-      </small>
-    </label>
-  );
-}
-
 function cloneTranslation(translation: SiteContentTranslation): SiteContentTranslation {
-  return { ...translation, items: translation.items.map((item) => ({ ...item })) };
+  return structuredClone(translation);
 }

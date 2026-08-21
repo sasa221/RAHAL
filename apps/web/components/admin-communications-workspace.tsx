@@ -14,8 +14,7 @@ const copy = {
   en: {
     eyebrow: "RAHAL / LIVE SIGNALS",
     title: "Every customer signal, visible and accountable.",
-    subtitle:
-      "One operational view for in-app messages, email, WhatsApp and browser push delivery.",
+    subtitle: "One operational view for in-app messages, email, and browser push delivery.",
     ready: "Ready",
     missing: "Setup required",
     provider: "Provider",
@@ -38,11 +37,8 @@ const copy = {
     labels: {
       IN_APP: "In-app",
       EMAIL: "Transactional email",
-      WHATSAPP_VERIFICATION: "WhatsApp account verification",
-      WHATSAPP_NOTIFICATIONS: "WhatsApp request updates",
       WEB_PUSH: "Browser push",
       PUSH: "Browser push",
-      WHATSAPP: "WhatsApp",
     },
   },
   ar: {
@@ -71,11 +67,8 @@ const copy = {
     labels: {
       IN_APP: "داخل الموقع",
       EMAIL: "البريد الإلكتروني",
-      WHATSAPP_VERIFICATION: "تحقق الحساب عبر واتساب",
-      WHATSAPP_NOTIFICATIONS: "تحديثات الطلب عبر واتساب",
       WEB_PUSH: "إشعارات المتصفح",
       PUSH: "إشعارات المتصفح",
-      WHATSAPP: "واتساب",
     },
   },
 } as const;
