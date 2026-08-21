@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "pnpm --parallel --filter @rahal/web --filter @rahal/api dev",
     "build": "pnpm -r build",
-    "clean": "pnpm -r clean",
+    "build:web": "pnpm --filter @rahal/web... build",
+    "vercel-build": "pnpm build:web",
+    "clean": "pnpm -r run clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
