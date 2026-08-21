@@ -54,7 +54,9 @@ describe("production HTTP boundary", () => {
   });
 
   it("keeps dependency and migration checks in the shared CI gate", () => {
-    expect(workflow).toContain("pnpm audit");
+    expect(workflow).toContain("pnpm security:audit:test");
+    expect(workflow).toContain("pnpm security:audit");
+    expect(workflow).toContain("dependency-audit-reports");
     expect(workflow).toContain("pnpm db:migrate");
     expect(workflow).toContain("pnpm test");
     expect(workflow).toContain("pnpm build");

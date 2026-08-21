@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "productionFailureLevel": "high",
+  "failOnAnyUnlistedAdvisory": true,
+  "exceptions": [
+    {
+      "advisoryId": 1145093,
+      "githubAdvisoryId": "GHSA-ggr8-5vv4-36mx",
+      "module": "deepmerge-ts",
+      "version": "7.1.5",
+      "severity": "high",
+      "vulnerableVersions": "<8.0.0",
+      "patchedVersions": ">=8.0.0",
+      "expectedPaths": {
+        "production": ["packages__database>@prisma/client>prisma>@prisma/config>deepmerge-ts"],
+        "full": [
+          "packages__database>@prisma/client>prisma>@prisma/config>deepmerge-ts",
+          "packages__database>prisma>@prisma/config>deepmerge-ts"
+        ]
+      },
+      "acceptedOn": "2026-08-22",
+      "reviewOn": "2026-09-05",
+      "expiresOn": "2026-09-30",
+      "riskRecord": "docs/security/RISK_ACCEPTANCE_GHSA-ggr8-5vv4-36mx.md"
+    }
+  ]
+}

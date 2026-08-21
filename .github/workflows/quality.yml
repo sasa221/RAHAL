@@ -46,7 +46,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit
+      - run: pnpm security:audit:test
+      - name: Enforce dependency security policy
+        run: pnpm security:audit
+      - name: Upload complete dependency audit reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-reports
+          path: .security-audit-reports
+          retention-days: 30
       - run: pnpm db:migrate
       - run: pnpm db:seed
       - run: pnpm format:check
