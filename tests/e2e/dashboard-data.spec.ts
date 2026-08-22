@@ -15,59 +15,33 @@ test("admin dashboard values match the E2E database and cards expose exact filte
     storageState: storageStatePath(testInfo.project.name, "admin"),
   });
   try {
-    const now = new Date();
-    const openStatuses = [
-      "PENDING_REVIEW",
-      "UNDER_REVIEW",
-      "MORE_INFORMATION_REQUIRED",
-      "PRE_APPROVED",
-      "ALTERNATIVE_OFFERED",
-    ] as const;
-    const [open, confirmed, active, available, overdue, expiring, failed, reviews] =
-      await Promise.all([
-        prisma.reservation.count({ where: { status: { in: [...openStatuses] } } }),
-        prisma.booking.count({ where: { status: "CONFIRMED" } }),
-        prisma.booking.count({ where: { status: "ACTIVE" } }),
-        prisma.vehicle.count({ where: { status: "AVAILABLE" } }),
-        prisma.booking.count({ where: { status: "ACTIVE", returnAt: { lt: now } } }),
-        prisma.reservation.count({
-          where: {
-            status: "PRE_APPROVED",
-            preApprovalExpiresAt: {
-              gt: now,
-              lte: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-            },
-          },
-        }),
-        prisma.notificationDelivery.count({ where: { status: "FAILED" } }),
-        prisma.review.count({ where: { status: "PENDING" } }),
-      ]);
-    const response = await context.request.get("/api/admin-operations/overview?locale=en");
-    expect(response.status()).toBe(200);
-    const metrics = (await response.json()).data.metrics as Array<{
+    let metrics: Array<{
+      key: string;
+      value: number;
+      href: string;
+    }> = [];
+    let databaseMetrics = await readDatabaseMetrics(prisma);
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const response = await context.request.get("/api/admin-operations/overview?locale=en");
+      expect(response.status()).toBe(200);
+      metrics = (await response.json()).data.metrics;
+      databaseMetrics = await readDatabaseMetrics(prisma);
+      if (JSON.stringify(metrics) === JSON.stringify(databaseMetrics)) break;
+      await new Promise((resolveRetry) => setTimeout(resolveRetry, 100));
+    }
+    expect(metrics).toEqual(databaseMetrics);
+
+    const page = await context.newPage();
+    const dashboardResponse = page.waitForResponse((candidate) =>
+      candidate.url().includes("/api/admin-operations/overview?locale=en"),
+    );
+    await page.goto("/en/admin");
+    const dashboardMetrics = (await (await dashboardResponse).json()).data.metrics as Array<{
       key: string;
       value: number;
       href: string;
     }>;
-    expect(metrics).toEqual([
-      { key: "OPEN_REQUESTS", value: open, href: "/admin/requests?filter=OPEN" },
-      {
-        key: "CONFIRMED_BOOKINGS",
-        value: confirmed,
-        href: "/admin/requests?filter=CONFIRMED",
-      },
-      { key: "ACTIVE_RENTALS", value: active, href: "/admin/requests?filter=ACTIVE" },
-      { key: "AVAILABLE_VEHICLES", value: available, href: "/admin/fleet?status=AVAILABLE" },
-      {
-        key: "ATTENTION_REQUIRED",
-        value: overdue + expiring + failed + reviews,
-        href: "/admin/requests?filter=ATTENTION",
-      },
-    ]);
-
-    const page = await context.newPage();
-    await page.goto("/en/admin");
-    for (const metric of metrics) {
+    for (const metric of dashboardMetrics) {
       const card = page.locator(`[data-metric="${metric.key}"]`);
       await expect(card).toHaveAttribute("href", `/en${metric.href}`);
       await expect(card.locator("strong")).toHaveText(metric.value.toLocaleString("en-GB"));
@@ -77,6 +51,47 @@ test("admin dashboard values match the E2E database and cards expose exact filte
     await prisma.$disconnect();
   }
 });
+
+async function readDatabaseMetrics(prisma: ReturnType<typeof createPrismaClient>) {
+  const now = new Date();
+  const openStatuses = [
+    "PENDING_REVIEW",
+    "UNDER_REVIEW",
+    "MORE_INFORMATION_REQUIRED",
+    "PRE_APPROVED",
+    "ALTERNATIVE_OFFERED",
+  ] as const;
+  const [open, confirmed, active, available, overdue, expiring, failed, reviews] =
+    await Promise.all([
+      prisma.reservation.count({ where: { status: { in: [...openStatuses] } } }),
+      prisma.booking.count({ where: { status: "CONFIRMED" } }),
+      prisma.booking.count({ where: { status: "ACTIVE" } }),
+      prisma.vehicle.count({ where: { status: "AVAILABLE" } }),
+      prisma.booking.count({ where: { status: "ACTIVE", returnAt: { lt: now } } }),
+      prisma.reservation.count({
+        where: {
+          status: "PRE_APPROVED",
+          preApprovalExpiresAt: {
+            gt: now,
+            lte: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+      }),
+      prisma.notificationDelivery.count({ where: { status: "FAILED" } }),
+      prisma.review.count({ where: { status: "PENDING" } }),
+    ]);
+  return [
+    { key: "OPEN_REQUESTS", value: open, href: "/admin/requests?filter=OPEN" },
+    { key: "CONFIRMED_BOOKINGS", value: confirmed, href: "/admin/requests?filter=CONFIRMED" },
+    { key: "ACTIVE_RENTALS", value: active, href: "/admin/requests?filter=ACTIVE" },
+    { key: "AVAILABLE_VEHICLES", value: available, href: "/admin/fleet?status=AVAILABLE" },
+    {
+      key: "ATTENTION_REQUIRED",
+      value: overdue + expiring + failed + reviews,
+      href: "/admin/requests?filter=ATTENTION",
+    },
+  ];
+}
 
 test("dashboard cards navigate to their operational filter", async ({ browser }, testInfo) => {
   const context = await browser.newContext({

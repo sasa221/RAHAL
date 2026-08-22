@@ -173,6 +173,148 @@
   }
 }
 
+/* Operational workspaces prioritize live data over landing-page scale on mobile. */
+@media (max-width: 700px) {
+  .portal-stage .ops-workspace {
+    padding: 10px 12px 24px;
+  }
+
+  .portal-stage .ops-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    gap: 0;
+    padding: 17px 18px 15px;
+  }
+
+  .portal-stage .ops-hero > div:first-child > span,
+  .portal-stage :is(.sales-hero, .customer-requests-hero) > div:first-child > span {
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+
+  .portal-stage .ops-hero h1,
+  html[dir="rtl"] .portal-stage .ops-hero h1 {
+    display: -webkit-box;
+    max-width: 24ch;
+    margin: 7px 0 0;
+    overflow: hidden;
+    font-size: clamp(1.42rem, 6.5vw, 1.78rem) !important;
+    line-height: 1.18 !important;
+    text-wrap: balance;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .portal-stage .ops-hero p,
+  .portal-stage .ops-hero-mark {
+    display: none;
+  }
+
+  .portal-stage .ops-quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 9px;
+  }
+
+  .portal-stage .ops-quick-actions > strong {
+    grid-column: 1 / -1;
+    min-height: 0;
+    padding: 0 2px;
+    font-size: 0.62rem;
+  }
+
+  .portal-stage .ops-quick-actions > a {
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 50px;
+    gap: 8px;
+    padding: 9px 10px;
+    font-size: 0.67rem;
+  }
+
+  .portal-stage .ops-quick-actions > a > span {
+    width: 26px;
+    height: 26px;
+  }
+
+  .portal-stage .ops-quick-actions > a > :last-child {
+    display: none;
+  }
+
+  .portal-stage .ops-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: 9px 0 14px;
+    background: #ded6c6;
+  }
+
+  .portal-stage .ops-metrics > a {
+    min-height: 86px;
+    padding: 12px 13px;
+    border: 0;
+    background: #fff;
+  }
+
+  .portal-stage .ops-metrics > a > b {
+    inset-block-start: 10px;
+    inset-inline-end: 11px;
+  }
+
+  .portal-stage .ops-metrics > a > strong {
+    font-size: 1.65rem;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) {
+    display: grid;
+    min-height: 0;
+    gap: 10px;
+    align-items: start;
+    padding: 16px 14px 12px;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) h1,
+  html[dir="rtl"] .portal-stage :is(.sales-hero, .customer-requests-hero) h1 {
+    display: -webkit-box;
+    max-width: 25ch;
+    margin: 6px 0 0;
+    overflow: hidden;
+    font-size: clamp(1.36rem, 6.2vw, 1.72rem) !important;
+    line-height: 1.18 !important;
+    text-wrap: balance;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) p {
+    display: none;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) .portal-primary-action {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 14px;
+  }
+
+  .portal-stage .portal-metrics {
+    gap: 7px;
+    margin-bottom: 12px;
+    padding-inline: 12px;
+  }
+
+  .portal-stage .portal-metrics article {
+    min-height: 74px;
+    padding: 11px 12px;
+  }
+
+  .portal-stage .portal-metrics article > strong {
+    font-size: 1.45rem;
+  }
+
+  .portal-stage .portal-metrics article > p {
+    margin-top: 3px;
+    font-size: 0.64rem;
+  }
+}
+
 /* ========================================================================== */
 /* Arabic typography system                                                   */
 /* IBM Plex Sans Arabic keeps interfaces crisp without Alexandria's bulky     */
@@ -14283,12 +14425,12 @@ select {
   line-height: 1.5;
 }
 
-.field {
+.availability-form .field {
   display: grid;
   gap: 7px;
 }
 
-.field > span {
+.availability-form .field > span {
   color: var(--color-muted);
   font-size: 0.7rem;
   font-weight: 700;
@@ -20106,13 +20248,13 @@ body::before {
   text-transform: uppercase;
 }
 
-.public-site[dir="rtl"] .field > span {
+.public-site[dir="rtl"] .availability-form .field > span {
   letter-spacing: 0;
   text-transform: none;
 }
 
-.field input,
-.field select {
+.availability-form .field input,
+.availability-form .field select {
   height: 34px;
   padding-inline: 0;
   color: #f7f2e7;
@@ -20811,6 +20953,178 @@ body::before {
   .information-chapter > i,
   .information-faq summary i {
     transition: none;
+  }
+}
+
+/* Readability contract: accessible light surfaces, image overlays and unobtrusive alerts. */
+:root {
+  --color-readable-muted: #565750;
+  --color-readable-subtle: #686860;
+  --color-control-border: #817d74;
+  --color-control-focus: #8a682c;
+  --color-control-disabled-bg: #e7e3da;
+  --color-control-disabled-text: #706d66;
+}
+
+.fleet-filter-panel .field > span,
+.fleet-listing-card__rate :where(small, span),
+.fleet-listing-card__footer small,
+.fleet-browser__disclaimer,
+.fleet-page .fleet-results__toolbar small {
+  color: var(--color-readable-muted);
+}
+
+.fleet-filter-panel select,
+.fleet-page .fleet-results__toolbar select {
+  color: var(--color-ink);
+  color-scheme: light;
+  background-color: #fff;
+  border: 1px solid var(--color-control-border);
+  border-radius: 2px;
+  opacity: 1;
+}
+
+.fleet-filter-panel select {
+  min-height: 44px;
+  padding-inline: 12px 32px;
+}
+
+.fleet-page[dir="rtl"] .fleet-filter-panel select {
+  padding-inline: 32px 12px;
+}
+
+.fleet-listing-card,
+.fleet-listing-card__body {
+  color: var(--color-ink);
+  background: #fbfaf7;
+}
+
+.fleet-listing-card__heading h2,
+.fleet-listing-card__rate strong,
+.fleet-listing-card__footer strong {
+  color: var(--color-ink);
+}
+
+.fleet-listing-card__specs {
+  color: var(--color-readable-muted);
+}
+
+:where(.public-site, .reservation-experience-page, .portal-stage)
+  :where(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  opacity: 1;
+}
+
+:where(.public-site, .reservation-experience-page, .portal-stage)
+  :where(input, textarea)::placeholder {
+  color: var(--color-readable-subtle);
+  opacity: 1;
+}
+
+:where(.public-site, .reservation-experience-page, .portal-stage)
+  :where(input, select, textarea, button, a):focus-visible {
+  outline: 3px solid var(--color-control-focus);
+  outline-offset: 3px;
+}
+
+:where(.public-site, .reservation-experience-page, .portal-stage)
+  :where(input, select, textarea, button):disabled {
+  color: var(--color-control-disabled-text);
+  cursor: not-allowed;
+  background-color: var(--color-control-disabled-bg);
+  border-color: #b9b3a9;
+  opacity: 1;
+}
+
+.hero__overlay {
+  background:
+    linear-gradient(90deg, rgb(8 8 7 / 96%) 0%, rgb(8 8 7 / 80%) 43%, rgb(8 8 7 / 30%) 76%),
+    linear-gradient(0deg, rgb(8 8 7 / 68%) 0%, transparent 50%);
+}
+
+.hero :where(h1, h2, p),
+.vehicle-cinematic :where(h1, h2, p, strong),
+.reservation-stage__visual :where(h1, h2, p, strong) {
+  text-shadow: 0 2px 18px rgb(0 0 0 / 80%);
+}
+
+.vehicle-cinematic__overlay {
+  background:
+    linear-gradient(90deg, rgb(9 9 8 / 97%) 0%, rgb(9 9 8 / 82%) 39%, rgb(9 9 8 / 28%) 73%),
+    linear-gradient(0deg, rgb(8 8 7 / 78%) 0%, transparent 52%);
+}
+
+.vehicle-cinematic .breadcrumbs,
+.reservation-stage__vehicle > p,
+.reservation-stage__vehicle > a {
+  color: rgb(255 255 255 / 88%);
+}
+
+.reservation-stage__vehicle > div small,
+.reservation-stage__edition,
+.hero__edition {
+  color: rgb(255 255 255 / 76%);
+}
+
+.reservation-stage__overlay {
+  background:
+    linear-gradient(0deg, rgb(8 8 7 / 97%) 0%, rgb(8 8 7 / 58%) 62%, rgb(8 8 7 / 28%) 100%),
+    linear-gradient(90deg, rgb(8 8 7 / 56%), transparent 76%);
+}
+
+.notification-preview {
+  inset-block-start: 82px;
+  width: min(350px, calc(100vw - 24px));
+  max-height: min(128px, calc(100svh - 104px));
+  border-color: rgb(221 185 111 / 58%);
+  box-shadow: 0 16px 42px rgb(10 10 8 / 24%);
+}
+
+.notification-preview__content {
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  min-height: 82px;
+  padding: 13px 44px 13px 15px;
+}
+
+[dir="rtl"].notification-preview .notification-preview__content {
+  padding: 13px 15px 13px 44px;
+}
+
+.notification-preview__content small {
+  color: #e5c37d;
+  font-size: 0.64rem;
+}
+
+.notification-preview__content strong {
+  color: #fff;
+  font-size: 0.82rem;
+}
+
+.notification-preview__content p {
+  color: #deddd7;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.notification-preview__close {
+  color: #fff;
+  border-color: rgb(255 255 255 / 35%);
+}
+
+body:has(.marketing-consent-card, .push-consent-layer) .notification-preview {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .notification-preview {
+    inset-block-start: 74px;
+    inset-inline: 10px;
+    width: auto;
+    max-height: 112px;
+  }
+
+  .notification-preview__content p {
+    -webkit-line-clamp: 1;
   }
 }
 
@@ -25715,5 +26029,194 @@ html[dir="rtl"]
   .marketing-consent-card,
   .push-consent-reminder {
     animation: none !important;
+  }
+}
+
+/* Mobile operational density: live work must appear between the fixed navigation bars. */
+@media (max-width: 700px) {
+  .portal-page-guide {
+    grid-template-columns: 82px minmax(0, 1fr);
+    min-height: 52px;
+  }
+
+  .portal-page-guide > div {
+    padding: 8px 9px;
+  }
+
+  .portal-page-guide small {
+    display: none;
+  }
+
+  .portal-page-guide strong {
+    font-size: 0.7rem;
+  }
+
+  .portal-page-guide li {
+    min-height: 52px;
+    padding: 7px;
+    font-size: 0.55rem;
+  }
+
+  .portal-page-guide li span {
+    width: 20px;
+    height: 20px;
+  }
+
+  .portal-stage .ops-workspace {
+    padding: 7px 10px 86px;
+  }
+
+  .portal-stage .ops-hero {
+    min-height: 0;
+    padding: 10px 13px;
+  }
+
+  .portal-stage .ops-hero > div:first-child > span {
+    display: none;
+  }
+
+  .portal-stage .ops-hero h1,
+  html[dir="rtl"] .portal-stage .ops-hero h1 {
+    display: block;
+    max-width: none;
+    margin: 0;
+    overflow: visible;
+    font-size: clamp(1.08rem, 4.8vw, 1.28rem) !important;
+    line-height: 1.25 !important;
+    -webkit-line-clamp: initial;
+  }
+
+  .portal-stage .ops-quick-actions {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .portal-stage .ops-quick-actions > strong {
+    display: none;
+  }
+
+  .portal-stage .ops-quick-actions > a {
+    min-height: 42px;
+    padding: 7px 9px;
+    font-size: 0.62rem;
+  }
+
+  .portal-stage .ops-quick-actions > a > span {
+    width: 24px;
+    height: 24px;
+  }
+
+  .portal-stage .ops-metrics {
+    margin: 6px 0 10px;
+  }
+
+  .portal-stage .ops-metrics > a {
+    min-height: 70px;
+    padding: 9px 11px;
+  }
+
+  .portal-stage .ops-metrics > a > span,
+  .portal-stage .ops-metrics > a > small {
+    font-size: 0.58rem;
+  }
+
+  .portal-stage .ops-metrics > a > strong {
+    font-size: 1.42rem;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) {
+    gap: 7px;
+    padding: 10px 12px 8px;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) > div:first-child > span {
+    display: none;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) h1,
+  html[dir="rtl"] .portal-stage :is(.sales-hero, .customer-requests-hero) h1 {
+    display: block;
+    max-width: 30ch;
+    margin: 0;
+    overflow: visible;
+    font-size: clamp(1.08rem, 4.8vw, 1.28rem) !important;
+    line-height: 1.25 !important;
+    -webkit-line-clamp: initial;
+  }
+
+  .portal-stage :is(.sales-hero, .customer-requests-hero) .portal-primary-action {
+    min-height: 38px;
+    padding: 7px 11px;
+    font-size: 0.66rem;
+  }
+
+  .portal-stage .portal-metrics,
+  .portal-stage .customer-requests-workspace .portal-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin-bottom: 7px;
+    padding-inline: 10px;
+  }
+
+  .portal-stage .portal-metrics article {
+    min-height: 66px;
+    padding: 8px 7px;
+  }
+
+  .portal-stage .portal-metrics article > span {
+    font-size: 0.52rem;
+  }
+
+  .portal-stage .portal-metrics article > strong {
+    font-size: 1.22rem;
+  }
+
+  .portal-stage .portal-metrics article > p {
+    line-height: 1.25;
+    font-size: 0.53rem;
+  }
+
+  .portal-stage .sales-layout,
+  .portal-stage .customer-requests-layout {
+    gap: 8px;
+    padding: 0 10px 86px;
+  }
+
+  .portal-stage .sales-queue,
+  .portal-stage .customer-request-list-panel {
+    padding: 10px;
+  }
+
+  .portal-stage .sales-section-heading {
+    min-height: 34px;
+    padding-block: 4px;
+  }
+
+  .portal-stage .sales-section-heading h2 {
+    font-size: 0.92rem;
+  }
+
+  .portal-stage .sales-filters {
+    flex-wrap: nowrap;
+    gap: 5px;
+    padding-block: 5px 7px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .portal-stage .sales-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .portal-stage .sales-filters button {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 6px 9px;
+    font-size: 0.58rem;
+  }
+
+  .portal-stage .sales-request-card,
+  .portal-stage .customer-request-card {
+    padding: 12px;
   }
 }

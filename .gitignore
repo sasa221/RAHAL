@@ -22,4 +22,5 @@ coverage
 .DS_Store
 playwright-report
 test-results
+artifacts/contrast-audit/
 .security-audit-reports
