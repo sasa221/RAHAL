@@ -67,7 +67,12 @@ describe("branch management", () => {
     expect(surface).toContain("branch.whatsappNumber ?? branch.whatsappNumbers[0]");
     expect(contracts).toContain("workingHours: Record<string, unknown>");
     expect(surface).toContain('fetch("/api/branches"');
-    expect(surface).toContain("No unconfirmed address or number is shown.");
+    expect(surface).toContain("officialFallback");
+    expect(surface).toContain("FallbackContactActions");
+    expect(surface).toContain("+201011105159");
+    expect(surface).toContain("+201113999155");
+    expect(surface).toContain("These contact details are confirmed by Rahal.");
+    expect(surface).toContain("https://wa.me/");
     expect(surface).toContain('useState<"READY" | "UNAVAILABLE">("UNAVAILABLE")');
     expect(surface).not.toContain("Loading the approved branch details");
     expect(home).toContain("<PublicBranchSurface locale={locale} />");

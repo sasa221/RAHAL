@@ -31,7 +31,6 @@ const detailsCopy = {
     specificationsCopy: "المواصفات الأساسية اللي تساعدك تقارن اختيارك قبل إرسال الطلب.",
     transmission: "ناقل الحركة",
     seats: "المقاعد",
-    bags: "شنط",
     model: "الموديل",
     policies: "كل التفاصيل قبل الطلب",
     policiesCopy: "سياسات واضحة من البداية، والتأكيد النهائي يتم مع فريق المبيعات داخل الفرع.",
@@ -81,7 +80,6 @@ const detailsCopy = {
     specificationsCopy: "The essentials you need to compare your choice before sending a request.",
     transmission: "Transmission",
     seats: "Seats",
-    bags: "Bags",
     model: "Model",
     policies: "Every detail before requesting",
     policiesCopy:
@@ -325,8 +323,7 @@ export function VehicleDetails({
               {[
                 ["01", "clock", copy.transmission, vehicle.transmission[locale]],
                 ["02", "users", copy.seats, String(vehicle.seats)],
-                ["03", "document", copy.bags, String(vehicle.bags)],
-                ["04", "car", copy.model, String(vehicle.year)],
+                ["03", "car", copy.model, String(vehicle.year)],
               ].map(([number, icon, label, value]) => (
                 <article key={String(label)}>
                   <span className="specification-grid__number">{number}</span>

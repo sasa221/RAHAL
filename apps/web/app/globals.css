@@ -17418,6 +17418,8 @@ body::before {
   display: grid;
   grid-template-columns: minmax(140px, 0.92fr) minmax(0, 1.08fr);
   min-height: 0;
+  color: #17130a;
+  background: #f7f2e7;
 }
 
 .vehicle-card--compact .vehicle-card__media {
@@ -17429,6 +17431,9 @@ body::before {
   flex-direction: column;
   justify-content: center;
   padding: clamp(18px, 2.2vw, 26px);
+  color: #17130a;
+  background: #f7f2e7;
+  opacity: 1;
 }
 
 .vehicle-card--compact .vehicle-card__heading {
@@ -17436,8 +17441,17 @@ body::before {
 }
 
 .vehicle-card--compact h3 {
+  color: #17130a;
+  opacity: 1;
   font-size: clamp(1rem, 1.45vw, 1.25rem);
   line-height: 1.22;
+}
+
+.vehicle-card--compact .vehicle-card__category,
+.vehicle-card--compact .vehicle-card__price small,
+.vehicle-card--compact .vehicle-card__specs {
+  color: #4a4338;
+  opacity: 1;
 }
 
 .vehicle-card--compact .vehicle-card__price {
@@ -17446,6 +17460,8 @@ body::before {
 }
 
 .vehicle-card--compact .vehicle-card__price strong {
+  color: #6d4d13;
+  opacity: 1;
   font-size: 1rem;
 }
 
@@ -17456,6 +17472,9 @@ body::before {
 }
 
 .vehicle-card--compact .button--outline {
+  color: #17130a;
+  border-color: #9a762e;
+  opacity: 1;
   min-height: 42px;
   margin-top: auto;
   padding: 8px 12px;

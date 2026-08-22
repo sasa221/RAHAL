@@ -57,7 +57,6 @@ const fleetCopy = {
     currency: "كل الأسعار بالجنيه المصري",
     requestOnly: "الطلب يخضع لمراجعة المبيعات",
     from: "من",
-    bags: "شنط",
     minimum: "أقل مدة",
     days: "أيام",
     compareNote: "السعر تقديري لليوم ولا يشمل عربون الفرع.",
@@ -97,7 +96,6 @@ const fleetCopy = {
     currency: "Every rate is shown in Egyptian pounds",
     requestOnly: "Every request is reviewed by sales",
     from: "From",
-    bags: "bags",
     minimum: "Minimum",
     days: "days",
     compareNote: "The daily estimate excludes the branch deposit.",
@@ -171,10 +169,6 @@ function FleetListingCard({
           <span>
             <Icon name="users" size={17} />
             {vehicle.seats} {content.seats}
-          </span>
-          <span>
-            <Icon name="car" size={17} />
-            {vehicle.bags} {copy.bags}
           </span>
           <span>
             <Icon name="check" size={17} />

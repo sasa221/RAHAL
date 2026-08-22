@@ -5,6 +5,7 @@ export default tseslint.config(
   {
     ignores: [
       "node_modules/**",
+      ".vercel/**",
       "apps/web/.next/**",
       "apps/api/dist/**",
       "packages/*/dist/**",
