@@ -35,6 +35,7 @@
     "next": "16.2.12",
     "prettier": "^3.9.5",
     "supertest": "^7.2.2",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.64.0",
     "vitest": "^4.1.10"
   }
