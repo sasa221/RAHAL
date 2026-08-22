@@ -30,6 +30,9 @@ importers:
       eslint:
         specifier: ^10.7.0
         version: 10.7.0(jiti@2.7.0)
+      next:
+        specifier: 16.2.12
+        version: 16.2.12(@playwright/test@1.55.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       prettier:
         specifier: ^3.9.5
         version: 3.9.5
