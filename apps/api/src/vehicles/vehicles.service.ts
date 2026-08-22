@@ -100,7 +100,6 @@ function toWriteInput(input: SaveManagedVehicleDto, currentSlug?: string) {
     transmission: input.transmission,
     fuelType: input.fuelType.trim(),
     seats: input.seats,
-    luggage: input.luggage ?? null,
     doors: input.doors ?? null,
     dailyRate: input.dailyRateEgp,
     weeklyRate: input.weeklyRateEgp ?? null,

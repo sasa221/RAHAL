@@ -29,7 +29,6 @@ export type VehicleRecord = {
   dailyRate: { toNumber(): number };
   minimumRentalDays: number;
   seats: number;
-  luggage: number | null;
   year: number;
   transmission: string;
   driverPolicy: DriverPolicy;
@@ -64,7 +63,6 @@ export function toPublicVehicle(vehicle: VehicleRecord): PublicVehicle {
     weeklyRateEgp: vehicle.weeklyRate?.toNumber() ?? vehicle.dailyRate.toNumber() * 7,
     minimumDays: vehicle.minimumRentalDays,
     seats: vehicle.seats,
-    bags: vehicle.luggage ?? 0,
     year: vehicle.year,
     transmission:
       vehicle.transmission === "AUTOMATIC"
@@ -100,7 +98,6 @@ export class VehiclesRepository {
         weeklyRate: true,
         minimumRentalDays: true,
         seats: true,
-        luggage: true,
         year: true,
         transmission: true,
         driverPolicy: true,
@@ -132,7 +129,6 @@ export class VehiclesRepository {
         weeklyRate: true,
         minimumRentalDays: true,
         seats: true,
-        luggage: true,
         year: true,
         transmission: true,
         driverPolicy: true,
@@ -261,7 +257,6 @@ const managedVehicleSelect = {
   transmission: true,
   fuelType: true,
   seats: true,
-  luggage: true,
   doors: true,
   status: true,
   dailyRate: true,
@@ -301,7 +296,6 @@ type ManagedVehicleRecord = {
   transmission: string;
   fuelType: string;
   seats: number;
-  luggage: number | null;
   doors: number | null;
   status: VehicleStatus;
   dailyRate: { toNumber(): number };
@@ -337,7 +331,6 @@ type ManagedVehicleWrite = {
   transmission: string;
   fuelType: string;
   seats: number;
-  luggage: number | null;
   doors: number | null;
   dailyRate: number;
   weeklyRate: number | null;
@@ -367,7 +360,6 @@ function toManagedVehicle(vehicle: ManagedVehicleRecord): ManagedVehicle {
     transmission: vehicle.transmission === "MANUAL" ? "MANUAL" : "AUTOMATIC",
     fuelType: vehicle.fuelType,
     seats: vehicle.seats,
-    luggage: vehicle.luggage,
     doors: vehicle.doors,
     status: vehicle.status,
     dailyRateEgp: vehicle.dailyRate.toNumber(),

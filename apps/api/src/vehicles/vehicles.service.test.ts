@@ -14,7 +14,6 @@ const input = {
   transmission: "AUTOMATIC" as const,
   fuelType: "PETROL",
   seats: 5,
-  luggage: 2,
   doors: 4,
   dailyRateEgp: 2500,
   weeklyRateEgp: 15_000,

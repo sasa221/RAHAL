@@ -80,12 +80,6 @@ export class SaveManagedVehicleDto {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
-  @Max(20)
-  luggage?: number | null;
-
-  @IsOptional()
-  @IsInt()
   @Min(2)
   @Max(8)
   doors?: number | null;

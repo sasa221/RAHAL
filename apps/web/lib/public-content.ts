@@ -13,7 +13,6 @@ export type PublicVehicle = {
   weeklyRateEgp: number;
   minimumDays: number;
   seats: number;
-  bags: number;
   year: number;
   transmission: LocalizedText;
   driverPolicy: LocalizedText;
@@ -35,7 +34,6 @@ export const publicVehicles: PublicVehicle[] = [
     weeklyRateEgp: 28000,
     minimumDays: 2,
     seats: 5,
-    bags: 3,
     year: 2026,
     transmission: { ar: "أوتوماتيك", en: "Automatic" },
     driverPolicy: { ar: "السائق اختياري", en: "Optional driver" },
@@ -55,7 +53,6 @@ export const publicVehicles: PublicVehicle[] = [
     weeklyRateEgp: 36000,
     minimumDays: 3,
     seats: 7,
-    bags: 5,
     year: 2026,
     transmission: { ar: "أوتوماتيك", en: "Automatic" },
     driverPolicy: { ar: "السائق اختياري", en: "Optional driver" },
@@ -75,7 +72,6 @@ export const publicVehicles: PublicVehicle[] = [
     weeklyRateEgp: 11800,
     minimumDays: 2,
     seats: 5,
-    bags: 2,
     year: 2025,
     transmission: { ar: "أوتوماتيك", en: "Automatic" },
     driverPolicy: { ar: "بدون سائق", en: "Self-drive only" },

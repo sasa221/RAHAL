@@ -100,7 +100,6 @@ export type PublicVehicle = {
   weeklyRateEgp: number;
   minimumDays: number;
   seats: number;
-  bags: number;
   year: number;
   transmission: Record<Locale, string>;
   driverPolicy: Record<Locale, string>;
@@ -912,7 +911,6 @@ export type ManagedVehicle = {
   transmission: "AUTOMATIC" | "MANUAL";
   fuelType: string;
   seats: number;
-  luggage: number | null;
   doors: number | null;
   status: VehicleOperationalStatus;
   dailyRateEgp: number;

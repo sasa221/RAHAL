@@ -73,7 +73,6 @@ const copy = {
     transmission: "ناقل الحركة",
     fuel: "نوع الوقود",
     seats: "المقاعد",
-    luggage: "الحقائب",
     doors: "الأبواب",
     daily: "السعر اليومي EGP",
     weekly: "السعر الأسبوعي EGP",
@@ -148,7 +147,6 @@ const copy = {
     transmission: "Transmission",
     fuel: "Fuel type",
     seats: "Seats",
-    luggage: "Luggage",
     doors: "Doors",
     daily: "Daily rate EGP",
     weekly: "Weekly rate EGP",
@@ -254,7 +252,6 @@ export function FleetVehicleManager({
       transmission: stringValue(form, "transmission"),
       fuelType: stringValue(form, "fuelType"),
       seats: numberValue(form, "seats"),
-      luggage: optionalNumber(form, "luggage"),
       doors: optionalNumber(form, "doors"),
       dailyRateEgp: numberValue(form, "dailyRateEgp"),
       weeklyRateEgp: optionalNumber(form, "weeklyRateEgp"),
@@ -790,15 +787,6 @@ function VehicleEditor({
                   <small>{text.advancedHint}</small>
                 </summary>
                 <div>
-                  <Field label={text.luggage}>
-                    <input
-                      defaultValue={numberValueFor(editing, "luggage", 2)}
-                      max={20}
-                      min={0}
-                      name="luggage"
-                      type="number"
-                    />
-                  </Field>
                   <Field label={text.doors}>
                     <input
                       defaultValue={numberValueFor(editing, "doors", 4)}
