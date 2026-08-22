@@ -167,10 +167,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
           number: "01",
           title: "الهاتف",
           body: "تظهر أرقام التواصل المعتمدة من إدارة رحال مباشرة في دليل الفرع أدناه.",
-          points: [
-            "للاستفسارات العامة ومتابعة مواعيد الحضور",
-            "ساعات العمل النهائية تُعتمد قبل الإطلاق",
-          ],
+          points: ["للاستفسارات العامة ومتابعة مواعيد الحضور", "01011105159 — 01113999155"],
         },
         {
           number: "02",
@@ -181,7 +178,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
         {
           number: "03",
           title: "الفرع",
-          body: "عنوان الفرع والخريطة وساعات العمل في انتظار اعتماد المالك قبل إدخال بيانات الإنتاج.",
+          body: "10 شارع نصر الثورة، متفرع من شارع الهرم وفيصل — الجيزة، مصر. ساعات العمل تُحدَّث قريبًا.",
         },
       ],
       notice: {
@@ -206,7 +203,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
           body: "Approved contact numbers are published directly from Rahal's branch directory below.",
           points: [
             "General questions and branch-attendance coordination",
-            "Final working hours will be approved before launch",
+            "01011105159 · 01113999155",
           ],
         },
         {
@@ -221,7 +218,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
         {
           number: "03",
           title: "Branch",
-          body: "The production address, map, and working hours are waiting for owner confirmation before final data entry.",
+          body: "10 Nasr El Thawra Street, off Al Haram and Faisal Street, Giza, Egypt. Working hours will be updated soon.",
         },
       ],
       notice: {

@@ -157,13 +157,16 @@ export function createContentDocument(
       eyebrow,
       title,
       introduction,
-      phones: [],
+      phones: ["+201011105159", "+201113999155"],
       email: "",
-      address: statement,
+      address:
+        locale === "ar"
+          ? "10 شارع نصر الثورة، متفرع من شارع الهرم وفيصل، الجيزة، مصر"
+          : "10 Nasr El Thawra Street, off Al Haram and Faisal Street, Giza, Egypt",
       workingHours:
-        locale === "ar" ? "السبت إلى الخميس، 9 ص–9 م" : "Saturday to Thursday, 9 AM–9 PM",
+        locale === "ar" ? "ساعات العمل تُحدَّث قريبًا" : "Working hours will be updated soon",
       socialLinks: [],
-      whatsapp: { number: "", message: "", visible: false },
+      whatsapp: { number: "+201011105159", message: "", visible: true },
     };
   return {
     kind: key,

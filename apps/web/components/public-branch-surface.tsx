@@ -145,7 +145,9 @@ function BranchDetails({ branch, locale }: { branch: BranchSummary; locale: Publ
       <div>
         <h3>{locale === "ar" ? branch.nameAr : branch.nameEn}</h3>
         <p>{locale === "ar" ? branch.addressAr : (branch.addressEn ?? branch.addressAr)}</p>
-        {hours.regular || hours.friday ? (
+        {hours.notice ? (
+          <p className="branch-hours-notice">{locale === "ar" ? hours.noticeAr : hours.noticeEn}</p>
+        ) : hours.regular || hours.friday ? (
           <dl>
             <div>
               <dt>{text.regular}</dt>
@@ -187,7 +189,6 @@ function BranchDetails({ branch, locale }: { branch: BranchSummary; locale: Publ
 
 function BranchActions({ branch, locale }: { branch: BranchSummary; locale: PublicLocale }) {
   const text = copy[locale];
-  const phone = branch.phones[0];
   const whatsapp = branch.whatsappNumber ?? branch.whatsappNumbers[0];
   const whatsappMessage = locale === "ar" ? branch.whatsappMessageAr : branch.whatsappMessageEn;
   const mapUrl =
@@ -196,16 +197,16 @@ function BranchActions({ branch, locale }: { branch: BranchSummary; locale: Publ
       : null;
   return (
     <div className="branch-actions">
-      {phone ? (
-        <a className="button button--dark" href={`tel:${dialValue(phone)}`}>
+      {branch.phones.map((phone) => (
+        <a className="button button--dark" href={`tel:${dialValue(phone)}`} key={phone}>
           <Icon name="phone" size={18} />
-          {text.call}
+          <span>{phone.replace(/^\+20/, "0")}</span>
         </a>
-      ) : null}
+      ))}
       {branch.whatsappVisible !== false && whatsapp ? (
         <a
           className="button button--whatsapp"
-          href={`https://wa.me/${dialValue(whatsapp)}${
+          href={`https://wa.me/${whatsappValue(whatsapp)}${
             whatsappMessage ? `?text=${encodeURIComponent(whatsappMessage)}` : ""
           }`}
           rel="noreferrer"
@@ -251,7 +252,14 @@ function BranchMap({
 }
 
 function dialValue(value: string) {
-  return value.replace(/[^\d+]/g, "").replace(/^\+/, "");
+  const normalized = value.replace(/[^\d+]/g, "");
+  if (normalized.startsWith("+")) return normalized;
+  if (normalized.startsWith("0")) return `+20${normalized.slice(1)}`;
+  return `+${normalized}`;
+}
+
+function whatsappValue(value: string) {
+  return dialValue(value).replace(/^\+/, "");
 }
 
 function readHours(value: Record<string, unknown>) {
@@ -279,10 +287,17 @@ function readHours(value: Record<string, unknown>) {
           ? "Closed / مغلق"
           : `${friday.opensAt}–${friday.closesAt}`
         : "",
+      notice: false,
+      noticeAr: "",
+      noticeEn: "",
     };
   }
   return {
     regular: typeof value.regular === "string" ? value.regular : "",
     friday: typeof value.friday === "string" ? value.friday : "",
+    notice: value.notice === true,
+    noticeAr: typeof value.noticeAr === "string" ? value.noticeAr : "ساعات العمل تُحدَّث قريبًا",
+    noticeEn:
+      typeof value.noticeEn === "string" ? value.noticeEn : "Working hours will be updated soon",
   };
 }

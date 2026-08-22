@@ -137,8 +137,8 @@ describe("RAHAL API", () => {
     },
     branch: {
       id: "demo-branch-cairo",
-      nameAr: "فرع رحال القاهرة التجريبي",
-      nameEn: "Rahal Cairo Demo Branch",
+      nameAr: "رحال لتأجير السيارات",
+      nameEn: "Rahal Car Rental",
     },
     customer: {
       email: authUser.email,
@@ -220,10 +220,10 @@ describe("RAHAL API", () => {
         list: async () => [
           {
             id: "demo-branch-cairo",
-            nameAr: "فرع رحال القاهرة التجريبي",
-            nameEn: "Rahal Cairo Demo Branch",
-            addressAr: "عنوان تجريبي — القاهرة، مصر",
-            addressEn: "Fictional address — Cairo, Egypt",
+            nameAr: "رحال لتأجير السيارات",
+            nameEn: "Rahal Car Rental",
+            addressAr: "10 شارع نصر الثورة، متفرع من شارع الهرم وفيصل",
+            addressEn: "10 Nasr El Thawra Street, off Al Haram and Faisal Street, Giza, Egypt",
             active: true,
           },
         ],
@@ -398,8 +398,8 @@ describe("RAHAL API", () => {
             },
             branch: {
               id: "demo-branch-cairo",
-              nameAr: "فرع رحال القاهرة التجريبي",
-              nameEn: "Rahal Cairo Demo Branch",
+              nameAr: "رحال لتأجير السيارات",
+              nameEn: "Rahal Car Rental",
             },
           };
         },
@@ -686,7 +686,7 @@ describe("RAHAL API", () => {
     expect(response.body.meta).toMatchObject({ source: "database", total: 1 });
     expect(response.body.data[0]).toMatchObject({
       id: "demo-branch-cairo",
-      nameEn: "Rahal Cairo Demo Branch",
+      nameEn: "Rahal Car Rental",
       active: true,
     });
   });
