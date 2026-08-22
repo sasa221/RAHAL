@@ -9,7 +9,7 @@ const copy = {
   ar: {
     eyebrow: "فرع رحال",
     title: "كل الإجراءات في مكان واحد",
-    unavailable: "بيانات الفرع قيد الاعتماد. لن نعرض عنوانًا أو رقمًا غير مؤكد.",
+    unavailable: "تفاصيل الفرع الإضافية ستظهر بعد اعتمادها. وسائل التواصل الرسمية متاحة أدناه.",
     pickup: "الاستلام والإرجاع من الفرع",
     egp: "الدفع بالجنيه المصري",
     noOnline: "لا يوجد دفع أونلاين",
@@ -21,11 +21,14 @@ const copy = {
     closed: "مغلق",
     services: "الخدمات المتاحة",
     directory: "بيانات التواصل المعتمدة",
+    fallbackNote:
+      "بيانات التواصل التالية مؤكدة من إدارة رحال. تفاصيل الفرع الإضافية ستظهر بعد اعتمادها.",
   },
   en: {
     eyebrow: "Rahal branch",
     title: "Every procedure in one place",
-    unavailable: "Branch details are awaiting approval. No unconfirmed address or number is shown.",
+    unavailable:
+      "Additional branch details will appear after approval. Official contact methods are available below.",
     pickup: "Branch pickup and return",
     egp: "EGP only",
     noOnline: "No online payment",
@@ -37,7 +40,15 @@ const copy = {
     closed: "Closed",
     services: "Available services",
     directory: "Approved contact details",
+    fallbackNote:
+      "These contact details are confirmed by Rahal. Additional branch details will appear after approval.",
   },
+} as const;
+
+// Official fallback used only on the public contact directory until the branch API is connected.
+const officialFallback = {
+  phones: ["+201011105159", "+201113999155"],
+  whatsapp: "+201011105159",
 } as const;
 
 export function PublicBranchSurface({
@@ -87,9 +98,10 @@ export function PublicBranchSurface({
           <h2>{text.title}</h2>
         </header>
         {state !== "READY" ? (
-          <p className="public-branch-directory__state" role="status">
-            {text.unavailable}
-          </p>
+          <div className="public-branch-directory__state" role="status">
+            <p>{text.fallbackNote}</p>
+            <FallbackContactActions locale={locale} />
+          </div>
         ) : (
           <div className="public-branch-directory__grid">
             {branches.map((branch) => (
@@ -222,6 +234,29 @@ function BranchActions({ branch, locale }: { branch: BranchSummary; locale: Publ
           {text.directions}
         </a>
       ) : null}
+    </div>
+  );
+}
+
+function FallbackContactActions({ locale }: { locale: PublicLocale }) {
+  const text = copy[locale];
+  return (
+    <div className="branch-actions">
+      {officialFallback.phones.map((phone) => (
+        <a className="button button--dark" href={`tel:${dialValue(phone)}`} key={phone}>
+          <Icon name="phone" size={18} />
+          <span>{phone.replace(/^\+20/, "0")}</span>
+        </a>
+      ))}
+      <a
+        className="button button--whatsapp"
+        href={`https://wa.me/${whatsappValue(officialFallback.whatsapp)}`}
+        rel="noreferrer"
+        target="_blank"
+      >
+        <Icon name="whatsapp" size={19} />
+        {text.whatsapp}
+      </a>
     </div>
   );
 }

@@ -173,7 +173,10 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
           number: "02",
           title: "واتساب",
           body: "تواصل عبر القناة الرسمية لرحال بدون إرسال صور بطاقات الهوية أو المستندات في المحادثة.",
-          points: ["المستندات تُرفع من حسابك فقط", "لن نطلب بيانات دفع أو بطاقات بنكية"],
+          points: [
+            "لا ترسل بطاقتك أو رخصتك عبر واتساب. مراجعة المستندات تتم في الفرع حاليًا.",
+            "لن نطلب بيانات دفع أو بطاقات بنكية",
+          ],
         },
         {
           number: "03",
@@ -211,7 +214,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
           title: "WhatsApp",
           body: "Use Rahal's official channel without sending identity-card or document images in the conversation.",
           points: [
-            "Documents are uploaded only through your account",
+            "Do not send your ID or licence by WhatsApp. Document review currently takes place at the branch.",
             "We never request card or online-payment details",
           ],
         },

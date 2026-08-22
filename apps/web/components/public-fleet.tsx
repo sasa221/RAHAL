@@ -57,7 +57,7 @@ const fleetCopy = {
     currency: "كل الأسعار بالجنيه المصري",
     requestOnly: "الطلب يخضع لمراجعة المبيعات",
     from: "من",
-    bags: "حقائب",
+    bags: "شنط",
     minimum: "أقل مدة",
     days: "أيام",
     compareNote: "السعر تقديري لليوم ولا يشمل عربون الفرع.",

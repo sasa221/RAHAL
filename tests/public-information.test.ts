@@ -52,8 +52,8 @@ describe("public information and document locale release gate", () => {
   });
 
   it("keeps protected-document and branch boundaries explicit", () => {
-    expect(component).toContain("المستندات تُرفع من حسابك فقط");
-    expect(component).toContain("Documents are uploaded only through your account");
+    expect(component).toContain("لا ترسل بطاقتك أو رخصتك عبر واتساب");
+    expect(component).toContain("Do not send your ID or licence by WhatsApp");
     expect(component).toContain("only at the Rahal branch");
     expect(component).toContain("فرع رحال فقط");
     expect(component).not.toContain("storageKey");
