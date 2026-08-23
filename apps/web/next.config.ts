@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
           "base-uri 'self'",
           "object-src 'none'",
           "frame-ancestors 'none'",
+          "frame-src 'self' https://www.google.com",
           "form-action 'self'",
           "connect-src 'self' blob:",
           "img-src 'self' data: blob: https:",

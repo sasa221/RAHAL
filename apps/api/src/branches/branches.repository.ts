@@ -313,14 +313,15 @@ function toPublicBranch(branch: PublicBranchRecord): BranchSummary {
 }
 
 function isApprovedPublicBranch(branch: PublicBranchRecord) {
-  const searchable = [branch.id, branch.nameAr, branch.nameEn, branch.addressAr, branch.addressEn]
+  const searchable = [branch.nameAr, branch.nameEn, branch.addressAr, branch.addressEn]
     .filter((value): value is string => Boolean(value))
     .join(" ")
     .toLocaleLowerCase();
+  const identifier = branch.id.toLocaleLowerCase();
   // The public directory is production-facing. Keep local/E2E branches available to
   // authenticated administration and isolated tests, but never publish records that
   // identify themselves as test or device-specific fixtures.
-  return ![
+  const textMarkers = [
     "demo",
     "fictional",
     "temporary",
@@ -334,7 +335,24 @@ function isApprovedPublicBranch(branch: PublicBranchRecord) {
     "اختبار",
     "موبايل",
     "ديسكتوب",
-  ].some((marker) => searchable.includes(marker));
+  ];
+  const identifierMarkers = [
+    "fictional",
+    "temporary",
+    "test",
+    "e2e",
+    "mobile",
+    "desktop",
+    "published-branch",
+    "مؤقت",
+    "اختبار",
+    "موبايل",
+    "ديسكتوب",
+  ];
+  return (
+    !textMarkers.some((marker) => searchable.includes(marker)) &&
+    !identifierMarkers.some((marker) => identifier.includes(marker))
+  );
 }
 
 function auditBranch(branch: BranchRecord): Prisma.InputJsonObject {
