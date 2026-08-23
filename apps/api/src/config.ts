@@ -255,7 +255,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   if (production && privateDocumentStoragePath) {
     throw new Error("PRIVATE_DOCUMENT_STORAGE_PATH is development-only.");
   }
-  if (launchValidated && !privateDocumentStorageS3) {
+  const protectedUploadsRequested = uploadFlag === "true";
+  if (launchValidated && protectedUploadsRequested && !privateDocumentStorageS3) {
     throw new Error("Private S3 document storage is required in production.");
   }
 
@@ -293,13 +294,13 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     }
     documentScan = { url, secret: documentScanGroup[1]! };
   }
-  if (launchValidated && !documentScan) {
+  if (launchValidated && protectedUploadsRequested && !documentScan) {
     throw new Error("Document malware scanning is required in production.");
   }
   const protectedDocumentUploadsEnabled = production
-    ? uploadFlag === "true" && Boolean(privateDocumentStorageS3 && documentScan)
+    ? protectedUploadsRequested && Boolean(privateDocumentStorageS3 && documentScan)
     : uploadFlag !== "false";
-  if (launchValidated && !protectedDocumentUploadsEnabled) {
+  if (launchValidated && protectedUploadsRequested && !protectedDocumentUploadsEnabled) {
     throw new Error(
       "Protected document uploads must be explicitly enabled after private S3 and scanning are configured.",
     );

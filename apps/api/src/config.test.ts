@@ -123,6 +123,7 @@ describe("loadApiConfig verification delivery", () => {
         WEB_URL: "https://rahal.example",
         BREVO_API_KEY: "brevo-production-key",
         BREVO_SENDER_EMAIL: "sender@example.com",
+        RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "true",
       }),
     ).toThrow("Private S3 document storage is required in production.");
     expect(() =>
@@ -131,6 +132,7 @@ describe("loadApiConfig verification delivery", () => {
         WEB_URL: "https://rahal.example",
         RESEND_API_KEY: "re_production",
         VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+        RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "true",
       }),
     ).toThrow("Private S3 document storage is required in production.");
 
@@ -140,6 +142,7 @@ describe("loadApiConfig verification delivery", () => {
         WEB_URL: "https://rahal.example",
         RESEND_API_KEY: "re_production",
         VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+        RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "true",
         PRIVATE_S3_REGION: "eu-central-1",
         PRIVATE_S3_BUCKET: "rahal-private",
         PRIVATE_S3_ACCESS_KEY_ID: "test-access",
@@ -153,6 +156,7 @@ describe("loadApiConfig verification delivery", () => {
         WEB_URL: "https://rahal.example",
         RESEND_API_KEY: "re_production",
         VERIFICATION_EMAIL_FROM: "RAHAL <accounts@rahal.example>",
+        RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "true",
         PRIVATE_S3_REGION: "eu-central-1",
         PRIVATE_S3_BUCKET: "rahal-private",
         PRIVATE_S3_ACCESS_KEY_ID: "test-access",
@@ -178,6 +182,31 @@ describe("loadApiConfig verification delivery", () => {
     expect(config.privateDocumentStorageS3).toBeUndefined();
     expect(config.documentScan).toBeUndefined();
     expect(config.protectedDocumentUploadsEnabled).toBe(false);
+  });
+
+  it("allows a production release with protected uploads explicitly disabled", () => {
+    const config = loadApiConfig({
+      ...baseEnv,
+      NODE_ENV: "production",
+      RAHAL_RELEASE_TIER: "production",
+      RAHAL_BACKGROUND_JOB_MODE: "request",
+      CRON_SECRET: "test-cron-secret-with-at-least-32-characters",
+      WEB_URL: "https://rahal-eg.vercel.app",
+      MFA_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64url"),
+      REDIS_URL: "rediss://default:secret@redis.example.test:6379",
+      BREVO_API_KEY: "brevo-production-key",
+      BREVO_SENDER_EMAIL: "sender@example.com",
+      WEB_PUSH_PUBLIC_KEY: "public-key",
+      WEB_PUSH_PRIVATE_KEY: "private-key",
+      WEB_PUSH_SUBJECT: "mailto:security@example.com",
+      PUSH_SUBSCRIPTION_ENCRYPTION_KEY: Buffer.alloc(32, 4).toString("base64url"),
+      RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED: "false",
+    });
+
+    expect(config.releaseTier).toBe("production");
+    expect(config.protectedDocumentUploadsEnabled).toBe(false);
+    expect(config.privateDocumentStorageS3).toBeUndefined();
+    expect(config.documentScan).toBeUndefined();
   });
 
   it("keeps protected uploads enabled for local tests but supports an explicit delivery lock", () => {
