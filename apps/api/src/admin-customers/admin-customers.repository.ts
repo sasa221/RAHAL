@@ -116,6 +116,28 @@ export class AdminCustomersRepository {
     });
   }
 
+  recordContactAccess(
+    customerId: string,
+    input: {
+      actorId: string;
+      action: string;
+      reason: string;
+    },
+  ) {
+    return this.prisma.client.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        action: `CUSTOMER_CONTACT_${input.action}`,
+        entityType: "CUSTOMER",
+        entityId: customerId,
+        reason: input.reason,
+        newData: { channel: input.action },
+        succeeded: true,
+      },
+      select: { id: true },
+    });
+  }
+
   async updateStatus(
     id: string,
     status: "ACTIVE" | "SUSPENDED" | "BLOCKED",

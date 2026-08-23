@@ -3,6 +3,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import type {
   NotificationCampaignCreateResult,
@@ -187,6 +189,18 @@ export class NotificationsService {
     }
     const marketing =
       input.marketing || input.category === "NEW_VEHICLE" || input.category === "OFFER";
+    if (marketing) {
+      const recent = await this.notifications.recentCampaignCount(
+        session.user.id,
+        new Date(Date.now() - 60 * 60 * 1_000),
+      );
+      if (recent >= 5) {
+        throw new HttpException(
+          "Marketing campaign limit reached. Try again after the hourly sending window resets.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
     const recipients = input.recipientId
       ? await this.notifications.campaignRecipientById({
           id: input.recipientId,

@@ -36,6 +36,7 @@ function setup(role: "CUSTOMER" | "SALES" | "ADMIN" | "SUPER_ADMIN" = "ADMIN") {
     detail: vi.fn().mockResolvedValue(customer),
     statusAudit: vi.fn().mockResolvedValue([]),
     updateStatus: vi.fn().mockResolvedValue({ ...customer, status: "SUSPENDED" }),
+    recordContactAccess: vi.fn().mockResolvedValue({ id: "audit-1" }),
   };
   return {
     repository,
@@ -88,6 +89,30 @@ describe("AdminCustomersService", () => {
     expect(result).not.toHaveProperty("nationality");
     expect(result).not.toHaveProperty("dateOfBirth");
     expect(result).not.toHaveProperty("documents");
+    expect(result.canRevealContact).toBe(false);
+    expect(result.contact).toBeNull();
+  });
+
+  it("allows only super administrators to access full contact details and audits the action", async () => {
+    const regular = setup("ADMIN");
+    await expect(
+      regular.service.contactAccess("session", "customer-1", {
+        action: "CALL",
+        reason: "Customer requested a direct callback",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    const superAdmin = setup("SUPER_ADMIN");
+    const result = await superAdmin.service.contactAccess("session", "customer-1", {
+      action: "EMAIL",
+      reason: "Active reservation requires direct confirmation",
+    });
+    expect(result).toEqual({ email: customer.email, phone: customer.phone });
+    expect(superAdmin.repository.recordContactAccess).toHaveBeenCalledWith("customer-1", {
+      actorId: "admin-1",
+      action: "EMAIL",
+      reason: "Active reservation requires direct confirmation",
+    });
   });
 
   it("requires a real customer and rejects no-op or archived status changes", async () => {

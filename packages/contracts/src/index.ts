@@ -29,6 +29,11 @@ export type AdminCustomerPage = {
 };
 
 export type AdminCustomerDetail = AdminCustomerListItem & {
+  canRevealContact: boolean;
+  contact: {
+    email: string;
+    phone: string | null;
+  } | null;
   preferences: {
     inApp: boolean;
     push: boolean;

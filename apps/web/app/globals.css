@@ -2813,6 +2813,24 @@ html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
   font-size: 1.25rem;
 }
 
+.campaign-cancel {
+  display: block;
+  margin: 10px auto 0;
+  border: 0;
+  background: transparent;
+  color: #6f685d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.campaign-cancel:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
 .campaign-preview {
   position: relative;
   overflow: hidden;
@@ -2834,6 +2852,18 @@ html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
 .campaign-preview > header {
   position: relative;
   z-index: 1;
+}
+
+.campaign-preview__toggle {
+  display: none;
+  margin-inline-start: auto;
+  padding: 7px 10px;
+  border: 1px solid rgb(255 255 255 / 24%);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
 }
 
 .campaign-preview__device {
@@ -3087,6 +3117,19 @@ html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
   .campaign-composer,
   .campaign-preview {
     padding: 24px 16px;
+  }
+
+  .campaign-preview > header {
+    margin-bottom: 0;
+  }
+
+  .campaign-preview__toggle {
+    display: block;
+  }
+
+  .campaign-preview--collapsed .campaign-preview__device,
+  .campaign-preview--collapsed .campaign-preview__rules {
+    display: none;
   }
 
   .campaign-choice-grid,

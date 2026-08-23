@@ -56,6 +56,14 @@ const copy = {
     cancel: "إلغاء",
     saving: "جاري الحفظ...",
     protected: "بيانات الاتصال مخفية عمدًا. لا تعرض هذه الصفحة مستندات أو أرقام هوية.",
+    contactAccess: "وصول مسؤول للاتصال",
+    contactAccessHint: "اكتب سببًا لا يقل عن 10 أحرف لتسجيل هذا الوصول في سجل المراجعة.",
+    call: "اتصال",
+    emailAction: "بريد إلكتروني",
+    whatsapp: "واتساب يدوي",
+    copyEmail: "نسخ البريد",
+    copyPhone: "نسخ الهاتف",
+    contactUnavailable: "لا يوجد رقم هاتف مسجل.",
     loadMore: "عرض المزيد",
     statuses: {
       PENDING_VERIFICATION: "بانتظار التحقق",
@@ -111,6 +119,14 @@ const copy = {
     saving: "Saving...",
     protected:
       "Contact details are deliberately masked. Documents and identity numbers never appear here.",
+    contactAccess: "Privileged contact access",
+    contactAccessHint: "Enter a reason of at least 10 characters; the access is audited.",
+    call: "Call",
+    emailAction: "Email",
+    whatsapp: "Manual WhatsApp",
+    copyEmail: "Copy email",
+    copyPhone: "Copy phone",
+    contactUnavailable: "No phone number is on file.",
     loadMore: "Load more",
     statuses: {
       PENDING_VERIFICATION: "Verification pending",
@@ -146,6 +162,7 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [revealedContact, setRevealedContact] = useState<AdminCustomerDetail["contact"]>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(query.trim()), 350);
@@ -194,6 +211,7 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
   async function openCustomer(id: string) {
     setDetailLoading(true);
     setSelected(null);
+    setRevealedContact(null);
     try {
       const response = await fetch(`/api/admin-customers/${id}?locale=${locale}`, {
         credentials: "include",
@@ -203,6 +221,43 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
       setSelected(((await response.json()) as ApiSuccess<AdminCustomerDetail>).data);
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function accessContact(
+    accessAction: "VIEW" | "CALL" | "EMAIL" | "WHATSAPP" | "COPY_EMAIL" | "COPY_PHONE",
+  ) {
+    if (!selected?.canRevealContact) return;
+    const prompted = window.prompt(text.contactAccessHint);
+    if (!prompted || prompted.trim().length < 10) return;
+    try {
+      const response = await fetch(`/api/admin-customers/${selected.id}/contact-access`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: accessAction, reason: prompted.trim() }),
+      });
+      if (!response.ok) throw new Error();
+      const payload = (await response.json()) as ApiSuccess<
+        NonNullable<AdminCustomerDetail["contact"]>
+      >;
+      setRevealedContact(payload.data);
+      if (accessAction === "COPY_EMAIL") await navigator.clipboard.writeText(payload.data.email);
+      if (accessAction === "COPY_PHONE" && payload.data.phone) {
+        await navigator.clipboard.writeText(payload.data.phone);
+      }
+      if (accessAction === "CALL" && payload.data.phone)
+        window.location.href = `tel:${payload.data.phone}`;
+      if (accessAction === "EMAIL") window.location.href = `mailto:${payload.data.email}`;
+      if (accessAction === "WHATSAPP" && payload.data.phone) {
+        window.open(
+          `https://wa.me/${payload.data.phone.replace(/\D/g, "")}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      }
+    } catch {
+      setActionError(text.contactAccess);
     }
   }
 
@@ -399,6 +454,36 @@ export function AdminCustomersWorkspace({ locale }: { locale: PublicLocale }) {
                   </button>
                 </header>
                 <p className="customer-privacy-note">◇ {text.protected}</p>
+                {selected.canRevealContact ? (
+                  <section className="customer-contact-access">
+                    <div className="customer-section-title">
+                      <span>00</span>
+                      <h3>{text.contactAccess}</h3>
+                    </div>
+                    <p>
+                      {revealedContact
+                        ? `${revealedContact.email}${revealedContact.phone ? ` · ${revealedContact.phone}` : ""}`
+                        : `${selected.emailMasked} · ${selected.phoneMasked}`}
+                    </p>
+                    <div>
+                      <button type="button" onClick={() => void accessContact("CALL")}>
+                        {text.call}
+                      </button>
+                      <button type="button" onClick={() => void accessContact("EMAIL")}>
+                        {text.emailAction}
+                      </button>
+                      <button type="button" onClick={() => void accessContact("WHATSAPP")}>
+                        {text.whatsapp}
+                      </button>
+                      <button type="button" onClick={() => void accessContact("COPY_EMAIL")}>
+                        {text.copyEmail}
+                      </button>
+                      <button type="button" onClick={() => void accessContact("COPY_PHONE")}>
+                        {text.copyPhone}
+                      </button>
+                    </div>
+                  </section>
+                ) : null}
                 <section>
                   <div className="customer-section-title">
                     <span>01</span>

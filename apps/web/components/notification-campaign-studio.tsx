@@ -54,6 +54,10 @@ const copy = {
     preview: "معاينة مباشرة",
     previewEmpty: "اكتب العنوان والرسالة لتظهر المعاينة هنا.",
     send: "إرسال الحملة",
+    cancel: "إلغاء المسودة",
+    cancelConfirm: "هل تريد إلغاء هذه المسودة والبدء برسالة جديدة؟",
+    showPreview: "إظهار المعاينة",
+    hidePreview: "إخفاء المعاينة",
     sending: "جاري تجهيز الإرسال...",
     sent: "تم إنشاء الحملة",
     recipients: "مستلم",
@@ -63,6 +67,8 @@ const copy = {
     noRecipients: "لا يوجد عملاء نشطون لاستقبال هذه الرسالة حتى الآن.",
     noMarketingRecipients:
       "لا يوجد عملاء نشطون وافقوا على استقبال العروض والرسائل التسويقية حتى الآن.",
+    marketingLimit:
+      "وصلت إلى حد الحملات التسويقية في الساعة الحالية. جرّب بعد انتهاء نافذة الإرسال.",
     permissionRequired: "هذا الحساب لا يملك صلاحية إرسال الحملات.",
     required: "أكمل العناوين والرسائل واختر قناة واحدة على الأقل.",
     delivery: "التسليم",
@@ -125,6 +131,10 @@ const copy = {
     preview: "Live preview",
     previewEmpty: "Write a title and message to preview the notification.",
     send: "Send campaign",
+    cancel: "Discard draft",
+    cancelConfirm: "Discard this draft and start a new message?",
+    showPreview: "Show preview",
+    hidePreview: "Hide preview",
     sending: "Preparing delivery...",
     sent: "Campaign created",
     recipients: "recipients",
@@ -133,6 +143,8 @@ const copy = {
     unavailable: "You do not have sending access or campaigns could not be loaded.",
     noRecipients: "No active recipients match this audience.",
     noMarketingRecipients: "No active recipients have opted in to marketing updates.",
+    marketingLimit:
+      "The hourly marketing campaign limit was reached. Try again after the sending window resets.",
     permissionRequired: "This account does not have campaign sending access.",
     required: "Complete both languages and select at least one channel.",
     delivery: "Delivery",
@@ -177,6 +189,7 @@ function localizedCampaignError(message: string, text: (typeof copy)[PublicLocal
   if (message === "No active recipients have opted in to marketing updates.") {
     return text.noMarketingRecipients;
   }
+  if (message.includes("Marketing campaign limit reached")) return text.marketingLimit;
   if (message.includes("permission") || message.includes("staff account")) {
     return text.permissionRequired;
   }
@@ -214,6 +227,7 @@ export function NotificationCampaignStudio({
   const [recipientLoading, setRecipientLoading] = useState(false);
   const [selectedRecipient, setSelectedRecipient] =
     useState<NotificationCampaignRecipientOption | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/notifications/campaigns?locale=${locale}`, {
@@ -289,6 +303,32 @@ export function NotificationCampaignStudio({
     }),
     [bodyAr, bodyEn, locale, titleAr, titleEn],
   );
+  const dirty = Boolean(
+    titleAr.trim() ||
+    titleEn.trim() ||
+    bodyAr.trim() ||
+    bodyEn.trim() ||
+    targetPath.trim() ||
+    selectedRecipient ||
+    marketing ||
+    important,
+  );
+
+  function resetComposer() {
+    if (dirty && !window.confirm(text.cancelConfirm)) return;
+    setTitleAr("");
+    setTitleEn("");
+    setBodyAr("");
+    setBodyEn("");
+    setTargetPath("");
+    setImportant(false);
+    setMarketing(false);
+    setSelectedRecipient(null);
+    setRecipientQuery("");
+    setRecipientOptions([]);
+    setError("");
+    setResult(null);
+  }
 
   function toggleChannel(channel: CampaignChannel) {
     setChannels((current) =>
@@ -629,12 +669,27 @@ export function NotificationCampaignStudio({
             <span>{sending ? text.sending : text.send}</span>
             <b>↗</b>
           </button>
+          <button
+            className="campaign-cancel"
+            disabled={sending}
+            onClick={resetComposer}
+            type="button"
+          >
+            {text.cancel}
+          </button>
         </div>
 
-        <aside className="campaign-preview">
+        <aside className={`campaign-preview${showPreview ? "" : " campaign-preview--collapsed"}`}>
           <header>
             <span>02</span>
             <h3>{text.preview}</h3>
+            <button
+              className="campaign-preview__toggle"
+              onClick={() => setShowPreview((current) => !current)}
+              type="button"
+            >
+              {showPreview ? text.hidePreview : text.showPreview}
+            </button>
           </header>
           <div
             className={`campaign-preview__device${important || category === "URGENT" ? " is-important" : ""}`}

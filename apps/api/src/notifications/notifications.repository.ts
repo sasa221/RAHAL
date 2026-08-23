@@ -6,6 +6,12 @@ import { PrismaService } from "../database/prisma.service";
 export class NotificationsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  recentCampaignCount(actorId: string, since: Date) {
+    return this.prisma.client.notificationCampaign.count({
+      where: { createdById: actorId, marketing: true, createdAt: { gte: since } },
+    });
+  }
+
   async inbox(userId: string) {
     const [items, unreadCount] = await Promise.all([
       this.prisma.client.notification.findMany({

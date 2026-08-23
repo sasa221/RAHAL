@@ -34,6 +34,7 @@ const copy = {
     disabled: "Needs configuration",
     loading: "Reading communication signals...",
     unavailable: "Communication status is unavailable for this account.",
+    runFailed: "Delivery is not configured or the queue could not be processed.",
     labels: {
       IN_APP: "In-app",
       EMAIL: "Transactional email",
@@ -44,7 +45,7 @@ const copy = {
   ar: {
     eyebrow: "رحال / الإشارات المباشرة",
     title: "كل رسالة للعميل ظاهرة، قابلة للمتابعة والمحاسبة.",
-    subtitle: "مركز تشغيل واحد لإشعارات الموقع والبريد وواتساب وإشعارات المتصفح.",
+    subtitle: "مركز تشغيل واحد لإشعارات الموقع والبريد وإشعارات المتصفح.",
     ready: "جاهز",
     missing: "يحتاج إعداد",
     provider: "المزوّد",
@@ -64,6 +65,7 @@ const copy = {
     disabled: "تحتاج إعداد",
     loading: "جاري قراءة إشارات التواصل...",
     unavailable: "تعذر تحميل حالة التواصل لهذا الحساب.",
+    runFailed: "خدمة الإرسال غير مجهزة أو تعذر تشغيل الطابور. لم يتم الادعاء بإرسال الرسائل.",
     labels: {
       IN_APP: "داخل الموقع",
       EMAIL: "البريد الإلكتروني",
@@ -79,6 +81,7 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [processed, setProcessed] = useState<number | null>(null);
+  const [runError, setRunError] = useState(false);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/admin-operations/communications", {
@@ -101,6 +104,7 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
   async function runQueue() {
     setRunning(true);
     setProcessed(null);
+    setRunError(false);
     try {
       const response = await fetch("/api/admin-operations/communications/run", {
         method: "POST",
@@ -110,6 +114,8 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
       const payload = (await response.json()) as ApiSuccess<AdminCommunicationRunResult>;
       setProcessed(payload.data.processed);
       await load();
+    } catch {
+      setRunError(true);
     } finally {
       setRunning(false);
     }
@@ -187,6 +193,9 @@ export function AdminCommunicationsWorkspace({ locale }: { locale: PublicLocale 
                   <p className="communications-result">
                     {processed.toLocaleString()} {text.processed}
                   </p>
+                ) : null}
+                {runError ? (
+                  <p className="communications-result is-error">{text.runFailed}</p>
                 ) : null}
               </div>
 

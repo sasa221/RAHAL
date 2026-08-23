@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import type {
   AdminCustomerDetail,
   AdminCustomerListItem,
@@ -7,7 +7,7 @@ import type {
 } from "@rahal/contracts";
 import type { Request } from "express";
 import { readAuthCookie } from "../auth/auth-cookie";
-import { UpdateCustomerStatusDto } from "./admin-customers.dto";
+import { CustomerContactAccessDto, UpdateCustomerStatusDto } from "./admin-customers.dto";
 import { AdminCustomersService } from "./admin-customers.service";
 
 @Controller("admin-customers")
@@ -53,5 +53,14 @@ export class AdminCustomersController {
         locale === "ar" ? "ar" : "en",
       ),
     };
+  }
+
+  @Post(":id/contact-access")
+  async contactAccess(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Body() input: CustomerContactAccessDto,
+  ): Promise<ApiSuccess<{ email: string; phone: string | null }>> {
+    return { data: await this.customers.contactAccess(readAuthCookie(request), id, input) };
   }
 }

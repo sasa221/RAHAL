@@ -98,7 +98,9 @@ export function PublicBranchSurface({
   }
 
   if (variant === "directory") {
-    const directoryBranches = branches.length ? branches : [officialBranch];
+    // Rahal currently operates one public branch. Keep historical or inactive
+    // branch records out of the customer-facing directory.
+    const directoryBranches = [selectPublicBranch(branches)];
     return (
       <section className="public-branch-directory">
         <header>

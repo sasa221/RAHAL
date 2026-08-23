@@ -8,3 +8,12 @@ export class UpdateCustomerStatusDto {
   @Length(10, 300)
   reason!: string;
 }
+
+export class CustomerContactAccessDto {
+  @IsIn(["VIEW", "CALL", "EMAIL", "WHATSAPP", "COPY_EMAIL", "COPY_PHONE"])
+  action!: "VIEW" | "CALL" | "EMAIL" | "WHATSAPP" | "COPY_EMAIL" | "COPY_PHONE";
+
+  @IsString()
+  @Length(10, 300)
+  reason!: string;
+}

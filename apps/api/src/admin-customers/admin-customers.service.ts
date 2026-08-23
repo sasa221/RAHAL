@@ -13,7 +13,7 @@ import type {
   AuthSession,
 } from "@rahal/contracts";
 import { AuthService } from "../auth/auth.service";
-import type { UpdateCustomerStatusDto } from "./admin-customers.dto";
+import type { CustomerContactAccessDto, UpdateCustomerStatusDto } from "./admin-customers.dto";
 import { AdminCustomersRepository } from "./admin-customers.repository";
 
 type Locale = "ar" | "en";
@@ -71,7 +71,7 @@ export class AdminCustomersService {
     id: string,
     locale: Locale,
   ): Promise<AdminCustomerDetail> {
-    await this.adminSession(token);
+    const session = await this.adminSession(token);
     const [customer, audit] = await Promise.all([
       this.customers.detail(id),
       this.customers.statusAudit(id),
@@ -80,6 +80,8 @@ export class AdminCustomersService {
     const preference = customer.notificationPreference;
     return {
       ...this.toListItem(customer, locale),
+      canRevealContact: session.user.role === "SUPER_ADMIN",
+      contact: null,
       preferences: {
         inApp: preference?.inAppEnabled ?? true,
         push: preference?.pushEnabled ?? true,
@@ -106,6 +108,25 @@ export class AdminCustomersService {
         createdAt: entry.createdAt.toISOString(),
       })),
     };
+  }
+
+  async contactAccess(
+    token: string | undefined,
+    id: string,
+    input: CustomerContactAccessDto,
+  ): Promise<{ email: string; phone: string | null }> {
+    const session = await this.auth.getSession(token);
+    if (session.user.role !== "SUPER_ADMIN") {
+      throw new ForbiddenException("Only a super administrator may access full contact details.");
+    }
+    const customer = await this.customers.detail(id);
+    if (!customer) throw new NotFoundException("Customer account not found.");
+    await this.customers.recordContactAccess(id, {
+      actorId: session.user.id,
+      action: input.action,
+      reason: input.reason.trim(),
+    });
+    return { email: customer.email, phone: customer.phone };
   }
 
   async updateStatus(

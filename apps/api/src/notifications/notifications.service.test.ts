@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  HttpException,
+} from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { NotificationsService } from "./notifications.service";
 
@@ -34,6 +39,7 @@ function setup(locale: "ar" | "en" = "en") {
       readAt: new Date("2026-07-26T09:00:00.000Z"),
     }),
     campaigns: vi.fn().mockResolvedValue([]),
+    recentCampaignCount: vi.fn().mockResolvedValue(0),
     campaignRecipients: vi.fn().mockResolvedValue([{ id: "customer-1" }]),
     campaignRecipientOptions: vi.fn().mockResolvedValue([
       {
@@ -220,6 +226,25 @@ describe("NotificationsService", () => {
       }),
     ).rejects.toThrow(BadRequestException);
     expect(repository.createCampaign).not.toHaveBeenCalled();
+  });
+
+  it("caps marketing campaigns per sender to prevent repeated broadcasts", async () => {
+    const { service, repository } = setup();
+    repository.recentCampaignCount.mockResolvedValue(5);
+    await expect(
+      service.createCampaign("session", {
+        category: "OFFER",
+        audience: "CUSTOMERS",
+        titleAr: "عرض جديد",
+        titleEn: "New offer",
+        bodyAr: "اكتشف عرض رحال الجديد لفترة محدودة.",
+        bodyEn: "Discover the new limited Rahal offer.",
+        channels: ["IN_APP"],
+        important: false,
+        marketing: true,
+      }),
+    ).rejects.toSatisfy((error) => error instanceof HttpException && error.getStatus() === 429);
+    expect(repository.campaignRecipients).not.toHaveBeenCalled();
   });
 
   it("marks all notifications only for the session owner", async () => {
