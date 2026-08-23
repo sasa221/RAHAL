@@ -37,7 +37,7 @@ test.describe("structured branch management", () => {
     await superAdmin.close();
   });
 
-  test("an active branch appears publicly with the exact manual wa.me link", async ({
+  test("test branches stay private while the official branch remains public", async ({
     browser,
   }, testInfo) => {
     const context = await roleContext(browser, testInfo, "super-admin");
@@ -53,14 +53,14 @@ test.describe("structured branch management", () => {
     expect(branch.status).toBe("ACTIVE");
     const publicResponse = await context.request.get("/api/branches");
     expect(publicResponse.status()).toBe(200);
-    expect((await publicResponse.json()).data).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: branch.id, nameEn, whatsappNumber })]),
+    expect((await publicResponse.json()).data).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: branch.id })]),
     );
     const page = await context.newPage();
     await page.goto("/en/contact", { waitUntil: "domcontentloaded" });
-    await expect(page.getByText(nameEn, { exact: true }).first()).toBeVisible();
-    const expected = `https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
-    await expect(page.locator(`a[href="${expected}"]`).first()).toBeVisible();
+    await expect(page.getByText(nameEn, { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Rahal Car Rental", { exact: true }).first()).toBeVisible();
+    await expect(page.locator('a[href^="https://wa.me/"]').first()).toBeVisible();
     await context.close();
   });
 

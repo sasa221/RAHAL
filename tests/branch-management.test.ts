@@ -59,6 +59,9 @@ describe("branch management", () => {
     expect(repository).toContain('where: { active: true, status: "ACTIVE" }');
     expect(repository).toContain("isApprovedPublicBranch");
     expect(repository).toContain('"تجريبي"');
+    expect(repository).toContain('"اختبار"');
+    expect(repository).toContain('"mobile"');
+    expect(repository).toContain('"desktop"');
     expect(repository).toContain("whatsappNumbers: true");
     expect(repository).toContain("whatsappVisible: true");
     expect(surface).toContain("https://wa.me/");

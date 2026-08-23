@@ -3,6 +3,7 @@ import { HealthController } from "./health.controller";
 
 describe("HealthController", () => {
   beforeEach(() => {
+    vi.stubEnv("RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED", "false");
     for (const name of [
       "PRIVATE_DOCUMENT_STORAGE_PATH",
       "PRIVATE_S3_REGION",
@@ -23,9 +24,9 @@ describe("HealthController", () => {
 
     expect(controller.live()).toMatchObject({ status: "alive", service: "rahal-api" });
     await expect(controller.ready()).resolves.toMatchObject({
-      status: "degraded",
+      status: "ready",
       service: "rahal-api",
-      dependencies: { database: "ready", rateLimit: "ready", privateStorage: "unconfigured" },
+      dependencies: { database: "ready", rateLimit: "ready", privateStorage: "disabled" },
     });
     expect(queryRaw).toHaveBeenCalledTimes(1);
   });
@@ -43,6 +44,7 @@ describe("HealthController", () => {
   });
 
   it("checks shared throttling and private storage when providers are available", async () => {
+    vi.stubEnv("RAHAL_PROTECTED_DOCUMENT_UPLOADS_ENABLED", "true");
     vi.stubEnv("PRIVATE_DOCUMENT_STORAGE_PATH", ".private-storage");
     const rateReadiness = vi.fn();
     const storageReadiness = vi.fn();

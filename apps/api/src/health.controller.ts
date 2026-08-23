@@ -29,8 +29,11 @@ export class HealthController {
     try {
       await this.prisma.client.$queryRaw`SELECT 1`;
       await this.rateLimits?.readiness();
-      const storageConfigured = this.documentStorage?.configured() ?? false;
-      if (storageConfigured) await this.documentStorage?.readiness();
+      const uploadsEnabled = this.config.protectedDocumentUploadsEnabled;
+      const storageConfigured = uploadsEnabled
+        ? (this.documentStorage?.configured() ?? false)
+        : true;
+      if (uploadsEnabled && storageConfigured) await this.documentStorage?.readiness();
       return {
         status: storageConfigured ? "ready" : "degraded",
         service: "rahal-api",
@@ -38,7 +41,11 @@ export class HealthController {
         dependencies: {
           database: "ready",
           rateLimit: "ready",
-          privateStorage: storageConfigured ? "ready" : "unconfigured",
+          privateStorage: uploadsEnabled
+            ? storageConfigured
+              ? "ready"
+              : "unconfigured"
+            : "disabled",
         },
         timestamp: new Date().toISOString(),
       };
