@@ -34,6 +34,7 @@ describe("NotificationsRepository campaign recipients", () => {
     await repository.campaignRecipients({
       audience: "CUSTOMERS",
       marketing: true,
+      marketingSince: new Date("2026-08-01T00:00:00.000Z"),
     });
 
     expect(findMany).toHaveBeenCalledWith(
@@ -41,6 +42,13 @@ describe("NotificationsRepository campaign recipients", () => {
         where: expect.objectContaining({
           status: { in: ["ACTIVE", "PENDING_VERIFICATION"] },
           notificationPreference: { is: { marketingEnabled: true } },
+          notifications: {
+            none: {
+              campaign: {
+                is: { marketing: true, createdAt: { gte: new Date("2026-08-01T00:00:00.000Z") } },
+              },
+            },
+          },
         }),
       }),
     );

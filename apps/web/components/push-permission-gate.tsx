@@ -33,6 +33,7 @@ const copy = {
     reminderTitle: "إشعارات رحال غير مفعّلة",
     reminderBody: "فعّلها حتى لا يفوتك تحديث مهم على طلبك.",
     reminderAction: "تفعيل",
+    dismiss: "إغلاق تذكير الإشعارات",
     blockedTitle: "الإشعارات محظورة من المتصفح",
     blockedBody: "افتح إعدادات الموقع في المتصفح، اسمح بالإشعارات، ثم ارجع واضغط «حاول مجددًا».",
     retry: "حاول مجددًا",
@@ -60,6 +61,7 @@ const copy = {
     reminderTitle: "Rahal notifications are off",
     reminderBody: "Turn them on so you do not miss an important request update.",
     reminderAction: "Enable",
+    dismiss: "Dismiss notification reminder",
     blockedTitle: "Notifications are blocked by your browser",
     blockedBody:
       "Open this site's browser settings, allow notifications, then return and choose “Try again”.",
@@ -231,6 +233,14 @@ export function PushPermissionGate({ locale }: { locale: PublicLocale }) {
         </div>
         <button onClick={() => void enable()} type="button">
           {text.reminderAction}
+        </button>
+        <button
+          aria-label={text.dismiss}
+          className="push-consent-reminder__dismiss"
+          onClick={defer}
+          type="button"
+        >
+          ×
         </button>
       </aside>
     );

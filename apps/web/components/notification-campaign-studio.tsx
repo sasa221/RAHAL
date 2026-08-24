@@ -66,9 +66,7 @@ const copy = {
     unavailable: "لا تملك صلاحية الإرسال أو تعذر تحميل الحملات.",
     noRecipients: "لا يوجد عملاء نشطون لاستقبال هذه الرسالة حتى الآن.",
     noMarketingRecipients:
-      "لا يوجد عملاء نشطون وافقوا على استقبال العروض والرسائل التسويقية حتى الآن.",
-    marketingLimit:
-      "وصلت إلى حد الحملات التسويقية في الساعة الحالية. جرّب بعد انتهاء نافذة الإرسال.",
+      "لا يوجد مستلمون مؤهلون وافقوا على الرسائل التسويقية، أو تلقوا حملة خلال آخر 7 أيام.",
     permissionRequired: "هذا الحساب لا يملك صلاحية إرسال الحملات.",
     required: "أكمل العناوين والرسائل واختر قناة واحدة على الأقل.",
     delivery: "التسليم",
@@ -142,9 +140,8 @@ const copy = {
     noHistory: "No campaigns have been sent yet.",
     unavailable: "You do not have sending access or campaigns could not be loaded.",
     noRecipients: "No active recipients match this audience.",
-    noMarketingRecipients: "No active recipients have opted in to marketing updates.",
-    marketingLimit:
-      "The hourly marketing campaign limit was reached. Try again after the sending window resets.",
+    noMarketingRecipients:
+      "No eligible recipients have opted in to marketing updates, or they received a campaign in the last 7 days.",
     permissionRequired: "This account does not have campaign sending access.",
     required: "Complete both languages and select at least one channel.",
     delivery: "Delivery",
@@ -186,10 +183,12 @@ function isApiSuccess<T>(payload: unknown): payload is ApiSuccess<T> {
 
 function localizedCampaignError(message: string, text: (typeof copy)[PublicLocale]) {
   if (message === "No active recipients match this audience.") return text.noRecipients;
-  if (message === "No active recipients have opted in to marketing updates.") {
+  if (
+    message === "No active recipients have opted in to marketing updates." ||
+    message.startsWith("No eligible recipients have opted in to marketing updates")
+  ) {
     return text.noMarketingRecipients;
   }
-  if (message.includes("Marketing campaign limit reached")) return text.marketingLimit;
   if (message.includes("permission") || message.includes("staff account")) {
     return text.permissionRequired;
   }

@@ -96,7 +96,7 @@ describe("in-app notification center", () => {
   it("localizes known campaign audience and permission errors", () => {
     expect(campaignStudio).toContain('"لا يوجد عملاء نشطون لاستقبال هذه الرسالة حتى الآن."');
     expect(campaignStudio).toContain(
-      '"لا يوجد عملاء نشطون وافقوا على استقبال العروض والرسائل التسويقية حتى الآن."',
+      '"لا يوجد مستلمون مؤهلون وافقوا على الرسائل التسويقية، أو تلقوا حملة خلال آخر 7 أيام."',
     );
     expect(campaignStudio).toContain("localizedCampaignError(");
     expect(campaignStudio).toContain("return text.permissionRequired");

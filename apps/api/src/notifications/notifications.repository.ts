@@ -6,12 +6,6 @@ import { PrismaService } from "../database/prisma.service";
 export class NotificationsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  recentCampaignCount(actorId: string, since: Date) {
-    return this.prisma.client.notificationCampaign.count({
-      where: { createdById: actorId, marketing: true, createdAt: { gte: since } },
-    });
-  }
-
   async inbox(userId: string) {
     const [items, unreadCount] = await Promise.all([
       this.prisma.client.notification.findMany({
@@ -257,6 +251,7 @@ export class NotificationsRepository {
   async campaignRecipients(input: {
     audience: "CUSTOMERS" | "SALES" | "CUSTOMERS_AND_SALES";
     marketing: boolean;
+    marketingSince?: Date;
   }) {
     const roles =
       input.audience === "CUSTOMERS"
@@ -283,6 +278,15 @@ export class NotificationsRepository {
         systemRole: { in: [...roles] },
         ...accountScope,
         ...(input.marketing ? { notificationPreference: { is: { marketingEnabled: true } } } : {}),
+        ...(input.marketing && input.marketingSince
+          ? {
+              notifications: {
+                none: {
+                  campaign: { is: { marketing: true, createdAt: { gte: input.marketingSince } } },
+                },
+              },
+            }
+          : {}),
       },
       select: { id: true },
       orderBy: { id: "asc" },
@@ -334,6 +338,7 @@ export class NotificationsRepository {
     id: string;
     roles: Array<"CUSTOMER" | "SALES">;
     marketing: boolean;
+    marketingSince?: Date;
   }) {
     const recipient = await this.prisma.client.user.findFirst({
       where: {
@@ -347,6 +352,15 @@ export class NotificationsRepository {
           { systemRole: "SALES", status: "ACTIVE" },
         ],
         ...(input.marketing ? { notificationPreference: { is: { marketingEnabled: true } } } : {}),
+        ...(input.marketing && input.marketingSince
+          ? {
+              notifications: {
+                none: {
+                  campaign: { is: { marketing: true, createdAt: { gte: input.marketingSince } } },
+                },
+              },
+            }
+          : {}),
       },
       select: { id: true },
     });

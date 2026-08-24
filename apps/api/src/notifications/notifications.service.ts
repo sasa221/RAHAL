@@ -3,8 +3,6 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  HttpException,
-  HttpStatus,
 } from "@nestjs/common";
 import type {
   NotificationCampaignCreateResult,
@@ -189,32 +187,23 @@ export class NotificationsService {
     }
     const marketing =
       input.marketing || input.category === "NEW_VEHICLE" || input.category === "OFFER";
-    if (marketing) {
-      const recent = await this.notifications.recentCampaignCount(
-        session.user.id,
-        new Date(Date.now() - 60 * 60 * 1_000),
-      );
-      if (recent >= 5) {
-        throw new HttpException(
-          "Marketing campaign limit reached. Try again after the hourly sending window resets.",
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
-    }
+    const marketingSince = marketing ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1_000) : undefined;
     const recipients = input.recipientId
       ? await this.notifications.campaignRecipientById({
           id: input.recipientId,
           roles: isAdmin ? ["CUSTOMER", "SALES"] : ["CUSTOMER"],
           marketing,
+          marketingSince,
         })
       : await this.notifications.campaignRecipients({
           audience: input.audience,
           marketing,
+          marketingSince,
         });
     if (!recipients.length) {
       throw new BadRequestException(
         marketing
-          ? "No active recipients have opted in to marketing updates."
+          ? "No eligible recipients have opted in to marketing updates, or they already received a campaign in the last 7 days."
           : "No active recipients match this audience.",
       );
     }

@@ -283,6 +283,20 @@ export function ContentManagementWorkspace({ locale }: { locale: PublicLocale })
                 <span>01</span>
                 <h2>{text.sections}</h2>
               </header>
+              <label className="content-studio__section-select">
+                <span>{text.sections}</span>
+                <select
+                  aria-label={text.sections}
+                  onChange={(event) => selectSection(event.target.value as SiteContentKey)}
+                  value={selectedKey}
+                >
+                  {sections.map((key) => (
+                    <option key={key} value={key}>
+                      {sectionLabels[key][locale]}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {sections.map((key, index) => {
                 const entry = overview.entries.find((candidate) => candidate.key === key);
                 return (

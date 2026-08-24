@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-  HttpException,
-} from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { NotificationsService } from "./notifications.service";
 
@@ -39,7 +34,6 @@ function setup(locale: "ar" | "en" = "en") {
       readAt: new Date("2026-07-26T09:00:00.000Z"),
     }),
     campaigns: vi.fn().mockResolvedValue([]),
-    recentCampaignCount: vi.fn().mockResolvedValue(0),
     campaignRecipients: vi.fn().mockResolvedValue([{ id: "customer-1" }]),
     campaignRecipientOptions: vi.fn().mockResolvedValue([
       {
@@ -136,6 +130,7 @@ describe("NotificationsService", () => {
     expect(repository.campaignRecipients).toHaveBeenCalledWith({
       audience: "CUSTOMERS",
       marketing: true,
+      marketingSince: expect.any(Date),
     });
     expect(repository.createCampaign).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -228,9 +223,8 @@ describe("NotificationsService", () => {
     expect(repository.createCampaign).not.toHaveBeenCalled();
   });
 
-  it("caps marketing campaigns per sender to prevent repeated broadcasts", async () => {
+  it("passes a seven-day per-recipient window for marketing campaigns", async () => {
     const { service, repository } = setup();
-    repository.recentCampaignCount.mockResolvedValue(5);
     await expect(
       service.createCampaign("session", {
         category: "OFFER",
@@ -243,8 +237,13 @@ describe("NotificationsService", () => {
         important: false,
         marketing: true,
       }),
-    ).rejects.toSatisfy((error) => error instanceof HttpException && error.getStatus() === 429);
-    expect(repository.campaignRecipients).not.toHaveBeenCalled();
+    ).resolves.toMatchObject({ recipientCount: 1 });
+    expect(repository.campaignRecipients).toHaveBeenCalledWith({
+      audience: "CUSTOMERS",
+      marketing: true,
+      marketingSince: expect.any(Date),
+    });
+    expect(repository.createCampaign).toHaveBeenCalled();
   });
 
   it("marks all notifications only for the session owner", async () => {
