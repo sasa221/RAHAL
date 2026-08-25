@@ -161,7 +161,7 @@ const shared = {
     footerCopy: "رحال لتأجير السيارات في مصر — اختيار واضح ومتابعة حقيقية.",
     quickLinks: "روابط سريعة",
     contact: "تواصل معنا",
-    legal: "نسخة تجريبية — السيارات والبيانات المعروضة وهمية.",
+    legal: "رحال لتأجير السيارات — مصر.",
   },
   en: {
     htmlLang: "en-EG",
@@ -245,7 +245,7 @@ const shared = {
     footerCopy: "Rahal car rental in Egypt — a clear choice with real follow-up.",
     quickLinks: "Quick links",
     contact: "Contact",
-    legal: "Demo version — all displayed vehicles and records are fictional.",
+    legal: "Rahal car rental — Egypt.",
   },
 } as const;
 
