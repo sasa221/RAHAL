@@ -98,7 +98,7 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("deposit recording");
     expect(reservation).toContain('type="file"');
     expect(reservation).toContain("allowedMimeTypes");
-    expect(reservation).toContain("No permanent URL or identity number");
+    expect(reservation).toContain("Identity documents are not uploaded on the site right now");
     expect(reservation).not.toContain("identityNumber");
     expect(reservation).not.toContain("passportNumber");
     expect(reservation).toContain("emailMasked");
@@ -116,7 +116,7 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain("/review`");
     expect(reservation).toContain("/submit`");
     expect(reservation).toContain('status: "PENDING_REVIEW"');
-    expect(reservation).toContain("This is not a confirmed booking yet");
+    expect(reservation).toContain("not a confirmed booking yet");
     expect(reservation).toContain("There is no online payment");
     expect(reservation).toContain("I confirm I do not hold Egyptian nationality");
     expect(reservation).toContain("أؤكد أنني لا أحمل الجنسية المصرية");
