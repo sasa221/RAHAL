@@ -87,7 +87,15 @@ test.describe("typed content management", () => {
         await page.getByRole("tab", { name: "English" }).click();
       }
 
-      await page.getByRole("button", { name: locale === "ar" ? /الأسئلة الشائعة/ : /FAQ/ }).click();
+      if (testInfo.project.name.includes("mobile")) {
+        await page
+          .locator(".content-studio__section-select select")
+          .selectOption({ label: locale === "ar" ? "الأسئلة الشائعة" : "FAQ" });
+      } else {
+        await page
+          .getByRole("button", { name: locale === "ar" ? /الأسئلة الشائعة/ : /FAQ/ })
+          .click();
+      }
       const add = page.getByRole("button", { name: locale === "ar" ? /إضافة عنصر/ : /Add item/ });
       const before = await page.locator(".content-studio__items article").count();
       await add.click();

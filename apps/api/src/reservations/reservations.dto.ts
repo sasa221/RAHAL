@@ -74,6 +74,11 @@ export class SaveReservationConsentsDto {
   marketingAccepted!: boolean;
 }
 
+export class SubmitReservationDto {
+  @Equals(true)
+  nonEgyptianAcknowledged!: true;
+}
+
 export class SalesReservationDecisionDto {
   @IsIn(["REQUEST_INFORMATION", "PRE_APPROVE", "REJECT"])
   action!: "REQUEST_INFORMATION" | "PRE_APPROVE" | "REJECT";

@@ -13,7 +13,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:e2e": "playwright test --workers=6",
+    "test:e2e": "playwright test",
     "test:e2e:interaction": "playwright test tests/e2e/interaction-audit.spec.ts tests/e2e/functional-interactions.spec.ts",
     "test:e2e:documents": "playwright test tests/e2e/document-security.spec.ts",
     "test:release": "playwright test tests/e2e/interaction-audit.spec.ts tests/e2e/functional-interactions.spec.ts tests/e2e/document-security.spec.ts tests/e2e/authenticated-release.spec.ts tests/e2e/authenticated-lifecycle.spec.ts",

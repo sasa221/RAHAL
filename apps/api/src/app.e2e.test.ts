@@ -909,9 +909,16 @@ describe("RAHAL API", () => {
   });
 
   it("submits to pending review without ever confirming a booking", async () => {
+    await request(app.getHttpServer())
+      .post("/api/reservations/drafts/reservation-draft-e2e/submit")
+      .set("Cookie", documentCookie)
+      .send({ nonEgyptianAcknowledged: false })
+      .expect(400);
+
     const response = await request(app.getHttpServer())
       .post("/api/reservations/drafts/reservation-draft-e2e/submit")
       .set("Cookie", documentCookie)
+      .send({ nonEgyptianAcknowledged: true })
       .expect(201);
 
     expect(response.body.data).toMatchObject({

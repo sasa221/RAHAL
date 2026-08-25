@@ -44,7 +44,11 @@ type Review = QueueItem & {
     emergencyContactPhoneMasked: string | null;
   };
   verification: { email: boolean };
-  consents: { policyVersion: string | null; requiredAccepted: boolean };
+  consents: {
+    policyVersion: string | null;
+    requiredAccepted: boolean;
+    nonEgyptianAcknowledged: boolean;
+  };
   documents: Array<{
     id: string;
     type: string;
@@ -192,6 +196,9 @@ const copy = {
     closePreview: "إغلاق المعاينة",
     documentActionFailed: "تعذر تنفيذ إجراء المستند.",
     consent: "نسخة الموافقات",
+    nationalityDeclaration: "إقرار عدم حمل الجنسية المصرية",
+    declarationConfirmed: "تم التأكيد",
+    declarationMissing: "غير مؤكد",
     timeline: "سجل الطلب",
     claim: "استلم الطلب للمراجعة",
     claiming: "جارٍ استلام الطلب...",
@@ -350,6 +357,9 @@ const copy = {
     closePreview: "Close preview",
     documentActionFailed: "The document action could not be completed.",
     consent: "Consent version",
+    nationalityDeclaration: "Non-Egyptian nationality declaration",
+    declarationConfirmed: "Confirmed",
+    declarationMissing: "Not confirmed",
     timeline: "Request timeline",
     claim: "Claim request for review",
     claiming: "Claiming request...",
@@ -1311,6 +1321,14 @@ export function SalesReviewWorkspace({
                       <span>
                         {text.consent}
                         <b>{review.consents.policyVersion ?? "—"}</b>
+                      </span>
+                      <span>
+                        {text.nationalityDeclaration}
+                        <b>
+                          {review.consents.nonEgyptianAcknowledged
+                            ? text.declarationConfirmed
+                            : text.declarationMissing}
+                        </b>
                       </span>
                     </div>
                   </section>

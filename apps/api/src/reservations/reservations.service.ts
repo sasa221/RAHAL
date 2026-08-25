@@ -407,6 +407,9 @@ export class ReservationsService {
     if (!session.user.emailVerified) blockers.push("EMAIL_VERIFICATION_REQUIRED");
     if (!draft.customerDetailsCompletedAt) blockers.push("CUSTOMER_DETAILS_REQUIRED");
     if (!requiredAccepted) blockers.push("REQUIRED_CONSENTS_REQUIRED");
+    if (!draft.nonEgyptianAcknowledgedAt) {
+      blockers.push("NON_EGYPTIAN_DECLARATION_REQUIRED");
+    }
     if (!approvedPolicy) blockers.push("APPROVED_POLICY_REQUIRED");
     if (!documentsComplete) blockers.push("REQUIRED_DOCUMENTS_REQUIRED");
     if (!vehicleAvailable) blockers.push("VEHICLE_UNAVAILABLE");
@@ -452,6 +455,7 @@ export class ReservationsService {
         policyVersion: draft.termsVersion,
         requiredAccepted,
         marketingAccepted: Boolean(draft.marketingConsentAt),
+        nonEgyptianAcknowledged: Boolean(draft.nonEgyptianAcknowledgedAt),
       },
       blockers,
       canSubmit: blockers.length === 0,
@@ -461,6 +465,7 @@ export class ReservationsService {
   async submitReservation(
     token: string | undefined,
     draftId: string,
+    nonEgyptianAcknowledged: boolean,
   ): Promise<SubmittedReservation> {
     const session = await this.auth.getSession(token);
     if (session.user.role !== "CUSTOMER") {
@@ -470,6 +475,7 @@ export class ReservationsService {
       draftId,
       customerId: session.user.id,
       locale: session.user.preferredLocale,
+      nonEgyptianAcknowledged,
     });
     if (result.kind === "SUBMITTED") return result.data;
     if (result.kind === "NOT_FOUND") {
@@ -480,6 +486,11 @@ export class ReservationsService {
     }
     if (result.kind === "DOCUMENTS_INCOMPLETE") {
       throw new ConflictException("Every required document must be uploaded before submission.");
+    }
+    if (result.kind === "NON_EGYPTIAN_DECLARATION_REQUIRED") {
+      throw new ConflictException(
+        "Confirm that you do not hold Egyptian nationality before submission.",
+      );
     }
     if (result.kind === "VEHICLE_UNAVAILABLE") {
       throw new ConflictException("The selected vehicle is no longer available for these dates.");
@@ -544,7 +555,11 @@ export class ReservationsService {
       verification: {
         email: Boolean(record.customer.emailVerifiedAt),
       },
-      consents: { policyVersion: record.termsVersion, requiredAccepted },
+      consents: {
+        policyVersion: record.termsVersion,
+        requiredAccepted,
+        nonEgyptianAcknowledged: Boolean(record.nonEgyptianAcknowledgedAt),
+      },
       documents: record.documents.map((document) => ({
         id: document.id,
         type: document.type as ReservationDocumentType,
