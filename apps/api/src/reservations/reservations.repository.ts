@@ -397,6 +397,7 @@ export class ReservationsRepository {
         privacyConsentAt: true,
         documentConsentAt: true,
         operationalConsentAt: true,
+        nonEgyptianAcknowledgedAt: true,
         marketingConsentAt: true,
         vehicle: {
           select: {
@@ -432,7 +433,12 @@ export class ReservationsRepository {
     return Boolean(block || booking);
   }
 
-  async submitDraft(input: { draftId: string; customerId: string; locale: "ar" | "en" }) {
+  async submitDraft(input: {
+    draftId: string;
+    customerId: string;
+    locale: "ar" | "en";
+    nonEgyptianAcknowledged: boolean;
+  }) {
     return this.prisma.client.$transaction(async (transaction) => {
       const reservation = await transaction.reservation.findFirst({
         where: { id: input.draftId, customerId: input.customerId },
@@ -452,6 +458,7 @@ export class ReservationsRepository {
           privacyConsentAt: true,
           documentConsentAt: true,
           operationalConsentAt: true,
+          nonEgyptianAcknowledgedAt: true,
           customer: { select: { emailVerifiedAt: true } },
           vehicle: { select: { active: true, archivedAt: true, status: true } },
         },
@@ -483,6 +490,9 @@ export class ReservationsRepository {
         !requiredConsents
       ) {
         return { kind: "NOT_READY" as const };
+      }
+      if (!input.nonEgyptianAcknowledged) {
+        return { kind: "NON_EGYPTIAN_DECLARATION_REQUIRED" as const };
       }
 
       const policyCount = await transaction.policyVersion.count({
@@ -554,7 +564,12 @@ export class ReservationsRepository {
       const submittedAt = new Date();
       const updated = await transaction.reservation.updateMany({
         where: { id: reservation.id, customerId: input.customerId, status: "DRAFT" },
-        data: { status: "PENDING_REVIEW", submittedAt },
+        data: {
+          status: "PENDING_REVIEW",
+          submittedAt,
+          nonEgyptianAcknowledgedAt: submittedAt,
+          customerCategorySnapshot: "FOREIGN",
+        },
       });
       if (!updated.count) return { kind: "INVALID_STATUS" as const };
       await transaction.reservationEvent.create({
@@ -656,6 +671,7 @@ export class ReservationsRepository {
         privacyConsentAt: true,
         documentConsentAt: true,
         operationalConsentAt: true,
+        nonEgyptianAcknowledgedAt: true,
         customer: {
           select: {
             email: true,
@@ -2662,6 +2678,7 @@ const customerDraftSelect = {
   privacyConsentAt: true,
   documentConsentAt: true,
   operationalConsentAt: true,
+  nonEgyptianAcknowledgedAt: true,
   marketingConsentAt: true,
   vehicle: { select: { id: true, nameAr: true, nameEn: true } },
   branch: { select: { id: true, nameAr: true, nameEn: true } },

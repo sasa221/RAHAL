@@ -45,7 +45,7 @@ describe("customer reservation draft center", () => {
     expect(workspace).toContain("customer/drafts?locale=${locale}");
     expect(reservation).toContain("/api/reservations/customer/drafts/");
     expect(reservation).toContain("?locale=${locale}");
-    expect(reservation).toContain("setCustomerCategory(draft.customerDetails.customerCategory)");
+    expect(reservation).toContain('setCustomerCategory("FOREIGN")');
     expect(reservation).toContain("setSavedConsents");
     expect(reservation).toContain("requestedDraft");
   });

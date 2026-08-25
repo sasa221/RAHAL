@@ -118,6 +118,11 @@ describe("public multi-page experience", () => {
     expect(reservation).toContain('status: "PENDING_REVIEW"');
     expect(reservation).toContain("This is not a confirmed booking yet");
     expect(reservation).toContain("There is no online payment");
+    expect(reservation).toContain("I confirm I do not hold Egyptian nationality");
+    expect(reservation).toContain("أؤكد أنني لا أحمل الجنسية المصرية");
+    expect(reservation).toContain("nonEgyptianAcknowledged");
+    expect(reservation).not.toContain("Egyptian customer");
+    expect(reservation).not.toContain("عميل مصري");
     expect(reservation).toContain("APPROVED_POLICY_REQUIRED");
     expect(reservation).not.toContain("storageKey");
   });

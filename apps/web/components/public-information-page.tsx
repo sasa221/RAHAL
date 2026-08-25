@@ -38,7 +38,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
       eyebrow: "رحال من البداية",
       title: "تأجير سيارات واضح، بمتابعة بشرية حقيقية.",
       introduction:
-        "رحال منصة مصرية ثنائية اللغة تساعدك تختار السيارة المناسبة وترسل طلبك بوضوح، بينما يظل القرار النهائي مرتبطًا بالمراجعة والحضور إلى الفرع.",
+        "رحال منصة ثنائية اللغة لتأجير السيارات تساعدك تختار السيارة المناسبة وترسل طلبك بوضوح، بينما يظل القرار النهائي مرتبطًا بالمراجعة والحضور إلى الفرع.",
       statement: "اختيار مطمئن، معلومات واضحة، وإجراءات تتم في مكان واحد.",
       chapters: [
         {
@@ -65,7 +65,7 @@ const content: Record<PublicInformationPageKey, Record<PublicLocale, Information
       eyebrow: "RAHAL, FROM THE START",
       title: "Clear car rental, backed by real human follow-up.",
       introduction:
-        "Rahal is a bilingual Egyptian platform that helps you choose a suitable car and submit a clear request, while final confirmation remains tied to review and a branch visit.",
+        "Rahal is a bilingual car-rental platform that helps you choose a suitable car and submit a clear request, while final confirmation remains tied to review and a branch visit.",
       statement: "A confident choice, clear information, and one branch-led process.",
       chapters: [
         {

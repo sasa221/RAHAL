@@ -81,9 +81,6 @@ const requestCopy = {
     formTitle: "حدد تفاصيل رحلتك",
     formCopy: "اختار المواعيد ونظام السائق، وبعدها راجع كل اختيار قبل استكمال الطلب.",
     reviewReady: "اختياراتك جاهزة للمراجعة",
-    customerCategory: "نوع العميل",
-    egyptianCustomer: "عميل مصري",
-    foreignCustomer: "عميل أجنبي",
     documentsStep: "الخطوة 4 من 6: المستندات الخاصة",
     documentsTitle: "ارفع المستندات المطلوبة بأمان",
     documentsCopy: "تُحفظ الملفات في مساحة خاصة ولا يظهر منها رابط دائم أو رقم هوية في الموقع.",
@@ -143,9 +140,6 @@ const requestCopy = {
     policiesLoading: "Loading policies...",
     policiesFailed: "The current policy bundle could not be loaded.",
     documentsNext: "Private documents are next. The draft has not been sent to sales yet.",
-    customerCategory: "Customer type",
-    egyptianCustomer: "Egyptian customer",
-    foreignCustomer: "Foreign customer",
     documentsStep: "Step 4 of 6: private documents",
     documentsTitle: "Upload the required documents securely",
     documentsCopy:
@@ -215,7 +209,12 @@ type ReservationReviewData = {
   };
   verification: { email: boolean; phone: boolean };
   documents: Array<{ type: string; label: string; status: string }>;
-  consents: { policyVersion: string | null; requiredAccepted: boolean; marketingAccepted: boolean };
+  consents: {
+    policyVersion: string | null;
+    requiredAccepted: boolean;
+    marketingAccepted: boolean;
+    nonEgyptianAcknowledged: boolean;
+  };
   blockers: string[];
   canSubmit: boolean;
 };
@@ -255,6 +254,10 @@ const finalReviewCopy = {
     driver: "السائق",
     withDriver: "مع سائق",
     selfDrive: "بدون سائق",
+    declarationTitle: "إقرار قبل إرسال الطلب",
+    declarationCopy: "أؤكد أنني لا أحمل الجنسية المصرية.",
+    declarationConfirm: "أؤكد وأرسل الطلب",
+    declarationCancel: "العودة للمراجعة",
   },
   en: {
     step: "Step 5 of 6: final review",
@@ -291,6 +294,10 @@ const finalReviewCopy = {
     driver: "Driver",
     withDriver: "With driver",
     selfDrive: "Self-drive",
+    declarationTitle: "Declaration before submission",
+    declarationCopy: "I confirm I do not hold Egyptian nationality.",
+    declarationConfirm: "Confirm and send request",
+    declarationCancel: "Return to review",
   },
 } as const;
 
@@ -299,6 +306,7 @@ const submissionBlockerCopy = {
     EMAIL_VERIFICATION_REQUIRED: "توثيق البريد الإلكتروني",
     CUSTOMER_DETAILS_REQUIRED: "استكمال بيانات العميل",
     REQUIRED_CONSENTS_REQUIRED: "الموافقة على السياسات المطلوبة",
+    NON_EGYPTIAN_DECLARATION_REQUIRED: "تأكيد إقرار عدم حمل الجنسية المصرية",
     APPROVED_POLICY_REQUIRED: "اعتماد النسخة النهائية من السياسات قبل الإطلاق",
     REQUIRED_DOCUMENTS_REQUIRED: "رفع كل المستندات المطلوبة",
     VEHICLE_UNAVAILABLE: "اختيار موعد متاح لهذه السيارة",
@@ -307,6 +315,7 @@ const submissionBlockerCopy = {
     EMAIL_VERIFICATION_REQUIRED: "Verify the email address",
     CUSTOMER_DETAILS_REQUIRED: "Complete customer details",
     REQUIRED_CONSENTS_REQUIRED: "Accept all required policies",
+    NON_EGYPTIAN_DECLARATION_REQUIRED: "Confirm the non-Egyptian nationality declaration",
     APPROVED_POLICY_REQUIRED: "Publish the approved production policy version",
     REQUIRED_DOCUMENTS_REQUIRED: "Upload every required document",
     VEHICLE_UNAVAILABLE: "Choose dates when this vehicle is available",
@@ -393,7 +402,7 @@ export function ReservationStart({
     estimatedTotalEgp: number;
   } | null>(null);
   const [nationality, setNationality] = useState("");
-  const [customerCategory, setCustomerCategory] = useState<"EGYPTIAN" | "FOREIGN">("EGYPTIAN");
+  const [customerCategory, setCustomerCategory] = useState<"EGYPTIAN" | "FOREIGN">("FOREIGN");
   const [address, setAddress] = useState("");
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
@@ -442,6 +451,8 @@ export function ReservationStart({
   const [reservationReview, setReservationReview] = useState<ReservationReviewData | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [showNonEgyptianDeclaration, setShowNonEgyptianDeclaration] = useState(false);
+  const [nonEgyptianAcknowledged, setNonEgyptianAcknowledged] = useState(false);
   const [submittedReservation, setSubmittedReservation] = useState<{
     id: string;
     reference: string;
@@ -497,7 +508,9 @@ export function ReservationStart({
         setReviewing(true);
         if (draft.customerDetails) {
           setNationality(draft.customerDetails.nationality);
-          setCustomerCategory(draft.customerDetails.customerCategory);
+          // New reservation journeys are available to non-Egyptian nationals; keep legacy
+          // category data readable but never carry the old customer-facing choice forward.
+          setCustomerCategory("FOREIGN");
           setAddress(draft.customerDetails.address);
           setEmergencyContactName(draft.customerDetails.emergencyContactName);
           setEmergencyContactPhone(draft.customerDetails.emergencyContactPhone);
@@ -811,13 +824,27 @@ export function ReservationStart({
   }
 
   async function submitReservationRequest() {
-    if (!savedDraft || !reservationReview?.canSubmit) return;
+    const declarationOnly = Boolean(
+      reservationReview &&
+      reservationReview.blockers.length === 1 &&
+      reservationReview.blockers[0] === "NON_EGYPTIAN_DECLARATION_REQUIRED",
+    );
+    if (!savedDraft || (!reservationReview?.canSubmit && !declarationOnly)) return;
+    if (!nonEgyptianAcknowledged) {
+      setShowNonEgyptianDeclaration(true);
+      return;
+    }
     setSubmittingRequest(true);
     setReviewError(null);
     try {
       const response = await fetch(
         `/api/reservations/drafts/${encodeURIComponent(savedDraft.id)}/submit`,
-        { method: "POST", credentials: "include" },
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ nonEgyptianAcknowledged: true }),
+        },
       );
       const payload = (await response.json()) as {
         data?: {
@@ -839,6 +866,12 @@ export function ReservationStart({
       setSubmittingRequest(false);
     }
   }
+
+  const declarationOnly = Boolean(
+    reservationReview &&
+    reservationReview.blockers.length === 1 &&
+    reservationReview.blockers[0] === "NON_EGYPTIAN_DECLARATION_REQUIRED",
+  );
 
   return (
     <div
@@ -1115,19 +1148,6 @@ export function ReservationStart({
                           <p>{copy.detailsCopy}</p>
                         </div>
                       </div>
-                      <label className="field">
-                        <span>{copy.customerCategory}</span>
-                        <select
-                          onChange={(event) => {
-                            setCustomerCategory(event.target.value as "EGYPTIAN" | "FOREIGN");
-                            invalidateCustomerDetails();
-                          }}
-                          value={customerCategory}
-                        >
-                          <option value="EGYPTIAN">{copy.egyptianCustomer}</option>
-                          <option value="FOREIGN">{copy.foreignCustomer}</option>
-                        </select>
-                      </label>
                       <label className="field">
                         <span>{copy.nationality}</span>
                         <input
@@ -1490,7 +1510,10 @@ export function ReservationStart({
                           </div>
                           <button
                             className="button button--gold reservation-submit-button"
-                            disabled={!reservationReview.canSubmit || submittingRequest}
+                            disabled={
+                              (!reservationReview.canSubmit && !declarationOnly) ||
+                              submittingRequest
+                            }
                             onClick={() => void submitReservationRequest()}
                             type="button"
                           >
@@ -1499,6 +1522,47 @@ export function ReservationStart({
                               : finalReviewCopy[locale].submit}
                             <Icon name="arrow" size={18} />
                           </button>
+                          {showNonEgyptianDeclaration ? (
+                            <div
+                              className="reservation-declaration-dialog"
+                              role="dialog"
+                              aria-modal="true"
+                            >
+                              <div className="reservation-declaration-dialog__panel">
+                                <span className="reservation-declaration-dialog__eyebrow">
+                                  {finalReviewCopy[locale].declarationTitle}
+                                </span>
+                                <p>{finalReviewCopy[locale].declarationCopy}</p>
+                                <label className="reservation-declaration-dialog__check">
+                                  <input
+                                    checked={nonEgyptianAcknowledged}
+                                    onChange={(event) =>
+                                      setNonEgyptianAcknowledged(event.target.checked)
+                                    }
+                                    type="checkbox"
+                                  />
+                                  <span>{finalReviewCopy[locale].declarationCopy}</span>
+                                </label>
+                                <div className="reservation-declaration-dialog__actions">
+                                  <button
+                                    className="button button--gold"
+                                    disabled={!nonEgyptianAcknowledged || submittingRequest}
+                                    onClick={() => void submitReservationRequest()}
+                                    type="button"
+                                  >
+                                    {finalReviewCopy[locale].declarationConfirm}
+                                  </button>
+                                  <button
+                                    className="button button--outline"
+                                    onClick={() => setShowNonEgyptianDeclaration(false)}
+                                    type="button"
+                                  >
+                                    {finalReviewCopy[locale].declarationCancel}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
                         </>
                       ) : (
                         <p>{finalReviewCopy[locale].loading}</p>

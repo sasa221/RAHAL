@@ -252,6 +252,7 @@ export type ReservationSubmissionBlocker =
   | "EMAIL_VERIFICATION_REQUIRED"
   | "CUSTOMER_DETAILS_REQUIRED"
   | "REQUIRED_CONSENTS_REQUIRED"
+  | "NON_EGYPTIAN_DECLARATION_REQUIRED"
   | "APPROVED_POLICY_REQUIRED"
   | "REQUIRED_DOCUMENTS_REQUIRED"
   | "VEHICLE_UNAVAILABLE";
@@ -286,6 +287,7 @@ export type ReservationReview = {
     policyVersion: string | null;
     requiredAccepted: boolean;
     marketingAccepted: boolean;
+    nonEgyptianAcknowledged: boolean;
   };
   blockers: ReservationSubmissionBlocker[];
   canSubmit: boolean;
@@ -331,7 +333,11 @@ export type SalesReservationReview = SalesReservationQueueItem & {
     emergencyContactPhoneMasked: string | null;
   };
   verification: { email: boolean };
-  consents: { policyVersion: string | null; requiredAccepted: boolean };
+  consents: {
+    policyVersion: string | null;
+    requiredAccepted: boolean;
+    nonEgyptianAcknowledged: boolean;
+  };
   documents: Array<{
     id: string;
     type: ReservationDocumentType;

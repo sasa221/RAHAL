@@ -488,7 +488,10 @@ describe("reservation draft service", () => {
 
     expect(review).toMatchObject({
       canSubmit: false,
-      blockers: ["APPROVED_POLICY_REQUIRED"],
+      blockers: expect.arrayContaining([
+        "APPROVED_POLICY_REQUIRED",
+        "NON_EGYPTIAN_DECLARATION_REQUIRED",
+      ]),
       customer: {
         emailMasked: expect.stringContaining("***"),
         phoneMasked: expect.stringContaining("••••"),
@@ -516,14 +519,35 @@ describe("reservation draft service", () => {
       { submitDraft } as never,
     );
 
-    await expect(service.submitReservation("session-token", "draft-1")).resolves.toMatchObject({
+    await expect(
+      service.submitReservation("session-token", "draft-1", true),
+    ).resolves.toMatchObject({
       status: "PENDING_REVIEW",
     });
     expect(submitDraft).toHaveBeenCalledWith({
       draftId: "draft-1",
       customerId: "customer-1",
       locale: "en",
+      nonEgyptianAcknowledged: true,
     });
+  });
+
+  it("blocks submission until the non-Egyptian declaration is confirmed", async () => {
+    const submitDraft = vi.fn().mockResolvedValue({
+      kind: "NON_EGYPTIAN_DECLARATION_REQUIRED",
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER", preferredLocale: "en" },
+        }),
+      } as never,
+      { submitDraft } as never,
+    );
+
+    await expect(service.submitReservation("session-token", "draft-1", false)).rejects.toThrow(
+      "Confirm that you do not hold Egyptian nationality",
+    );
   });
 
   it("records branch requirements through the assigned sales boundary", async () => {

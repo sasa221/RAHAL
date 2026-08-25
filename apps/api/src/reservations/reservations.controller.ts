@@ -47,6 +47,7 @@ import {
   CustomerAlternativeOfferDecisionDto,
   CustomerInformationResponseDto,
   SaveReservationConsentsDto,
+  SubmitReservationDto,
   SaveReservationCustomerDetailsDto,
   SaveReservationDraftDto,
   SalesReservationDecisionDto,
@@ -141,9 +142,16 @@ export class ReservationsController {
   @Post("drafts/:id/submit")
   async submitDraft(
     @Param("id") id: string,
+    @Body() input: SubmitReservationDto,
     @Req() request: Request,
   ): Promise<ApiSuccess<SubmittedReservation>> {
-    return { data: await this.reservations.submitReservation(readAuthCookie(request), id) };
+    return {
+      data: await this.reservations.submitReservation(
+        readAuthCookie(request),
+        id,
+        input.nonEgyptianAcknowledged,
+      ),
+    };
   }
 
   @Get("sales/queue")

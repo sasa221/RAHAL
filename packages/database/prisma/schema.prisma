@@ -581,6 +581,7 @@ model Reservation {
   privacyConsentAt              DateTime?
   documentConsentAt             DateTime?
   operationalConsentAt          DateTime?
+  nonEgyptianAcknowledgedAt     DateTime?
   marketingConsentAt            DateTime?
   submittedAt                   DateTime?
   preApprovalExpiresAt          DateTime?

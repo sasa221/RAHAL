@@ -5302,6 +5302,17 @@ html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
   background: radial-gradient(circle at 82% 0%, rgb(185 139 47 / 13%), transparent 28rem), #f1eee7;
 }
 
+.sales-workspace :is(input, select, textarea) {
+  color: #1b1a16;
+  background-color: #f7f4ec;
+  border-color: #817d74;
+}
+
+.sales-workspace :is(input, select, textarea)::placeholder {
+  color: #565750;
+  opacity: 1;
+}
+
 .sales-topbar {
   position: sticky;
   z-index: 20;
@@ -25056,6 +25067,81 @@ body:has(.marketing-consent-card, .push-consent-layer) .notification-preview {
   cursor: not-allowed;
   filter: grayscale(0.7);
   opacity: 0.48;
+}
+
+.reservation-declaration-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(18 17 14 / 42%);
+}
+
+.reservation-declaration-dialog__panel {
+  width: min(100%, 520px);
+  padding: 28px;
+  color: var(--color-ink);
+  background: #f8f4ea;
+  border: 1px solid rgb(25 24 20 / 20%);
+  box-shadow: 0 24px 70px rgb(25 24 20 / 22%);
+}
+
+.reservation-declaration-dialog__eyebrow {
+  display: block;
+  margin-bottom: 12px;
+  color: #916a1d;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reservation-declaration-dialog__panel p {
+  margin: 0 0 18px;
+  color: #312f2a;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.reservation-declaration-dialog__check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: #25231f;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.reservation-declaration-dialog__check input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: #ae7f20;
+}
+
+.reservation-declaration-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .reservation-declaration-dialog {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .reservation-declaration-dialog__panel {
+    padding: 22px;
+  }
+
+  .reservation-declaration-dialog__actions > .button {
+    width: 100%;
+  }
 }
 
 .reservation-submit-success {
