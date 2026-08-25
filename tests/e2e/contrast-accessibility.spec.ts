@@ -35,10 +35,10 @@ const lightSurfaceChecks = [
 
 const workspaceChecks: Array<{ path: string; role: E2eRole; readySelector: string }> = [
   { path: "/account/requests", role: "customer", readySelector: ".customer-request-card" },
-  { path: "/sales", role: "sales", readySelector: ".sales-request-card" },
+  { path: "/sales", role: "sales", readySelector: ".sales-layout" },
   { path: "/admin", role: "admin", readySelector: ".ops-metrics > a" },
   { path: "/en/account/requests", role: "customer", readySelector: ".customer-request-card" },
-  { path: "/en/sales", role: "sales", readySelector: ".sales-request-card" },
+  { path: "/en/sales", role: "sales", readySelector: ".sales-layout" },
   { path: "/en/admin", role: "admin", readySelector: ".ops-metrics > a" },
 ];
 
