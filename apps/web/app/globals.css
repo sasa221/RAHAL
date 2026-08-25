@@ -5302,6 +5302,17 @@ html[dir="rtl"] :where(.portal-topbar, .portal-sidebar, .portal-page-guide) {
   background: radial-gradient(circle at 82% 0%, rgb(185 139 47 / 13%), transparent 28rem), #f1eee7;
 }
 
+.sales-workspace :is(input, select, textarea) {
+  color: #1b1a16;
+  background-color: #f7f4ec;
+  border-color: #817d74;
+}
+
+.sales-workspace :is(input, select, textarea)::placeholder {
+  color: #565750;
+  opacity: 1;
+}
+
 .sales-topbar {
   position: sticky;
   z-index: 20;
