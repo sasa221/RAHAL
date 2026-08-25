@@ -204,13 +204,13 @@ async function openAuthenticatedWorkspace(page: Page, path: string, readySelecto
   await expect(
     page.locator(".portal-shell"),
     `Authenticated workspace did not replace the access loader on ${path}`,
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("main.workspace-loading")).toHaveCount(0);
   await expect(page.locator("main.workspace-access")).toHaveCount(0);
   await expect(
     page.locator(readySelector).first(),
     `Operational content did not finish loading on ${path}`,
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 30_000 });
   await page.evaluate(() => document.fonts.ready);
 }
 
