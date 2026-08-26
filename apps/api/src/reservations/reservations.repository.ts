@@ -491,6 +491,9 @@ export class ReservationsRepository {
       ) {
         return { kind: "NOT_READY" as const };
       }
+      if (reservation.customerCategorySnapshot !== "FOREIGN") {
+        return { kind: "EGYPTIAN_CUSTOMER_NOT_ELIGIBLE" as const };
+      }
       if (!input.nonEgyptianAcknowledged) {
         return { kind: "NON_EGYPTIAN_DECLARATION_REQUIRED" as const };
       }
@@ -506,29 +509,8 @@ export class ReservationsRepository {
           OR: [{ retiredAt: null }, { retiredAt: { gt: new Date() } }],
         },
       });
-      if (reservation.termsVersion!.startsWith("DEV-") || policyCount !== 4) {
+      if (policyCount !== 4) {
         return { kind: "POLICY_NOT_APPROVED" as const };
-      }
-
-      const rules = await transaction.documentRequirementRule.findMany({
-        where: { customerCategory: reservation.customerCategorySnapshot, active: true },
-        select: { documentType: true, requiresSelfDrive: true },
-      });
-      const requiredTypes = rules
-        .filter((rule) => !rule.requiresSelfDrive || !reservation.driverRequested)
-        .map((rule) => rule.documentType);
-      const uploadedDocuments = await transaction.reservationDocument.findMany({
-        where: {
-          reservationId: reservation.id,
-          type: { in: requiredTypes },
-          status: { in: ["UPLOADED", "UNDER_REVIEW", "VERIFIED"] },
-          deletedAt: null,
-        },
-        select: { type: true },
-      });
-      const uploadedTypes = new Set(uploadedDocuments.map((document) => document.type));
-      if (!requiredTypes.length || requiredTypes.some((type) => !uploadedTypes.has(type))) {
-        return { kind: "DOCUMENTS_INCOMPLETE" as const };
       }
 
       const [block, booking] = await Promise.all([
@@ -568,7 +550,6 @@ export class ReservationsRepository {
           status: "PENDING_REVIEW",
           submittedAt,
           nonEgyptianAcknowledgedAt: submittedAt,
-          customerCategorySnapshot: "FOREIGN",
         },
       });
       if (!updated.count) return { kind: "INVALID_STATUS" as const };

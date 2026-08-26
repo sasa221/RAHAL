@@ -888,7 +888,7 @@ describe("RAHAL API", () => {
       .expect(400);
   });
 
-  it("returns a masked final review and blocks development policy submission", async () => {
+  it("returns a masked final review without blocking preliminary submission on DEV policy", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/reservations/drafts/reservation-draft-e2e/review")
       .set("Cookie", documentCookie)
@@ -898,12 +898,14 @@ describe("RAHAL API", () => {
       reference: "RHL-2026-123456",
       status: "DRAFT",
       canSubmit: false,
-      blockers: expect.arrayContaining(["APPROVED_POLICY_REQUIRED"]),
+      blockers: ["NON_EGYPTIAN_DECLARATION_REQUIRED"],
       customer: {
         emailMasked: expect.stringContaining("***"),
         phoneMasked: expect.stringContaining("••••"),
       },
     });
+    expect(response.body.data.blockers).not.toContain("APPROVED_POLICY_REQUIRED");
+    expect(response.body.data.blockers).not.toContain("REQUIRED_DOCUMENTS_REQUIRED");
     expect(JSON.stringify(response.body)).not.toContain("Fictional Cairo address");
     expect(JSON.stringify(response.body)).not.toContain("private-document.png");
   });

@@ -150,7 +150,7 @@ const copy = {
     reviewingMetric: "قيد المراجعة",
     actionMetric: "جاهز لإجراءات الفرع",
     all: "الكل",
-    pending: "بانتظار المراجعة",
+    pending: "مستندات للمراجعة في الفرع",
     reviewing: "قيد المراجعة",
     moreInfo: "معلومات إضافية مطلوبة",
     alternativeStatus: "عرض بديل مرسل",
@@ -187,6 +187,8 @@ const copy = {
     notVerified: "غير موثّق",
     documents: "حالة المستندات",
     noDocuments: "لا توجد مستندات مسجلة.",
+    documentsAtBranch:
+      "هذا طلب مبدئي. تُراجع مستندات العميل حضوريًا في فرع رحال قبل أي موافقة نهائية أو تسليم.",
     inspectDocument: "فحص المستند",
     accessReason: "سبب الوصول للمستند",
     accessPlaceholder: "اكتب سببًا تشغيليًا واضحًا لا يقل عن 10 أحرف",
@@ -311,7 +313,7 @@ const copy = {
     reviewingMetric: "Under review",
     actionMetric: "Ready for branch",
     all: "All",
-    pending: "Pending review",
+    pending: "Documents for branch review",
     reviewing: "Under review",
     moreInfo: "More information required",
     alternativeStatus: "Alternative offered",
@@ -348,6 +350,8 @@ const copy = {
     notVerified: "Not verified",
     documents: "Document status",
     noDocuments: "No documents are recorded.",
+    documentsAtBranch:
+      "This is a preliminary request. Review the customer's documents in person at the Rahal branch before any final approval or vehicle delivery.",
     inspectDocument: "Inspect document",
     accessReason: "Reason for document access",
     accessPlaceholder: "Enter a clear operational reason of at least 10 characters",
@@ -1334,17 +1338,24 @@ export function SalesReviewWorkspace({
                   </section>
 
                   {review.canReviewDocuments ? (
-                    <ProtectedDocumentStudio
-                      decisionsEnabled={[
-                        "PENDING_REVIEW",
-                        "UNDER_REVIEW",
-                        "MORE_INFORMATION_REQUIRED",
-                      ].includes(review.status)}
-                      documents={review.documents}
-                      locale={locale}
-                      onReviewed={() => openReview(review.id)}
-                      reservationId={review.id}
-                    />
+                    <>
+                      {review.status === "PENDING_REVIEW" && review.documents.length === 0 ? (
+                        <div className="sales-safety-note" role="status">
+                          {text.documentsAtBranch}
+                        </div>
+                      ) : null}
+                      <ProtectedDocumentStudio
+                        decisionsEnabled={[
+                          "PENDING_REVIEW",
+                          "UNDER_REVIEW",
+                          "MORE_INFORMATION_REQUIRED",
+                        ].includes(review.status)}
+                        documents={review.documents}
+                        locale={locale}
+                        onReviewed={() => openReview(review.id)}
+                        reservationId={review.id}
+                      />
+                    </>
                   ) : (
                     <section>
                       <h3>{text.documents}</h3>

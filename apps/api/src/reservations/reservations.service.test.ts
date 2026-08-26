@@ -450,6 +450,7 @@ describe("reservation draft service", () => {
           privacyConsentAt: new Date(),
           documentConsentAt: new Date(),
           operationalConsentAt: new Date(),
+          nonEgyptianAcknowledgedAt: new Date(),
           marketingConsentAt: null,
           vehicle: {
             id: "silver-executive",
@@ -487,17 +488,16 @@ describe("reservation draft service", () => {
     const review = await service.getReview("session-token", "draft-1");
 
     expect(review).toMatchObject({
-      canSubmit: false,
-      blockers: expect.arrayContaining([
-        "APPROVED_POLICY_REQUIRED",
-        "NON_EGYPTIAN_DECLARATION_REQUIRED",
-      ]),
+      canSubmit: true,
+      blockers: [],
       customer: {
         emailMasked: expect.stringContaining("***"),
         phoneMasked: expect.stringContaining("••••"),
         addressMasked: expect.not.stringContaining("Fictional Cairo address"),
       },
     });
+    expect(review.blockers).not.toContain("APPROVED_POLICY_REQUIRED");
+    expect(review.blockers).not.toContain("REQUIRED_DOCUMENTS_REQUIRED");
   });
 
   it("returns only pending review after an authoritative submission", async () => {
@@ -547,6 +547,24 @@ describe("reservation draft service", () => {
 
     await expect(service.submitReservation("session-token", "draft-1", false)).rejects.toThrow(
       "Confirm that you do not hold Egyptian nationality",
+    );
+  });
+
+  it("does not allow an Egyptian customer to bypass the nationality eligibility rule", async () => {
+    const submitDraft = vi.fn().mockResolvedValue({
+      kind: "EGYPTIAN_CUSTOMER_NOT_ELIGIBLE",
+    });
+    const service = new ReservationsService(
+      {
+        getSession: vi.fn().mockResolvedValue({
+          user: { id: "customer-1", role: "CUSTOMER", preferredLocale: "en" },
+        }),
+      } as never,
+      { submitDraft } as never,
+    );
+
+    await expect(service.submitReservation("session-token", "draft-1", true)).rejects.toThrow(
+      "available to customers who do not hold Egyptian nationality",
     );
   });
 

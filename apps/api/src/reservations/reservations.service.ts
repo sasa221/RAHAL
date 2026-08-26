@@ -370,11 +370,6 @@ export class ReservationsService {
         status: reviewableStatus ?? ("MISSING" as const),
       };
     });
-    const documentsComplete =
-      documents.length > 0 &&
-      documents.every((document) =>
-        ["UPLOADED", "UNDER_REVIEW", "VERIFIED"].includes(document.status),
-      );
     const requiredAccepted = Boolean(
       draft.termsVersion &&
       draft.termsAcceptedAt &&
@@ -382,15 +377,6 @@ export class ReservationsService {
       draft.documentConsentAt &&
       draft.operationalConsentAt,
     );
-    let approvedPolicy: boolean;
-    try {
-      const bundle = await this.getConsentBundle(session.user.preferredLocale);
-      approvedPolicy = Boolean(
-        requiredAccepted && !bundle.developmentOnly && draft.termsVersion === bundle.version,
-      );
-    } catch {
-      approvedPolicy = false;
-    }
     const vehicleConflict = await this.reservations.hasSubmissionConflict(
       draft.vehicle.id,
       draft.pickupAt,
@@ -410,8 +396,6 @@ export class ReservationsService {
     if (!draft.nonEgyptianAcknowledgedAt) {
       blockers.push("NON_EGYPTIAN_DECLARATION_REQUIRED");
     }
-    if (!approvedPolicy) blockers.push("APPROVED_POLICY_REQUIRED");
-    if (!documentsComplete) blockers.push("REQUIRED_DOCUMENTS_REQUIRED");
     if (!vehicleAvailable) blockers.push("VEHICLE_UNAVAILABLE");
 
     const locale = session.user.preferredLocale;
@@ -481,16 +465,18 @@ export class ReservationsService {
     if (result.kind === "NOT_FOUND") {
       throw new NotFoundException("The reservation draft was not found.");
     }
-    if (result.kind === "POLICY_NOT_APPROVED") {
-      throw new ConflictException("Approved production policies are required before submission.");
-    }
-    if (result.kind === "DOCUMENTS_INCOMPLETE") {
-      throw new ConflictException("Every required document must be uploaded before submission.");
+    if (result.kind === "EGYPTIAN_CUSTOMER_NOT_ELIGIBLE") {
+      throw new ForbiddenException(
+        "Reservation requests are available to customers who do not hold Egyptian nationality.",
+      );
     }
     if (result.kind === "NON_EGYPTIAN_DECLARATION_REQUIRED") {
       throw new ConflictException(
         "Confirm that you do not hold Egyptian nationality before submission.",
       );
+    }
+    if (result.kind === "POLICY_NOT_APPROVED") {
+      throw new ConflictException("The required policy bundle is not available for submission.");
     }
     if (result.kind === "VEHICLE_UNAVAILABLE") {
       throw new ConflictException("The selected vehicle is no longer available for these dates.");
