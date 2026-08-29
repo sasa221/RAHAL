@@ -234,7 +234,24 @@ export class AuthService {
   }
 
   async getStaffMfaChallenge(token: string | undefined): Promise<StaffMfaChallenge> {
-    const challenge = await this.requireStaffMfaChallenge(token);
+    let challenge = await this.requireStaffMfaChallenge(token);
+
+    // A reset can invalidate the credential while leaving a previously-issued
+    // login challenge in the browser. Never show a VERIFY screen without a
+    // credential; repair that stale challenge in place and render enrollment.
+    if (challenge.kind === "VERIFY" && !challenge.user.staffMfaCredential) {
+      const secretCiphertext = this.staffMfa.encryptSecret(this.staffMfa.generateSecret());
+      const repaired = await this.repository.promoteStaffLoginChallengeToEnrollment({
+        id: challenge.id,
+        userId: challenge.user.id,
+        secretCiphertext,
+      });
+      if (repaired.count !== 1) {
+        throw new UnauthorizedException("The staff security challenge is invalid or expired.");
+      }
+      challenge = { ...challenge, kind: "ENROLL", secretCiphertext };
+    }
+
     const secret =
       challenge.kind === "ENROLL" && challenge.secretCiphertext
         ? this.staffMfa.decryptSecret(challenge.secretCiphertext)

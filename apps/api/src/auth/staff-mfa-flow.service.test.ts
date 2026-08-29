@@ -26,6 +26,7 @@ function setup() {
       .fn()
       .mockResolvedValue({ id: "challenge-1", kind: "ENROLL", expiresAt: new Date() }),
     findStaffLoginChallenge: vi.fn(),
+    promoteStaffLoginChallengeToEnrollment: vi.fn().mockResolvedValue({ count: 1 }),
     incrementStaffLoginChallengeAttempts: vi.fn().mockResolvedValue({ attempts: 1 }),
     enableStaffMfa: vi.fn().mockResolvedValue({
       id: "credential-1",
@@ -113,6 +114,34 @@ describe("staff MFA login flow", () => {
         mfaVerifiedAt: expect.any(Date),
       }),
     );
+  });
+
+  it("repairs a stale verify challenge into enrollment when the MFA credential is missing", async () => {
+    const { service, repository, mfa } = setup();
+    repository.findStaffLoginChallenge.mockResolvedValue({
+      id: "stale-challenge",
+      kind: "VERIFY",
+      secretCiphertext: null,
+      attempts: 0,
+      expiresAt: new Date(Date.now() + 60_000),
+      user: staffUser,
+    });
+
+    const challenge = await service.getStaffMfaChallenge("raw-challenge");
+
+    expect(repository.promoteStaffLoginChallengeToEnrollment).toHaveBeenCalledWith({
+      id: "stale-challenge",
+      userId: staffUser.id,
+      secretCiphertext: "encrypted-secret",
+    });
+    expect(mfa.generateSecret).toHaveBeenCalledOnce();
+    expect(challenge).toMatchObject({
+      action: "ENROLL",
+      enrollment: {
+        secret: "BASE32SECRET",
+        otpAuthUri: "otpauth://totp/RAHAL",
+      },
+    });
   });
 
   it("blocks staff workspaces until the temporary password is replaced", async () => {
