@@ -376,6 +376,33 @@ export class AuthRepository {
     });
   }
 
+  /**
+   * Repairs a stale VERIFY challenge after an administrator reset MFA. The
+   * opaque challenge token is retained, but the challenge is converted to a
+   * fresh enrollment challenge so the client can render the QR before asking
+   * for an OTP.
+   */
+  promoteStaffLoginChallengeToEnrollment(input: {
+    id: string;
+    userId: string;
+    secretCiphertext: string;
+  }) {
+    return this.prisma.client.staffLoginChallenge.updateMany({
+      where: {
+        id: input.id,
+        userId: input.userId,
+        kind: "VERIFY",
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: {
+        kind: "ENROLL",
+        secretCiphertext: input.secretCiphertext,
+        attempts: 0,
+      },
+    });
+  }
+
   incrementStaffLoginChallengeAttempts(id: string) {
     return this.prisma.client.staffLoginChallenge.update({
       where: { id },
