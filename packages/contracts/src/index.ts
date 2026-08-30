@@ -1301,6 +1301,11 @@ export type NotificationCampaignCreateResult = {
   createdAt: string;
 };
 
+export type NotificationCampaignArchiveResult = {
+  id: string;
+  archivedAt: string;
+};
+
 export type NotificationCampaignRecipientOption = {
   id: string;
   name: string;

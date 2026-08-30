@@ -903,6 +903,7 @@ model NotificationCampaign {
   important      Boolean               @default(false)
   marketing      Boolean               @default(false)
   recipientCount Int
+  archivedAt    DateTime?
   notifications  Notification[]
   createdAt      DateTime              @default(now())
 

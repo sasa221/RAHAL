@@ -52,6 +52,10 @@ function setup(locale: "ar" | "en" = "en") {
       recipientCount: 1,
       createdAt: new Date("2026-07-30T09:00:00.000Z"),
     }),
+    archiveCampaign: vi.fn().mockResolvedValue({
+      id: "campaign-1",
+      archivedAt: new Date("2026-07-30T10:00:00.000Z"),
+    }),
   };
   const access = { require: vi.fn().mockResolvedValue(undefined) };
   return {
@@ -63,6 +67,30 @@ function setup(locale: "ar" | "en" = "en") {
 }
 
 describe("NotificationsService", () => {
+  it("archives a campaign only for an administrator", async () => {
+    const { service, auth, repository } = setup();
+    auth.getSession.mockResolvedValueOnce({
+      user: { id: "admin-1", preferredLocale: "en", role: "ADMIN" },
+    });
+
+    await expect(service.archiveCampaign("session", "campaign-1")).resolves.toEqual({
+      id: "campaign-1",
+      archivedAt: "2026-07-30T10:00:00.000Z",
+    });
+    expect(repository.archiveCampaign).toHaveBeenCalledWith(
+      "campaign-1",
+      "admin-1",
+      "Archive legacy test campaign before external review",
+    );
+  });
+
+  it("does not allow sales to archive campaigns", async () => {
+    const { service } = setup();
+    await expect(service.archiveCampaign("session", "campaign-1")).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it("localizes only the authenticated user's safe inbox", async () => {
     const { service, repository } = setup("ar");
     await expect(service.inbox("session")).resolves.toMatchObject({
