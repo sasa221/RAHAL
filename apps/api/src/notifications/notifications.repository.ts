@@ -447,7 +447,7 @@ export class NotificationsRepository {
 
   async campaigns(createdById?: string) {
     const campaigns = await this.prisma.client.notificationCampaign.findMany({
-      where: createdById ? { createdById } : undefined,
+      where: { ...(createdById ? { createdById } : {}), archivedAt: null },
       orderBy: { createdAt: "desc" },
       take: 20,
       select: {
@@ -487,5 +487,32 @@ export class NotificationsRepository {
       }),
     );
     return campaigns.map((campaign, index) => ({ ...campaign, delivery: delivery[index]! }));
+  }
+
+  async archiveCampaign(id: string, actorId: string, reason: string) {
+    const archivedAt = new Date();
+    return this.prisma.client.$transaction(async (transaction) => {
+      const campaign = await transaction.notificationCampaign.findFirst({
+        where: { id, archivedAt: null },
+        select: { id: true },
+      });
+      if (!campaign) return null;
+      await transaction.notificationCampaign.update({ where: { id }, data: { archivedAt } });
+      await transaction.notification.updateMany({
+        where: { campaignId: id, archivedAt: null },
+        data: { archivedAt },
+      });
+      await transaction.auditLog.create({
+        data: {
+          actorId,
+          action: "NOTIFICATION_CAMPAIGN_ARCHIVED",
+          entityType: "NOTIFICATION_CAMPAIGN",
+          entityId: id,
+          reason,
+          succeeded: true,
+        },
+      });
+      return { id, archivedAt };
+    });
   }
 }

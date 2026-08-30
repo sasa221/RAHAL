@@ -63,6 +63,9 @@ const copy = {
     recipients: "مستلم",
     queued: "عملية إرسال في الطابور",
     noHistory: "لم تُرسل حملات بعد.",
+    archive: "أرشفة",
+    archiveConfirm: "أرشفة هذه الرسالة التجريبية؟ ستختفي من القائمة وإشعارات المستخدمين.",
+    archived: "تمت الأرشفة",
     unavailable: "لا تملك صلاحية الإرسال أو تعذر تحميل الحملات.",
     noRecipients: "لا يوجد عملاء نشطون لاستقبال هذه الرسالة حتى الآن.",
     noMarketingRecipients:
@@ -138,6 +141,9 @@ const copy = {
     recipients: "recipients",
     queued: "deliveries queued",
     noHistory: "No campaigns have been sent yet.",
+    archive: "Archive",
+    archiveConfirm: "Archive this test message? It will disappear from the list and user inboxes.",
+    archived: "Archived",
     unavailable: "You do not have sending access or campaigns could not be loaded.",
     noRecipients: "No active recipients match this audience.",
     noMarketingRecipients:
@@ -403,6 +409,25 @@ export function NotificationCampaignStudio({
       );
     } finally {
       setSending(false);
+    }
+  }
+
+  async function archiveCampaign(id: string) {
+    if (kind !== "admin" || !window.confirm(text.archiveConfirm)) return;
+    setError("");
+    try {
+      const response = await fetch(`/api/notifications/campaigns/${id}/archive`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      const payload = (await response.json()) as
+        ApiSuccess<{ id: string; archivedAt: string }> | unknown;
+      if (!response.ok || !isApiSuccess(payload)) {
+        throw new Error(apiErrorMessage(payload, text.unavailable));
+      }
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : text.unavailable);
     }
   }
 
@@ -756,6 +781,11 @@ export function NotificationCampaignStudio({
                   <span className="is-sent">{item.delivery.sent} ✓</span>
                   <span>{item.delivery.queued} …</span>
                   <span className="is-failed">{item.delivery.failed} !</span>
+                  {kind === "admin" ? (
+                    <button type="button" onClick={() => void archiveCampaign(item.id)}>
+                      {text.archive}
+                    </button>
+                  ) : null}
                 </footer>
               </article>
             ))}

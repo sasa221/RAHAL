@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import type {
   ApiSuccess,
   NotificationInbox,
   NotificationCampaignCreateResult,
+  NotificationCampaignArchiveResult,
   NotificationCampaignPage,
   NotificationCampaignRecipientPage,
   NotificationReadResult,
@@ -50,6 +51,16 @@ export class NotificationsController {
   ): Promise<ApiSuccess<NotificationCampaignCreateResult>> {
     return {
       data: await this.notifications.createCampaign(readAuthCookie(request), input),
+    };
+  }
+
+  @Patch("campaigns/:id/archive")
+  async archiveCampaign(
+    @Param("id") id: string,
+    @Req() request: Request,
+  ): Promise<ApiSuccess<NotificationCampaignArchiveResult>> {
+    return {
+      data: await this.notifications.archiveCampaign(readAuthCookie(request), id),
     };
   }
 

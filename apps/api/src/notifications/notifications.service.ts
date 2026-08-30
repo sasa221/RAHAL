@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import type {
   NotificationCampaignCreateResult,
+  NotificationCampaignArchiveResult,
   NotificationCampaignPage,
   NotificationCampaignRecipientPage,
   NotificationInbox,
@@ -227,6 +228,23 @@ export class NotificationsService {
       queuedDeliveries: result.recipientCount * channels.length,
       createdAt: result.createdAt.toISOString(),
     };
+  }
+
+  async archiveCampaign(
+    token: string | undefined,
+    id: string,
+  ): Promise<NotificationCampaignArchiveResult> {
+    const session = await this.auth.getSession(token);
+    if (!["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+      throw new ForbiddenException("Only administrators can archive campaigns.");
+    }
+    const result = await this.notifications.archiveCampaign(
+      id,
+      session.user.id,
+      "Archive legacy test campaign before external review",
+    );
+    if (!result) throw new NotFoundException("The campaign was not found or is already archived.");
+    return { id: result.id, archivedAt: result.archivedAt.toISOString() };
   }
 
   private pushTokenHash(endpoint: string) {
