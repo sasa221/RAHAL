@@ -364,7 +364,10 @@ export async function PublicHome({ locale }: PublicHomeProps) {
         {content.heroVisible ? (
           <section className="hero" data-scroll-scene id="top">
             <Image
-              alt={content.heroMedia?.alt ?? ""}
+              alt={
+                content.heroMedia?.alt?.trim() ||
+                (locale === "ar" ? "صورة سيارة رحال للتأجير" : "Rahal car rental scene")
+              }
               className="hero__image"
               fill
               priority

@@ -43,6 +43,7 @@ describe("public search discovery", () => {
 
     expect(home).not.toContain('alt=""');
     expect(home).toContain("alt={title}");
+    expect(home).toContain("content.heroMedia?.alt?.trim() ||");
     expect(fleet).not.toContain('alt=""');
     expect(auth).not.toContain('alt=""');
     expect(details).not.toContain('<Image alt=""');
