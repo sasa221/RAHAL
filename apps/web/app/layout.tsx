@@ -44,6 +44,16 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(publicWebUrl),
     title: "RAHAL | رحال لتأجير السيارات",
     description: "استعرض سيارات رحال، تحقق من المواعيد، وأرسل طلب الحجز.",
+    verification: {
+      google: "p8kxt8OOhPoPWB0Okc2JP7qPuBDD_HqfDRX7aUJMrgE",
+      other: {
+        "msvalidate.01": "6B1E107872A860D8242C8D71581CA707",
+      },
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
     alternates: {
       canonical: path,
       languages: {

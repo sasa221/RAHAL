@@ -27,4 +27,11 @@ describe("public search discovery", () => {
     expect(layout).toContain("canonical: path");
     expect(layout).toContain('"x-default": arabicPath');
   });
+
+  it("keeps both search-engine ownership tags on every public page", () => {
+    const layout = read("apps/web/app/layout.tsx");
+
+    expect(layout).toContain('google: "p8kxt8OOhPoPWB0Okc2JP7qPuBDD_HqfDRX7aUJMrgE"');
+    expect(layout).toContain('"msvalidate.01": "6B1E107872A860D8242C8D71581CA707"');
+  });
 });
