@@ -409,7 +409,7 @@ export function WorkspaceShell({
         <ExperienceMotion />
         <aside className="portal-sidebar">
           <a className="portal-brand" href={localizedPath(locale)}>
-            <Image alt="" height={58} src="/images/rahal-logo.png" width={58} />
+            <Image alt="RAHAL logo" height={58} src="/images/rahal-logo.png" width={58} />
             <span>
               <strong>
                 {kind === "admin"
@@ -456,7 +456,7 @@ export function WorkspaceShell({
         <div className="portal-stage">
           <header className="portal-topbar">
             <a className="portal-mobile-brand" href={localizedPath(locale)}>
-              <Image alt="" height={42} src="/images/rahal-logo.png" width={42} />
+              <Image alt="RAHAL logo" height={42} src="/images/rahal-logo.png" width={42} />
               <strong>
                 {kind === "admin"
                   ? text.adminBrand
@@ -544,7 +544,7 @@ export function WorkspaceShell({
             >
               <header>
                 <a href={localizedPath(locale)}>
-                  <Image alt="" height={52} src="/images/rahal-logo.png" width={52} />
+                  <Image alt="RAHAL logo" height={52} src="/images/rahal-logo.png" width={52} />
                   <span>
                     <small>{text.commandCenter}</small>
                     <strong>

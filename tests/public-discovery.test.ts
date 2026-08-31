@@ -34,4 +34,17 @@ describe("public search discovery", () => {
     expect(layout).toContain('google: "p8kxt8OOhPoPWB0Okc2JP7qPuBDD_HqfDRX7aUJMrgE"');
     expect(layout).toContain('"msvalidate.01": "6B1E107872A860D8242C8D71581CA707"');
   });
+
+  it("provides descriptive alternatives for public and shared imagery", () => {
+    const home = read("apps/web/components/public-home.tsx");
+    const fleet = read("apps/web/components/public-fleet.tsx");
+    const auth = read("apps/web/components/auth-access.tsx");
+    const details = read("apps/web/components/vehicle-details.tsx");
+
+    expect(home).not.toContain('alt=""');
+    expect(home).toContain("alt={title}");
+    expect(fleet).not.toContain('alt=""');
+    expect(auth).not.toContain('alt=""');
+    expect(details).not.toContain('<Image alt=""');
+  });
 });

@@ -113,7 +113,7 @@ export function RahalLogo({ compact = false }: { compact?: boolean }) {
   return (
     <span className={`rahal-logo${compact ? " rahal-logo--compact" : ""}`} aria-hidden="true">
       <Image
-        alt=""
+        alt="RAHAL logo"
         className="rahal-logo__image"
         height={compact ? 104 : 112}
         priority={!compact}
@@ -457,7 +457,7 @@ export async function PublicHome({ locale }: PublicHomeProps) {
               {content.categories.map(([title, description, number], index) => (
                 <article className="category-card" data-reveal data-tilt key={title}>
                   <Image
-                    alt=""
+                    alt={title}
                     className="category-card__image"
                     fill
                     sizes="(max-width: 680px) 100vw, (max-width: 900px) 50vw, 55vw"

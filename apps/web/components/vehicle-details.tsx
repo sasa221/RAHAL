@@ -234,7 +234,7 @@ export function VehicleDetails({
                   onClick={() => setSelectedImage(image)}
                   type="button"
                 >
-                  <Image alt="" fill sizes="130px" src={image.image} />
+                  <Image alt={image.imageAlt[locale]} fill sizes="130px" src={image.image} />
                   <span aria-hidden="true">0{index + 1}</span>
                 </button>
               ))}

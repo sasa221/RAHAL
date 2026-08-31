@@ -334,7 +334,7 @@ export function AuthAccess({ locale }: { locale: PublicLocale }) {
       <main className="auth-stage">
         <section className="auth-stage__visual">
           <Image
-            alt=""
+            alt={locale === "ar" ? "سيارة رحال للتأجير" : "Rahal rental car"}
             className="auth-stage__image"
             fill
             priority

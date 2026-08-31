@@ -644,7 +644,12 @@ function VehicleEditor({
               <div>
                 {presetImages.map((url) => (
                   <button aria-label={url} key={url} onClick={() => addPreset(url)} type="button">
-                    <img alt="" decoding="async" loading="lazy" src={url} />
+                    <img
+                      alt={locale === "ar" ? "صورة سيارة جاهزة للاختيار" : "Preset vehicle image"}
+                      decoding="async"
+                      loading="lazy"
+                      src={url}
+                    />
                   </button>
                 ))}
               </div>

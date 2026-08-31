@@ -314,7 +314,7 @@ export function PublicFleet({
             </div>
             <div className="fleet-page-hero__visual" aria-hidden="true">
               <Image
-                alt=""
+                alt={locale === "ar" ? "سيارة من أسطول رحال" : "Rahal fleet vehicle"}
                 fill
                 priority
                 sizes="(max-width: 800px) 100vw, 46vw"
